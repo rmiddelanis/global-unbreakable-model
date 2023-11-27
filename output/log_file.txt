@@ -1,0 +1,748 @@
+Comparing iah_tax_unif_poor__bbb_fast1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10648, 22): df1=3285.4091698699367, df2=nan
+Difference at position (10648, 23): df1=0.0007657118044004, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10649, 23): df1=-7.384069396598747e-06, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 22): df1=945.4484285603226, df2=nan
+Difference at position (10650, 23): df1=0.0028939495930879, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10651, 23): df1=-9.13889113831612e-05, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43696, 22): df1=18070.915582002, df2=nan
+Difference at position (43696, 23): df1=0.0001540925470027, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43697, 23): df1=-2.262079553894125e-06, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 22): df1=341.4442966297024, df2=nan
+Difference at position (43698, 23): df1=8.902731720250578e-05, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43699, 23): df1=-7.186860056496158e-05, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing results_tax_unif_poor__bbb_fast4.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.1000836751999999, df2=0.125104594
+Difference at position (29, 32): df1=0.8000000000000002, df2=1.0
+Difference at position (29, 39): df1=0.0331054422399999, df2=0.0413818027999999
+Difference at position (38, 24): df1=0.352, df2=0.4399999999999999
+Difference at position (38, 32): df1=0.8, df2=1.0
+Difference at position (38, 39): df1=0.18138598064, df2=0.2267324758
+Difference at position (45, 24): df1=0.48, df2=0.6
+Difference at position (45, 32): df1=0.8, df2=1.0
+Difference at position (45, 39): df1=0.15978850768, df2=0.1997356346
+Difference at position (71, 32): df1=0.8, df2=1.0
+Difference at position (71, 39): df1=0.07073174192, df2=0.0884146774
+Difference at position (85, 24): df1=0.4399999999999999, df2=0.5499999999999999
+Difference at position (85, 32): df1=0.8, df2=1.0
+Difference at position (85, 39): df1=0.05954567424, df2=0.0744320928
+Difference at position (87, 24): df1=0.37284656, df2=0.4660582000000001
+Difference at position (87, 32): df1=0.8, df2=1.0
+Difference at position (87, 39): df1=0.3546201599999999, df2=0.4432752
+Difference at position (89, 24): df1=0.316652016, df2=0.39581502
+Difference at position (89, 32): df1=0.8, df2=1.0
+Difference at position (89, 39): df1=0.3054972140799999, df2=0.3818715176
+Difference at position (102, 24): df1=0.637683888, df2=0.79710486
+Difference at position (102, 32): df1=0.8, df2=1.0
+Difference at position (102, 39): df1=0.3277024307199999, df2=0.4096280384
+Difference at position (116, 24): df1=0.752, df2=0.94
+Difference at position (116, 32): df1=0.8000000000000002, df2=0.9999999999999998
+Difference at position (116, 39): df1=0.2156835772003337, df2=0.2696044715004172
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.28, df2=0.35
+Difference at position (124, 32): df1=0.7999999999999999, df2=0.9999999999999998
+Difference at position (124, 39): df1=0.1407345744031546, df2=0.1759182180039433
+Difference at position (125, 24): df1=0.1648, df2=0.206
+Difference at position (125, 32): df1=0.8, df2=1.0
+Difference at position (125, 39): df1=0.1476679636800487, df2=0.184584954600061
+Difference at position (135, 24): df1=0.0064, df2=0.008
+Difference at position (135, 32): df1=0.8000000000000002, df2=1.0000000000000002
+Difference at position (135, 39): df1=0.10397671935549, df2=0.1299708991943625
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing macro_tax_unif_poor__bbb_complete1.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=782.9073865564944, df2=nan
+Difference at position (5462, 28): df1=564.0058061300819, df2=nan
+8035 differences of type: df1=0.0, df2=nan
+
+
+Comparing iah_tax_unif_poor__bbb_fast2.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10648, 22): df1=3423.309100514798, df2=nan
+Difference at position (10648, 23): df1=0.0008011588459182, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10649, 23): df1=-7.384069396598747e-06, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 22): df1=986.1614629991614, df2=nan
+Difference at position (10650, 23): df1=0.0030398634359329, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10651, 23): df1=-9.13889113831612e-05, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43696, 22): df1=19894.56166246991, df2=nan
+Difference at position (43696, 23): df1=0.000170649025192, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43697, 23): df1=-2.262079553894125e-06, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 22): df1=403.2881343464354, df2=nan
+Difference at position (43698, 23): df1=0.0001053529643735, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43699, 23): df1=-7.186860056496158e-05, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing results_tax_unif_poor__bbb_fast5.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.1000836751999999, df2=0.125104594
+Difference at position (29, 32): df1=0.8000000000000002, df2=1.0
+Difference at position (29, 39): df1=0.0331054422399999, df2=0.0413818027999999
+Difference at position (38, 24): df1=0.352, df2=0.4399999999999999
+Difference at position (38, 32): df1=0.8, df2=1.0
+Difference at position (38, 39): df1=0.18138598064, df2=0.2267324758
+Difference at position (45, 24): df1=0.48, df2=0.6
+Difference at position (45, 32): df1=0.8, df2=1.0
+Difference at position (45, 39): df1=0.15978850768, df2=0.1997356346
+Difference at position (71, 32): df1=0.8, df2=1.0
+Difference at position (71, 39): df1=0.07073174192, df2=0.0884146774
+Difference at position (85, 24): df1=0.4399999999999999, df2=0.5499999999999999
+Difference at position (85, 32): df1=0.8, df2=1.0
+Difference at position (85, 39): df1=0.05954567424, df2=0.0744320928
+Difference at position (87, 24): df1=0.37284656, df2=0.4660582000000001
+Difference at position (87, 32): df1=0.8, df2=1.0
+Difference at position (87, 39): df1=0.3546201599999999, df2=0.4432752
+Difference at position (89, 24): df1=0.316652016, df2=0.39581502
+Difference at position (89, 32): df1=0.8, df2=1.0
+Difference at position (89, 39): df1=0.3054972140799999, df2=0.3818715176
+Difference at position (102, 24): df1=0.637683888, df2=0.79710486
+Difference at position (102, 32): df1=0.8, df2=1.0
+Difference at position (102, 39): df1=0.3277024307199999, df2=0.4096280384
+Difference at position (116, 24): df1=0.752, df2=0.94
+Difference at position (116, 32): df1=0.8000000000000002, df2=0.9999999999999998
+Difference at position (116, 39): df1=0.2156835772003337, df2=0.2696044715004172
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.28, df2=0.35
+Difference at position (124, 32): df1=0.7999999999999999, df2=0.9999999999999998
+Difference at position (124, 39): df1=0.1407345744031546, df2=0.1759182180039433
+Difference at position (125, 24): df1=0.1648, df2=0.206
+Difference at position (125, 32): df1=0.8, df2=1.0
+Difference at position (125, 39): df1=0.1476679636800487, df2=0.184584954600061
+Difference at position (135, 24): df1=0.0064, df2=0.008
+Difference at position (135, 32): df1=0.8000000000000002, df2=1.0000000000000002
+Difference at position (135, 39): df1=0.10397671935549, df2=0.1299708991943625
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing results_tax_unif_poor__bbb_fast1.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.1000836751999999, df2=0.125104594
+Difference at position (29, 32): df1=0.8000000000000002, df2=1.0
+Difference at position (29, 39): df1=0.0331054422399999, df2=0.0413818027999999
+Difference at position (38, 24): df1=0.352, df2=0.4399999999999999
+Difference at position (38, 32): df1=0.8, df2=1.0
+Difference at position (38, 39): df1=0.18138598064, df2=0.2267324758
+Difference at position (45, 24): df1=0.48, df2=0.6
+Difference at position (45, 32): df1=0.8, df2=1.0
+Difference at position (45, 39): df1=0.15978850768, df2=0.1997356346
+Difference at position (71, 32): df1=0.8, df2=1.0
+Difference at position (71, 39): df1=0.07073174192, df2=0.0884146774
+Difference at position (85, 24): df1=0.4399999999999999, df2=0.5499999999999999
+Difference at position (85, 32): df1=0.8, df2=1.0
+Difference at position (85, 39): df1=0.05954567424, df2=0.0744320928
+Difference at position (87, 24): df1=0.37284656, df2=0.4660582000000001
+Difference at position (87, 32): df1=0.8, df2=1.0
+Difference at position (87, 39): df1=0.3546201599999999, df2=0.4432752
+Difference at position (89, 24): df1=0.316652016, df2=0.39581502
+Difference at position (89, 32): df1=0.8, df2=1.0
+Difference at position (89, 39): df1=0.3054972140799999, df2=0.3818715176
+Difference at position (102, 24): df1=0.637683888, df2=0.79710486
+Difference at position (102, 32): df1=0.8, df2=1.0
+Difference at position (102, 39): df1=0.3277024307199999, df2=0.4096280384
+Difference at position (116, 24): df1=0.752, df2=0.94
+Difference at position (116, 32): df1=0.8000000000000002, df2=0.9999999999999998
+Difference at position (116, 39): df1=0.2156835772003337, df2=0.2696044715004172
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.28, df2=0.35
+Difference at position (124, 32): df1=0.7999999999999999, df2=0.9999999999999998
+Difference at position (124, 39): df1=0.1407345744031546, df2=0.1759182180039433
+Difference at position (125, 24): df1=0.1648, df2=0.206
+Difference at position (125, 32): df1=0.8, df2=1.0
+Difference at position (125, 39): df1=0.1476679636800487, df2=0.184584954600061
+Difference at position (135, 24): df1=0.0064, df2=0.008
+Difference at position (135, 32): df1=0.8000000000000002, df2=1.0000000000000002
+Difference at position (135, 39): df1=0.10397671935549, df2=0.1299708991943625
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing results_tax_unif_poor__bbb_fast2.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.1000836751999999, df2=0.125104594
+Difference at position (29, 32): df1=0.8000000000000002, df2=1.0
+Difference at position (29, 39): df1=0.0331054422399999, df2=0.0413818027999999
+Difference at position (38, 24): df1=0.352, df2=0.4399999999999999
+Difference at position (38, 32): df1=0.8, df2=1.0
+Difference at position (38, 39): df1=0.18138598064, df2=0.2267324758
+Difference at position (45, 24): df1=0.48, df2=0.6
+Difference at position (45, 32): df1=0.8, df2=1.0
+Difference at position (45, 39): df1=0.15978850768, df2=0.1997356346
+Difference at position (71, 32): df1=0.8, df2=1.0
+Difference at position (71, 39): df1=0.07073174192, df2=0.0884146774
+Difference at position (85, 24): df1=0.4399999999999999, df2=0.5499999999999999
+Difference at position (85, 32): df1=0.8, df2=1.0
+Difference at position (85, 39): df1=0.05954567424, df2=0.0744320928
+Difference at position (87, 24): df1=0.37284656, df2=0.4660582000000001
+Difference at position (87, 32): df1=0.8, df2=1.0
+Difference at position (87, 39): df1=0.3546201599999999, df2=0.4432752
+Difference at position (89, 24): df1=0.316652016, df2=0.39581502
+Difference at position (89, 32): df1=0.8, df2=1.0
+Difference at position (89, 39): df1=0.3054972140799999, df2=0.3818715176
+Difference at position (102, 24): df1=0.637683888, df2=0.79710486
+Difference at position (102, 32): df1=0.8, df2=1.0
+Difference at position (102, 39): df1=0.3277024307199999, df2=0.4096280384
+Difference at position (116, 24): df1=0.752, df2=0.94
+Difference at position (116, 32): df1=0.8000000000000002, df2=0.9999999999999998
+Difference at position (116, 39): df1=0.2156835772003337, df2=0.2696044715004172
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.28, df2=0.35
+Difference at position (124, 32): df1=0.7999999999999999, df2=0.9999999999999998
+Difference at position (124, 39): df1=0.1407345744031546, df2=0.1759182180039433
+Difference at position (125, 24): df1=0.1648, df2=0.206
+Difference at position (125, 32): df1=0.8, df2=1.0
+Difference at position (125, 39): df1=0.1476679636800487, df2=0.184584954600061
+Difference at position (135, 24): df1=0.0064, df2=0.008
+Difference at position (135, 32): df1=0.8000000000000002, df2=1.0000000000000002
+Difference at position (135, 39): df1=0.10397671935549, df2=0.1299708991943625
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing iah_tax_unif_poor__bbb_fast5.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10648, 22): df1=3806.882674109068, df2=nan
+Difference at position (10648, 23): df1=0.0009013391671526, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10649, 23): df1=-7.384069396598747e-06, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 22): df1=1099.406219820611, df2=nan
+Difference at position (10650, 23): df1=0.0034569975173555, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10651, 23): df1=-9.13889113831612e-05, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43696, 22): df1=24967.09825320772, df2=nan
+Difference at position (43696, 23): df1=0.0002177610676907, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43697, 23): df1=-2.262079553894125e-06, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 22): df1=575.3089738556503, df2=nan
+Difference at position (43698, 23): df1=0.0001510933974879, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43699, 23): df1=-7.186860056496158e-05, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing iah_tax_unif_poor__bbb_fast4.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10648, 22): df1=3683.7665382554833, df2=nan
+Difference at position (10648, 23): df1=0.0008689269086374, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10649, 23): df1=-7.384069396598747e-06, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 22): df1=1063.0578949480448, df2=nan
+Difference at position (10650, 23): df1=0.0033212603910686, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10651, 23): df1=-9.13889113831612e-05, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43696, 22): df1=23338.95922846839, df2=nan
+Difference at position (43696, 23): df1=0.0002024662772126, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43697, 23): df1=-2.262079553894125e-06, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 22): df1=520.0952091319468, df2=nan
+Difference at position (43698, 23): df1=0.0001363587882194, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43699, 23): df1=-7.186860056496158e-05, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing results_tax_unif_poor_.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.1000836751999999, df2=0.125104594
+Difference at position (29, 32): df1=0.8000000000000002, df2=1.0
+Difference at position (29, 39): df1=0.0331054422399999, df2=0.0413818027999999
+Difference at position (38, 24): df1=0.352, df2=0.4399999999999999
+Difference at position (38, 32): df1=0.8, df2=1.0
+Difference at position (38, 39): df1=0.18138598064, df2=0.2267324758
+Difference at position (45, 24): df1=0.48, df2=0.6
+Difference at position (45, 32): df1=0.8, df2=1.0
+Difference at position (45, 39): df1=0.15978850768, df2=0.1997356346
+Difference at position (71, 32): df1=0.8, df2=1.0
+Difference at position (71, 39): df1=0.07073174192, df2=0.0884146774
+Difference at position (85, 24): df1=0.4399999999999999, df2=0.5499999999999999
+Difference at position (85, 32): df1=0.8, df2=1.0
+Difference at position (85, 39): df1=0.05954567424, df2=0.0744320928
+Difference at position (87, 24): df1=0.37284656, df2=0.4660582000000001
+Difference at position (87, 32): df1=0.8, df2=1.0
+Difference at position (87, 39): df1=0.3546201599999999, df2=0.4432752
+Difference at position (89, 24): df1=0.316652016, df2=0.39581502
+Difference at position (89, 32): df1=0.8, df2=1.0
+Difference at position (89, 39): df1=0.3054972140799999, df2=0.3818715176
+Difference at position (102, 24): df1=0.637683888, df2=0.79710486
+Difference at position (102, 32): df1=0.8, df2=1.0
+Difference at position (102, 39): df1=0.3277024307199999, df2=0.4096280384
+Difference at position (116, 24): df1=0.752, df2=0.94
+Difference at position (116, 32): df1=0.8000000000000002, df2=0.9999999999999998
+Difference at position (116, 39): df1=0.2156835772003337, df2=0.2696044715004172
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.28, df2=0.35
+Difference at position (124, 32): df1=0.7999999999999999, df2=0.9999999999999998
+Difference at position (124, 39): df1=0.1407345744031546, df2=0.1759182180039433
+Difference at position (125, 24): df1=0.1648, df2=0.206
+Difference at position (125, 32): df1=0.8, df2=1.0
+Difference at position (125, 39): df1=0.1476679636800487, df2=0.184584954600061
+Difference at position (135, 24): df1=0.0064, df2=0.008
+Difference at position (135, 32): df1=0.8000000000000002, df2=1.0000000000000002
+Difference at position (135, 39): df1=0.10397671935549, df2=0.1299708991943625
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.8, df2=0.9999999999999996
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing macro_tax_unif_poor__bbb_fast1.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=34.79588384695529, df2=nan
+Difference at position (5462, 28): df1=280.9062251086769, df2=nan
+675 differences of type: df1=0.0, df2=nan
+
+
+Comparing macro_tax_unif_poor__bbb_fast2.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=34.79588384695529, df2=nan
+Difference at position (5462, 28): df1=280.9062251086769, df2=nan
+675 differences of type: df1=0.0, df2=nan
+
+
+Comparing macro_tax_unif_poor_.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=34.79588384695529, df2=nan
+Difference at position (5462, 28): df1=280.9062251086769, df2=nan
+675 differences of type: df1=0.0, df2=nan
+
+
+Comparing macro_tax_unif_poor__bbb_50yrstand1.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=34.79588384695529, df2=nan
+Difference at position (5462, 28): df1=280.9062251086769, df2=nan
+8035 differences of type: df1=0.0, df2=nan
+
+
+Comparing cats_event_iah_tax_unif_poor__bbb_incl1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=782.9073865564944, df2=nan
+Difference at position (10649, 19): df1=782.9073865564944, df2=nan
+Difference at position (10650, 19): df1=782.9073865564944, df2=nan
+Difference at position (10651, 19): df1=782.9073865564944, df2=nan
+Difference at position (43696, 19): df1=564.0058061300819, df2=nan
+Difference at position (43697, 19): df1=564.0058061300819, df2=nan
+Difference at position (43698, 19): df1=564.0058061300819, df2=nan
+Difference at position (43699, 19): df1=564.0058061300819, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing macro_tax_unif_poor__bbb_fast5.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=34.79588384695529, df2=nan
+Difference at position (5462, 28): df1=280.9062251086769, df2=nan
+675 differences of type: df1=0.0, df2=nan
+
+
+Comparing macro_tax_unif_poor__bbb_fast4.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=34.79588384695529, df2=nan
+Difference at position (5462, 28): df1=280.9062251086769, df2=nan
+675 differences of type: df1=0.0, df2=nan
+
+
+Comparing cats_event_iah_tax_unif_poor__bbb_50yrstand1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+12856 differences of type: df1=0.0, df2=nan
+
+
+Comparing iah_tax_unif_poor_.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10648, 22): df1=3555.998267073786, df2=nan
+Difference at position (10648, 23): df1=0.0008355482134376, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10649, 23): df1=-7.384069396598747e-06, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 22): df1=1025.3360918950189, df2=nan
+Difference at position (10650, 23): df1=0.0031822569354471, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10651, 23): df1=-9.13889113831612e-05, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43696, 22): df1=21649.298429807583, df2=nan
+Difference at position (43696, 23): df1=0.0001867677762397, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43697, 23): df1=-2.262079553894125e-06, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 22): df1=462.7951061416272, df2=nan
+Difference at position (43698, 23): df1=0.0001211207385067, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43699, 23): df1=-7.186860056496158e-05, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing cats_event_iah_tax_unif_poor__bbb_complete1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=782.9073865564944, df2=nan
+Difference at position (10649, 19): df1=782.9073865564944, df2=nan
+Difference at position (10650, 19): df1=782.9073865564944, df2=nan
+Difference at position (10651, 19): df1=782.9073865564944, df2=nan
+Difference at position (43696, 19): df1=564.0058061300819, df2=nan
+Difference at position (43697, 19): df1=564.0058061300819, df2=nan
+Difference at position (43698, 19): df1=564.0058061300819, df2=nan
+Difference at position (43699, 19): df1=564.0058061300819, df2=nan
+12856 differences of type: df1=0.0, df2=nan
+
+
+Comparing cats_event_iah_tax_unif_poor_.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing results_tax_unif_poor__bbb_incl1.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.1000836751999999, df2=0.125104594
+Difference at position (29, 32): df1=0.8000000000000002, df2=1.0000000000000002
+Difference at position (29, 39): df1=0.0331054422399999, df2=0.0413818027999999
+Difference at position (38, 24): df1=0.352, df2=0.4399999999999999
+Difference at position (38, 32): df1=0.8, df2=1.0
+Difference at position (38, 39): df1=0.18138598064, df2=0.2267324758
+Difference at position (45, 24): df1=0.48, df2=0.6
+Difference at position (45, 32): df1=0.8, df2=1.0
+Difference at position (45, 39): df1=0.15978850768, df2=0.1997356346
+Difference at position (71, 32): df1=0.8, df2=1.0
+Difference at position (71, 39): df1=0.07073174192, df2=0.0884146774
+Difference at position (85, 24): df1=0.4399999999999999, df2=0.5499999999999999
+Difference at position (85, 32): df1=0.8, df2=1.0
+Difference at position (85, 39): df1=0.05954567424, df2=0.0744320928
+Difference at position (87, 24): df1=0.37284656, df2=0.4660582000000001
+Difference at position (87, 32): df1=0.8, df2=1.0
+Difference at position (87, 39): df1=0.3546201599999999, df2=0.4432752
+Difference at position (89, 24): df1=0.316652016, df2=0.3958150199999999
+Difference at position (89, 32): df1=0.8, df2=1.0
+Difference at position (89, 39): df1=0.30549721408, df2=0.3818715176
+Difference at position (102, 24): df1=0.637683888, df2=0.79710486
+Difference at position (102, 32): df1=0.8, df2=1.0
+Difference at position (102, 39): df1=0.3277024307199999, df2=0.4096280384
+Difference at position (116, 24): df1=0.752, df2=0.94
+Difference at position (116, 32): df1=0.8000000000000002, df2=0.9999999999999998
+Difference at position (116, 39): df1=0.2156835772003337, df2=0.2696044715004172
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.2799999999999999, df2=0.3499999999999998
+Difference at position (124, 32): df1=0.7999999999999999, df2=0.9999999999999998
+Difference at position (124, 39): df1=0.1407345744031546, df2=0.1759182180039433
+Difference at position (125, 24): df1=0.1648, df2=0.2059999999999999
+Difference at position (125, 32): df1=0.8, df2=1.0
+Difference at position (125, 39): df1=0.1476679636800487, df2=0.184584954600061
+Difference at position (135, 24): df1=0.0064, df2=0.008
+Difference at position (135, 32): df1=0.8000000000000002, df2=1.0000000000000002
+Difference at position (135, 39): df1=0.10397671935549, df2=0.1299708991943625
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing results_tax_unif_poor__bbb_50yrstand1.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.0751628400752, df2=0.093953550094
+Difference at position (29, 32): df1=0.6008000000000001, df2=0.7510000000000001
+Difference at position (29, 39): df1=0.0248621871222399, df2=0.0310777339027999
+Difference at position (38, 24): df1=0.264352, df2=0.33044
+Difference at position (38, 32): df1=0.6008, df2=0.7509999999999999
+Difference at position (38, 39): df1=0.13622087146064, df2=0.1702760893258
+Difference at position (45, 24): df1=0.36048, df2=0.4506
+Difference at position (45, 32): df1=0.6008, df2=0.7509999999999999
+Difference at position (45, 39): df1=0.12000116926768, df2=0.1500014615846
+Difference at position (71, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (71, 39): df1=0.0178951307057599, df2=0.0223689133822
+Difference at position (85, 24): df1=0.1113199999999999, df2=0.1391499999999999
+Difference at position (85, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (85, 39): df1=0.01506505558272, df2=0.0188313194784
+Difference at position (87, 24): df1=0.09433017968, df2=0.1179127246
+Difference at position (87, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (87, 39): df1=0.0897189004799999, df2=0.1121486255999999
+Difference at position (89, 24): df1=0.158959312032, df2=0.19869914004
+Difference at position (89, 32): df1=0.4016, df2=0.5019999999999999
+Difference at position (89, 39): df1=0.15335960146816, df2=0.1916995018352
+Difference at position (102, 24): df1=0.161334023664, df2=0.20166752958
+Difference at position (102, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (102, 39): df1=0.0829087149721599, df2=0.1036358937152
+Difference at position (116, 24): df1=0.003008, df2=0.00376
+Difference at position (116, 32): df1=0.0032, df2=0.0039999999999999
+Difference at position (116, 39): df1=0.0008627343088013, df2=0.0010784178860016
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.21028, df2=0.26285
+Difference at position (124, 32): df1=0.6007999999999999, df2=0.7509999999999998
+Difference at position (124, 39): df1=0.1056916653767691, df2=0.1321145817209614
+Difference at position (125, 24): df1=0.1237648, df2=0.1547059999999999
+Difference at position (125, 32): df1=0.6008, df2=0.7509999999999999
+Difference at position (125, 39): df1=0.1108986407237166, df2=0.1386233009046458
+Difference at position (135, 24): df1=0.0048064, df2=0.006008
+Difference at position (135, 32): df1=0.6008000000000002, df2=0.7510000000000001
+Difference at position (135, 39): df1=0.0780865162359729, df2=0.0976081452949662
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.7999999999999999, df2=0.9999999999999996
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing iah_tax_unif_poor__bbb_incl1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=782.9073865564944, df2=nan
+Difference at position (10648, 22): df1=2807.886764364247, df2=nan
+Difference at position (10648, 23): df1=0.000645214219151, df2=nan
+Difference at position (10649, 19): df1=782.9073865564944, df2=nan
+Difference at position (10649, 22): df1=-782.9073865564944, df2=nan
+Difference at position (10649, 23): df1=-0.0001628985485213, df2=nan
+Difference at position (10650, 19): df1=782.9073865564944, df2=nan
+Difference at position (10650, 22): df1=277.2245891854798, df2=nan
+Difference at position (10650, 23): df1=0.0007621401755188, df2=nan
+Difference at position (10651, 19): df1=782.9073865564944, df2=nan
+Difference at position (10651, 22): df1=-782.9073865564944, df2=nan
+Difference at position (10651, 23): df1=-0.0018602897457158, df2=nan
+Difference at position (43696, 19): df1=564.0058061300819, df2=nan
+Difference at position (43696, 22): df1=21366.19884878618, df2=nan
+Difference at position (43696, 23): df1=0.0001841546489691, df2=nan
+Difference at position (43697, 19): df1=564.0058061300819, df2=nan
+Difference at position (43697, 22): df1=-564.0058061300819, df2=nan
+Difference at position (43697, 23): df1=-4.537952919214661e-06, df2=nan
+Difference at position (43698, 19): df1=564.0058061300819, df2=nan
+Difference at position (43698, 22): df1=179.6955251202222, df2=nan
+Difference at position (43698, 23): df1=4.66213095828838e-05, df2=nan
+Difference at position (43699, 19): df1=564.0058061300819, df2=nan
+Difference at position (43699, 22): df1=-564.0058061300819, df2=nan
+Difference at position (43699, 23): df1=-0.0001430809251279, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing iah_tax_unif_poor__bbb_50yrstand1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10648, 22): df1=3555.998267073786, df2=nan
+Difference at position (10648, 23): df1=0.0008355482134376, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10649, 23): df1=-7.384069396598747e-06, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 22): df1=1025.3360918950189, df2=nan
+Difference at position (10650, 23): df1=0.0031822569354471, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 22): df1=-34.79588384695529, df2=nan
+Difference at position (10651, 23): df1=-9.13889113831612e-05, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43696, 22): df1=21649.298429807583, df2=nan
+Difference at position (43696, 23): df1=0.0001867677762397, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43697, 23): df1=-2.262079553894125e-06, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 22): df1=462.7951061416272, df2=nan
+Difference at position (43698, 23): df1=0.0001211207385067, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 22): df1=-280.9062251086769, df2=nan
+Difference at position (43699, 23): df1=-7.186860056496158e-05, df2=nan
+12856 differences of type: df1=0.0, df2=nan
+
+
+Comparing cats_event_iah_tax_unif_poor__bbb_fast2.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing results_tax_unif_poor__bbb_complete1.csv...
+Data frames are not equal.Difference at position (3, 24): df1=0.1223999999999999, df2=0.153
+Difference at position (3, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (3, 39): df1=0.1311239679778994, df2=0.1639049599723743
+Difference at position (29, 24): df1=0.0751628400752, df2=0.093953550094
+Difference at position (29, 32): df1=0.6008000000000001, df2=0.7510000000000001
+Difference at position (29, 39): df1=0.0248621871222399, df2=0.0310777339027999
+Difference at position (38, 24): df1=0.264352, df2=0.3304399999999999
+Difference at position (38, 32): df1=0.6008000000000001, df2=0.7509999999999999
+Difference at position (38, 39): df1=0.13622087146064, df2=0.1702760893258
+Difference at position (45, 24): df1=0.36048, df2=0.4506
+Difference at position (45, 32): df1=0.6008, df2=0.7509999999999999
+Difference at position (45, 39): df1=0.12000116926768, df2=0.1500014615846
+Difference at position (71, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (71, 39): df1=0.0178951307057599, df2=0.0223689133822
+Difference at position (85, 24): df1=0.1113199999999999, df2=0.1391499999999999
+Difference at position (85, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (85, 39): df1=0.01506505558272, df2=0.0188313194784
+Difference at position (87, 24): df1=0.09433017968, df2=0.1179127246
+Difference at position (87, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (87, 39): df1=0.0897189004799999, df2=0.1121486255999999
+Difference at position (89, 24): df1=0.158959312032, df2=0.19869914004
+Difference at position (89, 32): df1=0.4016, df2=0.5019999999999999
+Difference at position (89, 39): df1=0.15335960146816, df2=0.1916995018352
+Difference at position (102, 24): df1=0.161334023664, df2=0.20166752958
+Difference at position (102, 32): df1=0.2024, df2=0.2529999999999999
+Difference at position (102, 39): df1=0.0829087149721599, df2=0.1036358937152
+Difference at position (116, 24): df1=0.003008, df2=0.00376
+Difference at position (116, 32): df1=0.0032, df2=0.0039999999999999
+Difference at position (116, 39): df1=0.0008627343088013, df2=0.0010784178860016
+Difference at position (120, 24): df1=0.208, df2=0.26
+Difference at position (120, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (120, 39): df1=0.0729202239999999, df2=0.09115028
+Difference at position (124, 24): df1=0.21028, df2=0.26285
+Difference at position (124, 32): df1=0.6007999999999999, df2=0.7509999999999999
+Difference at position (124, 39): df1=0.1056916653767691, df2=0.1321145817209614
+Difference at position (125, 24): df1=0.1237648, df2=0.1547059999999999
+Difference at position (125, 32): df1=0.6007999999999999, df2=0.7509999999999999
+Difference at position (125, 39): df1=0.1108986407237166, df2=0.1386233009046458
+Difference at position (135, 24): df1=0.0048064, df2=0.006008
+Difference at position (135, 32): df1=0.6008000000000001, df2=0.7510000000000001
+Difference at position (135, 39): df1=0.0780865162359729, df2=0.0976081452949662
+Difference at position (144, 24): df1=0.152, df2=0.19
+Difference at position (144, 32): df1=0.8, df2=0.9999999999999998
+Difference at position (144, 39): df1=0.0977822246749333, df2=0.1222277808436667
+
+
+Comparing cats_event_iah_tax_unif_poor__bbb_fast1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing cats_event_iah_tax_unif_poor__bbb_fast4.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing cats_event_iah_tax_unif_poor__bbb_fast5.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=34.79588384695529, df2=nan
+Difference at position (10649, 19): df1=34.79588384695529, df2=nan
+Difference at position (10650, 19): df1=34.79588384695529, df2=nan
+Difference at position (10651, 19): df1=34.79588384695529, df2=nan
+Difference at position (43696, 19): df1=280.9062251086769, df2=nan
+Difference at position (43697, 19): df1=280.9062251086769, df2=nan
+Difference at position (43698, 19): df1=280.9062251086769, df2=nan
+Difference at position (43699, 19): df1=280.9062251086769, df2=nan
+1080 differences of type: df1=0.0, df2=nan
+
+
+Comparing results_policy_summary.csv...
+Data frames are equal.
+
+
+Comparing macro_tax_unif_poor__bbb_incl1.csv...
+Data frames are not equal.Difference at position (1331, 28): df1=782.9073865564944, df2=nan
+Difference at position (5462, 28): df1=564.0058061300819, df2=nan
+675 differences of type: df1=0.0, df2=nan
+
+
+Comparing iah_tax_unif_poor__bbb_complete1.csv...
+Data frames are not equal.Difference at position (10648, 19): df1=782.9073865564944, df2=nan
+Difference at position (10648, 22): df1=2537.2976671603974, df2=nan
+Difference at position (10648, 23): df1=0.0005784383230584, df2=nan
+Difference at position (10649, 19): df1=782.9073865564944, df2=nan
+Difference at position (10649, 22): df1=-782.9073865564944, df2=nan
+Difference at position (10649, 23): df1=-0.0001628985485213, df2=nan
+Difference at position (10650, 19): df1=782.9073865564944, df2=nan
+Difference at position (10650, 22): df1=197.33692585078336, df2=nan
+Difference at position (10650, 23): df1=0.0005360752343774, df2=nan
+Difference at position (10651, 19): df1=782.9073865564944, df2=nan
+Difference at position (10651, 22): df1=-782.9073865564944, df2=nan
+Difference at position (10651, 23): df1=-0.0018602897457158, df2=nan
+Difference at position (43696, 19): df1=564.0058061300819, df2=nan
+Difference at position (43696, 22): df1=17787.816000980594, df2=nan
+Difference at position (43696, 23): df1=0.0001515399459801, df2=nan
+Difference at position (43697, 19): df1=564.0058061300819, df2=nan
+Difference at position (43697, 22): df1=-564.0058061300819, df2=nan
+Difference at position (43697, 23): df1=-4.537952919214661e-06, df2=nan
+Difference at position (43698, 19): df1=564.0058061300819, df2=nan
+Difference at position (43698, 22): df1=58.344715608297406, df2=nan
+Difference at position (43698, 23): df1=1.5081328516908243e-05, df2=nan
+Difference at position (43699, 19): df1=564.0058061300819, df2=nan
+Difference at position (43699, 22): df1=-564.0058061300819, df2=nan
+Difference at position (43699, 23): df1=-0.0001430809251279, df2=nan
+12856 differences of type: df1=0.0, df2=nan
+
+
