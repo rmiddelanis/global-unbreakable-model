@@ -53,7 +53,7 @@ def fancy_barh(data,formater = lambda x:"{:2.1f}".format(100*x)):
         
         #All labels
         for i in pos:
-            x=data.ix[i,col]
+            x=data.loc[i,col]
             if x>1/100 or col==data.columns[-1]: #marks big numbers and the last one
                 ax.annotate(formater(x),  xy=(x,i),xycoords='data',ha="right" if is_even else "left"
                             ,va="center", size=12,  xytext=(-5 if is_even else 5, -1), textcoords='offset points')

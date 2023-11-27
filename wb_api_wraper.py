@@ -7,7 +7,7 @@ today_year = date.today().year
 
 #use str.contains("a|b") next time)
 def search_wb_local(wbbdd,query,col="name"):
-    return wbbdd.ix[[query.lower() in c.lower() for c in wbbdd[col]],["id","name","source"]]
+    return wbbdd.loc[[query.lower() in c.lower() for c in wbbdd[col]],["id","name","source"]]
 
 def search_wb(query):
     return wb.search(query)[["id","name","source"]]
@@ -36,7 +36,7 @@ def get_wb_mrv(wb_name,colname):
 
 def mrv_gp(x):
     """this function gets the most recent value from a wb-pulled dataframe grouped by country"""
-    out= x.ix[(x["year"])==np.max(x["year"]),2]
+    out= x.loc[(x["year"])==np.max(x["year"]),2]
     return out
     
 def mrv(data):    
@@ -71,7 +71,7 @@ def avg_gp(x):
     last_year = float(np.max(x["year"]))
     lyten = last_year - 10;
     where = x["year"].astype(float)>lyten
-    out= x.ix[where,2].mean()
+    out= x.loc[where,2].mean()
     return out    
     
 def avg_val(data):    

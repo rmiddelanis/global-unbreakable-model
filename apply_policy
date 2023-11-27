@@ -287,8 +287,8 @@ def clip_social_p(m,c,fun=lambda x: x.clip(lower=.50)   ) :
         #### preparation
 
         #current conso and share of average transfer
-        cp  = c.c.ix[:,"poor"]
-        gsp = c.gamma_SP.ix[:,"poor"]
+        cp  = c.c.loc[:,"poor"]
+        gsp = c.gamma_SP.loc[:,"poor"]
         cp.head()
 
         #social_p
@@ -304,7 +304,7 @@ def clip_social_p(m,c,fun=lambda x: x.clip(lower=.50)   ) :
         money_needed.head()
 
         #financing this transfer with a tax on the whole population
-        nu_tx = (m.gdp_pc_pp*m.tau_tax+money_needed*c.n.ix[:,"poor"])/m.gdp_pc_pp
+        nu_tx = (m.gdp_pc_pp*m.tau_tax+money_needed*c.n.loc[:,"poor"])/m.gdp_pc_pp
         nu_tx.head();
 
         #increasing the share of avg transfer that goes to poor

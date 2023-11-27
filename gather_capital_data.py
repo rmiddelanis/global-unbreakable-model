@@ -46,7 +46,7 @@ penn = pd.read_excel("inputs/pwt90.xlsx","Data")
 
 def mrv_gp_2(x):
     """this function gets the most recent value from a dataframe grouped by country"""
-    out= x.ix[(x["year"])==np.max(x["year"]),:]
+    out= x.loc[(x["year"])==np.max(x["year"]),:]
     return out
 
 hop=penn.groupby("country").apply(mrv_gp_2)
