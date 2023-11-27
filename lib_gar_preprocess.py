@@ -33,10 +33,10 @@ def str_to_float(s):
 def gar_preprocessing(inputs, intermediates):
     global iso3_to_wb
 
-    iso3_to_wb = pd.read_csv('inputs/iso3_to_wb_name.csv', index_col='iso3', squeeze=True)
+    iso3_to_wb = pd.read_csv('inputs/iso3_to_wb_name.csv', index_col='iso3').squeeze()
 
     # Names to WB names
-    any_to_wb = pd.read_csv('inputs/any_name_to_wb_name.csv', index_col='any', squeeze=True)
+    any_to_wb = pd.read_csv('inputs/any_name_to_wb_name.csv', index_col='any').squeeze()
 
     #######
     # AAL

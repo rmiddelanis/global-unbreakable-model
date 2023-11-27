@@ -15,7 +15,6 @@ from lib_gar_preprocess import *
 
 warnings.filterwarnings("always", category=UserWarning)
 
-
 # define directory
 use_2016_inputs = False
 use_2016_ratings = False
@@ -107,7 +106,11 @@ silc = pd.read_csv(
     inputs + "social_ratios.csv")  # XXX: there is data from ASPIRE in social_ratios. Use fillna instead to update df.
 silc = silc.set_index(silc.cc.replace({"EL": "GR", "UK": "GB"}).replace(iso2_iso3).replace(
     iso3_to_wb))  # Change indexes with wold bank names. UK and greece have differnt codes in Europe than ISO2. The first replace is to change EL to GR, and change UK to GB. The second one is to change iso2 to iso3, and the third one is to change iso3 to the wb
-df.loc[silc.index, ["social_p", "social_r"]] = silc[["social_p", "social_r"]]  # Update social transfer from EUsilc.
+
+# TODO: Czech Republic not in silc; ignore for now
+# df.loc[silc.index, ["social_p", "social_r"]] = silc[["social_p", "social_r"]]  # Update social transfer from EUsilc.
+df.loc[np.intersect1d(df.index, silc.index), ["social_p", "social_r"]] = silc[["social_p", "social_r"]].loc[np.intersect1d(df.index, silc.index)]  # Update social transfer from EUsilc.
+
 where = (isnull(df.social_r) & ~isnull(df.social_p)) | (isnull(df.social_p) & ~isnull(
     df.social_r))  # shows the country where social_p and social_r are not both NaN.
 print("social_p and social_r are not both NaN for " + "; ".join(df.loc[where].index))
@@ -149,7 +152,8 @@ df[["shew", "prepare_scaleup", "finance_pre"]] = df[["shew", "prepare_scaleup", 
 
 ###Country Ratings
 the_credit_rating_file = inputs + "credit_ratings_scrapy.csv"
-if use_2016_inputs or use_2016_ratings: the_credit_rating_file = inputs + "cred_rat.csv"
+if use_2016_inputs or use_2016_ratings:
+    the_credit_rating_file = inputs + "cred_rat.csv"
 
 nb_weeks = (time.time() - os.stat(the_credit_rating_file).st_mtime) / (3600 * 24 * 7)
 if nb_weeks > 3:
@@ -157,7 +161,7 @@ if nb_weeks > 3:
         int(nb_weeks)) + " weeks old. Get new ones at http://www.tradingeconomics.com/country-list/rating")
     # assert(False)
 
-ratings_raw = pd.read_csv(the_credit_rating_file, dtype="str", encoding="utf8").dropna(
+ratings_raw = pd.read_csv(the_credit_rating_file, dtype="str", encoding="utf8", na_values=['NR']).dropna(
     how="all")  # drop rows where only all columns are NaN.
 ratings_raw = ratings_raw.rename(columns={"Unnamed: 0": "country_in_ratings"})[["country_in_ratings", "S&P", "Moody's",
                                                                                 "Fitch"]]  # Rename "Unnamed: 0" to "country_in_ratings" and pick only columns with country_in_ratings, S&P, Moody's and Fitch.
@@ -166,7 +170,7 @@ ratings_raw.country_in_ratings = ratings_raw.country_in_ratings.str.strip().repl
 ratings_raw["country"] = replace_with_warning(ratings_raw.country_in_ratings.apply(str.strip),
                                               any_to_wb)  # change country name to wb's name
 
-ratings_raw = ratings_raw.set_index("country")
+ratings_raw = ratings_raw.set_index("country").drop("country_in_ratings", axis=1)
 ratings_raw = ratings_raw.applymap(
     mystriper)  # mystriper is a function in lib_gather_data. To lower case and strips blanks.
 
@@ -189,7 +193,8 @@ df["borrow_abi"] = (df["rating"] + df[
 
 ###If contingent finance instrument then borrow_abo = 1
 contingent_file = inputs + "contingent_finance_countries.csv"
-if use_2016_inputs: contingent_file = inputs + "Contingent_finance_countries_orig.csv"
+if use_2016_inputs:
+    contingent_file = inputs + "contingent_finance_countries_orig.csv"
 which_countries = pd.read_csv(contingent_file, dtype="str", encoding="utf8").set_index("country")
 which_countries["catDDO"] = 1
 df = pd.merge(df.reset_index(), which_countries.reset_index(), on="country", how="outer").set_index("country")
@@ -226,7 +231,7 @@ df.dropna().shape
 ##Hazards data
 ###Vulnerability from Pager data
 pager_description_to_aggregate_category = pd.read_csv(inputs + "pager_description_to_aggregate_category.csv",
-                                                      index_col="pager_description", squeeze=True)
+                                                      index_col="pager_description").squeeze()
 PAGER_XL = pd.ExcelFile(inputs + "PAGER_Inventory_database_v2.0.xlsx")
 pager_desc_to_code = pd.read_excel(PAGER_XL, sheetname="Release_Notes", parse_cols="B:C",
                                    skiprows=56).dropna().squeeze()
@@ -254,8 +259,7 @@ share = (rural_share.stack() * (
 share = share[share.index.isin(iso3_to_wb)]  # the share of building inventory for fragile, median and robust
 
 ###matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
-agg_cat_to_v = pd.read_csv(inputs + "aggregate_category_to_vulnerability.csv", sep=";", index_col="aggregate_category",
-                           squeeze=True)
+agg_cat_to_v = pd.read_csv(inputs + "aggregate_category_to_vulnerability.csv", sep=";", index_col="aggregate_category").squeeze()
 ##REMARK: NEED TO BE CHANGED....Stephane I've talked to @adrien_vogt_schilb and don't want you to go over our whole conversation. Here is the thing: in your model, you assume that the bottom 20% of population gets the 20% of buildings of less quality. I don't think it's a fair jusfitication, because normally poor people live in buildings of less quality but in a more crowded way,i.e., it could be the bottom 40% of population get the 10% of buildings of less quality. I think we need to correct this matter. @adrien_vogt_schilb also agreed on that, if he didn't change his opinion. How to do that? I think once we incorporate household data, we can allocate buildings on the decile of households, rather than population. I think it's a more realistic assumption.
 p = (share.cumsum(axis=1).add(-df["pov_head"], axis=0)).clip(lower=0)
 poor = (share - p).clip(lower=0)
@@ -272,8 +276,7 @@ v = v_unshaved.copy()
 
 ###apply \delta_K = f_a * V, and use destroyed capital from GAR data, and fa_threshold to recalculate vulnerability
 frac_value_destroyed_gar = pd.read_csv(intermediate + "frac_value_destroyed_gar_completed.csv",
-                                       index_col=["country", "hazard", "rp"],
-                                       squeeze=True);  # \delta_K, Generated by pre_process\ GAR.ipynb
+                                       index_col=["country", "hazard", "rp"]).squeeze()  # \delta_K, Generated by pre_process\ GAR.ipynb
 
 fa_guessed_gar = (
     (frac_value_destroyed_gar / broadcast_simple(v_unshaved, frac_value_destroyed_gar.index)).dropna()).to_frame()
@@ -367,11 +370,9 @@ hazard_ratios = hazard_ratios.drop("Finland")  # because Finland has fa=0 everyw
 ##Protection
 if protection_from_flopros:  # in this code, this protection is overwritten by no_protection
     minrp = 1 / 2  # assumes nobody is flooded more than twice a year
-    df["protection"] = pd.read_csv(inputs + "protection_national_from_flopros.csv", index_col="country",
-                                   squeeze=True).clip(lower=minrp)
+    df["protection"] = pd.read_csv(inputs + "protection_national_from_flopros.csv", index_col="country").squeeze().clip(lower=minrp)
 else:  # assumed a function of the income group
-    protection_assumptions = pd.read_csv(inputs + "protection_level_assumptions.csv", index_col="Income group",
-                                         squeeze=True)
+    protection_assumptions = pd.read_csv(inputs + "protection_level_assumptions.csv", index_col="Income group").squeeze()
     df["protection"] = pd.read_csv(inputs + "income_groups.csv", header=4, index_col=2)[
         "Income group"].dropna().replace(protection_assumptions)
 if no_protection:
