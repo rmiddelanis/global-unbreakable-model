@@ -79,15 +79,13 @@ other_cov_assistance = (mrv(get_wb("per_sa_allsa.cov_q2_tot")) + mrv(get_wb("per
 # Aspire
 
 # Averages
-rem1 = get_wb_series('per_pr_allpr.avt_q1_tot',
-                     'rem1')  # Average per capita transfer held by poorest quintile - Private Transfers
+rem1 = get_wb_series('per_pr_allpr.avt_q1_tot','rem1')  # Average per capita transfer held by poorest quintile - Private Transfers
 rem2 = get_wb_series('per_pr_allpr.avt_q2_tot', 'rem2')  # - Private Transfers
 rem3 = get_wb_series('per_pr_allpr.avt_q3_tot', 'rem3')  # - Private Transfers
 rem4 = get_wb_series('per_pr_allpr.avt_q4_tot', 'rem4')  # - Private Transfers
 rem5 = get_wb_series('per_pr_allpr.avt_q5_tot', 'rem5')  # - Private Transfers
 
-tra1_ = get_wb_series('per_allsp.avt_q1_tot',
-                      'tra1')  # Average per capita transfer held by poorest quintile -All  dolars PPP per day
+tra1_ = get_wb_series('per_allsp.avt_q1_tot','tra1')  # Average per capita transfer held by poorest quintile -All  dolars PPP per day
 tra2_ = get_wb_series('per_allsp.avt_q2_tot', 'tra2')  # Average per capita transfer held by -All
 tra3_ = get_wb_series('per_allsp.avt_q3_tot', 'tra3')  # Average per capita transfer held by  -All
 tra4_ = get_wb_series('per_allsp.avt_q4_tot', 'tra4')  # Average per capita transfer held by  -All
@@ -103,16 +101,11 @@ ade3_remit = get_wb_series('per_pr_allpr.adq_q3_tot', 'ade3_remit') / 100  # Ade
 ade4_remit = get_wb_series('per_pr_allpr.adq_q4_tot', 'ade4_remit') / 100  # Adequacy of benefits for Q4, Remittances
 ade5_remit = get_wb_series('per_pr_allpr.adq_q5_tot', 'ade5_remit') / 100  # Adequacy of benefits for Q5, Remittances
 
-ade1_allspl = get_wb_series('per_allsp.adq_q1_tot',
-                            'ade1_allspl') / 100  # Adequacy of benefits for Q1, All Social Protection and Labor
-ade2_allspl = get_wb_series('per_allsp.adq_q2_tot',
-                            'ade2_allspl') / 100  # Adequacy of benefits for Q2, All Social Protection and Labor
-ade3_allspl = get_wb_series('per_allsp.adq_q3_tot',
-                            'ade3_allspl') / 100  # Adequacy of benefits for Q3, All Social Protection and Labor
-ade4_allspl = get_wb_series('per_allsp.adq_q4_tot',
-                            'ade4_allspl') / 100  # Adequacy of benefits for Q4, All Social Protection and Labor
-ade5_allspl = get_wb_series('per_allsp.adq_q5_tot',
-                            'ade5_allspl') / 100  # Adequacy of benefits for Q5, All Social Protection and Labor
+ade1_allspl = get_wb_series('per_allsp.adq_q1_tot','ade1_allspl') / 100  # Adequacy of benefits for Q1, All Social Protection and Labor
+ade2_allspl = get_wb_series('per_allsp.adq_q2_tot','ade2_allspl') / 100  # Adequacy of benefits for Q2, All Social Protection and Labor
+ade3_allspl = get_wb_series('per_allsp.adq_q3_tot','ade3_allspl') / 100  # Adequacy of benefits for Q3, All Social Protection and Labor
+ade4_allspl = get_wb_series('per_allsp.adq_q4_tot','ade4_allspl') / 100  # Adequacy of benefits for Q4, All Social Protection and Labor
+ade5_allspl = get_wb_series('per_allsp.adq_q5_tot','ade5_allspl') / 100  # Adequacy of benefits for Q5, All Social Protection and Labor
 
 # Coverage
 cov1_remit = get_wb_series('per_pr_allpr.cov_q1_tot', 'cov1_remit') / 100  # Coverage for Q1, Remittances
@@ -121,16 +114,11 @@ cov3_remit = get_wb_series('per_pr_allpr.cov_q3_tot', 'cov3_remit') / 100  # Cov
 cov4_remit = get_wb_series('per_pr_allpr.cov_q4_tot', 'cov4_remit') / 100  # Coverage for Q4, Remittances
 cov5_remit = get_wb_series('per_pr_allpr.cov_q5_tot', 'cov5_remit') / 100  # Coverage for Q5, Remittances
 
-cov1_allspl = get_wb_series('per_allsp.cov_q1_tot',
-                            'cov1') / 100  # Coverage in poorest quintile (%) -All Social Protection and Labor
-cov2_allspl = get_wb_series('per_allsp.cov_q2_tot',
-                            'cov2') / 100  # Coverage in 2nd quintile (%) -All Social Protection and Labor
-cov3_allspl = get_wb_series('per_allsp.cov_q3_tot',
-                            'cov3') / 100  # Coverage in 3rd quintile (%) -All Social Protection and Labor
-cov4_allspl = get_wb_series('per_allsp.cov_q4_tot',
-                            'cov4') / 100  # Coverage in 4th quintile (%) -All Social Protection and Labor
-cov5_allspl = get_wb_series('per_allsp.cov_q5_tot',
-                            'cov5') / 100  # Coverage in 5th quintile (%) -All Social Protection and Labor
+cov1_allspl = get_wb_series('per_allsp.cov_q1_tot','cov1') / 100  # Coverage in poorest quintile (%) -All Social Protection and Labor
+cov2_allspl = get_wb_series('per_allsp.cov_q2_tot','cov2') / 100  # Coverage in 2nd quintile (%) -All Social Protection and Labor
+cov3_allspl = get_wb_series('per_allsp.cov_q3_tot','cov3') / 100  # Coverage in 3rd quintile (%) -All Social Protection and Labor
+cov4_allspl = get_wb_series('per_allsp.cov_q4_tot','cov4') / 100  # Coverage in 4th quintile (%) -All Social Protection and Labor
+cov5_allspl = get_wb_series('per_allsp.cov_q5_tot','cov5') / 100  # Coverage in 5th quintile (%) -All Social Protection and Labor
 
 if include_remitances:
     t_1 = mrv(rem1 + tra1_)
@@ -187,9 +175,7 @@ search_wb("Saved at a financial institution");
 # RM: TODO: THESE DATASETS ARE NOT AVAILABLE IN THE WB API --> using id's below
 # loan40 = get_wb_mrv('WP14924_8.8', "loan40") / 100
 # loan60 = get_wb_mrv('WP14924_8.9', "loan60") / 100
-#
-# saved40 = get_wb_mrv('WP_time_04.8',
-#                      "saved40") / 100  # Saved at a financial institution in the past year, bottom 40%
+# saved40 = get_wb_mrv('WP_time_04.8', "saved40") / 100  # Saved at a financial institution in the past year, bottom 40%
 # saved60 = get_wb_mrv('WP_time_04.9', "saved60") / 100  # Saved this year, income, top 60% (% age 15+)
 saved40 = get_wb_mrv("fin17a.t.d.7", "saved40") / 100  # Saved at a financial institution in the past year, bottom 40%
 saved60 = get_wb_mrv('fin17a.t.d.8', "saved60") / 100  # Saved this year, income, top 60% (% age 15+)
