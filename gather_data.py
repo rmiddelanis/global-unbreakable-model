@@ -233,7 +233,7 @@ df.dropna().shape
 pager_description_to_aggregate_category = pd.read_csv(inputs + "pager_description_to_aggregate_category.csv",
                                                       index_col="pager_description").squeeze()
 PAGER_XL = pd.ExcelFile(inputs + "PAGER_Inventory_database_v2.0.xlsx")
-pager_desc_to_code = pd.read_excel(PAGER_XL, sheetname="Release_Notes", parse_cols="B:C",
+pager_desc_to_code = pd.read_excel(PAGER_XL, sheet_name="Release_Notes", usecols="B:C",
                                    skiprows=56).dropna().squeeze()
 pager_desc_to_code.Description = pager_desc_to_code.Description.str.strip(
     ". ")  # removes spaces and dots from PAGER description
@@ -245,22 +245,28 @@ pager_code_to_aggcat = replace_with_warning(pager_desc_to_code.Description, page
 
 ###total share of each category of building per country
 rural_share = .5 * get_share_from_sheet(PAGER_XL, pager_code_to_aggcat, iso3_to_wb,
-                                        sheetname='Rural_Non_Res') + .5 * get_share_from_sheet(PAGER_XL,
+                                        sheet_name='Rural_Non_Res') + .5 * get_share_from_sheet(PAGER_XL,
+                                                                                                pager_code_to_aggcat,
+                                                                                                iso3_to_wb,
+                                                                                                sheet_name='Rural_Res')
+urban_sare = .5 * get_share_from_sheet(PAGER_XL, pager_code_to_aggcat, iso3_to_wb,
+                                       sheet_name='Urban_Non_Res') + .5 * get_share_from_sheet(PAGER_XL,
                                                                                                pager_code_to_aggcat,
                                                                                                iso3_to_wb,
-                                                                                               sheetname='Rural_Res')
-urban_sare = .5 * get_share_from_sheet(PAGER_XL, pager_code_to_aggcat, iso3_to_wb,
-                                       sheetname='Urban_Non_Res') + .5 * get_share_from_sheet(PAGER_XL,
-                                                                                              pager_code_to_aggcat,
-                                                                                              iso3_to_wb,
-                                                                                              sheetname='Urban_Res')
+                                                                                               sheet_name='Urban_Res')
 share = (rural_share.stack() * (
         1 - df.urbanization_rate) + urban_sare.stack() * df.urbanization_rate).unstack().dropna()  # the sum(axis=1) of rural_share is equal to 1, so rural_share needs to be weighted by the 1-urbanization_rate, same for urban_share
 share = share[share.index.isin(iso3_to_wb)]  # the share of building inventory for fragile, median and robust
 
 ###matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
 agg_cat_to_v = pd.read_csv(inputs + "aggregate_category_to_vulnerability.csv", sep=";", index_col="aggregate_category").squeeze()
-##REMARK: NEED TO BE CHANGED....Stephane I've talked to @adrien_vogt_schilb and don't want you to go over our whole conversation. Here is the thing: in your model, you assume that the bottom 20% of population gets the 20% of buildings of less quality. I don't think it's a fair jusfitication, because normally poor people live in buildings of less quality but in a more crowded way,i.e., it could be the bottom 40% of population get the 10% of buildings of less quality. I think we need to correct this matter. @adrien_vogt_schilb also agreed on that, if he didn't change his opinion. How to do that? I think once we incorporate household data, we can allocate buildings on the decile of households, rather than population. I think it's a more realistic assumption.
+##REMARK: NEED TO BE CHANGED....Stephane I've talked to @adrien_vogt_schilb and don't want you to go over our whole
+# conversation. Here is the thing: in your model, you assume that the bottom 20% of population gets the 20% of buildings
+# of less quality. I don't think it's a fair jusfitication, because normally poor people live in buildings of less
+# quality but in a more crowded way,i.e., it could be the bottom 40% of population get the 10% of buildings of less
+# quality. I think we need to correct this matter. @adrien_vogt_schilb also agreed on that, if he didn't change his
+# opinion. How to do that? I think once we incorporate household data, we can allocate buildings on the decile of
+# households, rather than population. I think it's a more realistic assumption.
 p = (share.cumsum(axis=1).add(-df["pov_head"], axis=0)).clip(lower=0)
 poor = (share - p).clip(lower=0)
 rich = share - poor
