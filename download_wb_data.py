@@ -79,13 +79,13 @@ other_cov_assistance = (mrv(get_wb("per_sa_allsa.cov_q2_tot")) + mrv(get_wb("per
 # Aspire
 
 # Averages
-rem1 = get_wb_series('per_pr_allpr.avt_q1_tot','rem1')  # Average per capita transfer held by poorest quintile - Private Transfers
+rem1 = get_wb_series('per_pr_allpr.avt_q1_tot', 'rem1')  # Average per capita transfer held by poorest quintile - Private Transfers
 rem2 = get_wb_series('per_pr_allpr.avt_q2_tot', 'rem2')  # - Private Transfers
 rem3 = get_wb_series('per_pr_allpr.avt_q3_tot', 'rem3')  # - Private Transfers
 rem4 = get_wb_series('per_pr_allpr.avt_q4_tot', 'rem4')  # - Private Transfers
 rem5 = get_wb_series('per_pr_allpr.avt_q5_tot', 'rem5')  # - Private Transfers
 
-tra1_ = get_wb_series('per_allsp.avt_q1_tot','tra1')  # Average per capita transfer held by poorest quintile -All  dolars PPP per day
+tra1_ = get_wb_series('per_allsp.avt_q1_tot', 'tra1')  # Average per capita transfer held by poorest quintile -All  dolars PPP per day
 tra2_ = get_wb_series('per_allsp.avt_q2_tot', 'tra2')  # Average per capita transfer held by -All
 tra3_ = get_wb_series('per_allsp.avt_q3_tot', 'tra3')  # Average per capita transfer held by  -All
 tra4_ = get_wb_series('per_allsp.avt_q4_tot', 'tra4')  # Average per capita transfer held by  -All
