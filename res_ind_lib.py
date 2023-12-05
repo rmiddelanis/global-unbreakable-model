@@ -122,9 +122,9 @@ def compute_resilience(df_in, cat_info, infra_stocks, hazard_ratios=None, is_loc
         macro["dy_over_dk"] = (1 - macro["v_product"]) / macro["alpha_v_sum"] * macro["avg_prod_k"] + macro[
             "v_product"] * macro["avg_prod_k"] / 3
         # macro["dy_over_dk"]       = macro["avg_prod_k"]
-        macro["macro_multiplier"] = (macro["dy_over_dk"] + recons_rate) / (macro["rho"] + recons_rate)
+        macro["macro_multiplier_Gamma"] = (macro["dy_over_dk"] + recons_rate) / (macro["rho"] + recons_rate)
     except:
-        macro["macro_multiplier"] = (macro["avg_prod_k"] + recons_rate) / (macro["rho"] + recons_rate)
+        macro["macro_multiplier_Gamma"] = (macro["avg_prod_k"] + recons_rate) / (macro["rho"] + recons_rate)
 
     ####FORMATING
     # gets the event level index
@@ -227,7 +227,7 @@ def compute_dK_dW(macro_event, cats_event, optionT="data", optionPDS='no', optio
         "tau_tax"] * macro_event["dk_event"]
 
     # NPV consumption losses accounting for reconstruction and productivity of capital (pre-response)
-    cats_event_ia["dc_npv_pre"] = cats_event_ia["dc"] * macro_event["macro_multiplier"]
+    cats_event_ia["dc_npv_pre"] = cats_event_ia["dc"] * macro_event["macro_multiplier_Gamma"]
 
     # POST DISASTER RESPONSE
 

@@ -219,6 +219,8 @@ df.drop(["catDDO"], axis=1, inplace=True)
 
 
 # Capital data
+# TODO: does this data come from Penn World Table (similar to gather_capital_data)?
+#  values don't appear to match PWT data.
 k_data = pd.read_csv(os.path.join(input_dir, "capital_data.csv"), usecols=["code", "cgdpo", "ck"])
 
 # Zair is congo
@@ -466,29 +468,38 @@ for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], [
 
     # Save all data
     print(pol_df_in.shape[0], 'countries in analysis')
-    outstring = (pol_str if pol_str is not None else '') + (str(pol_opt) if pol_opt is not None else '')
+    outstring = (f"_{pol_str}" if pol_str is not None else '') + (str(pol_opt) if pol_opt is not None else '')
 
-    fa_guessed_gar.to_csv(
-        os.path.join(intermediate_dir, "fa_guessed_from_GAR_and_PAGER_shaved" + outstring + ".csv"),
-        encoding="utf-8",
-        header=True
-    )
-    pd.DataFrame(
-        [vulnerability_poor, vulnerability_rich, vulnerability_tot], index=["vp", "vr", "v"]).T.to_csv(
-        os.path.join(intermediate_dir + "/v_pr_fromPAGER_shaved_GAR" + outstring + ".csv"),
-        encoding="utf-8",
-        header=True
-    )
+    # # save exposure and vulnerability by return country, hazard, return period, income category
+    # fa_guessed_gar.to_csv(
+    #     os.path.join(intermediate_dir, "fa_guessed_from_GAR_and_PAGER_shaved" + outstring + ".csv"),
+    #     encoding="utf-8",
+    #     header=True
+    # )
+
+    # # save vulnerability (total, poor, rich) by country
+    # pd.DataFrame(
+    #     [vulnerability_poor, vulnerability_rich, vulnerability_tot], index=["vp", "vr", "v"]).T.to_csv(
+    #     os.path.join(intermediate_dir + "/v_pr_fromPAGER_shaved_GAR" + outstring + ".csv"),
+    #     encoding="utf-8",
+    #     header=True
+    # )
+
+    # save macro-economic country economic data
     pol_df_in.to_csv(
         os.path.join(intermediate_dir + "/macro" + outstring + ".csv"),
         encoding="utf-8",
         header=True
     )
+
+    # save consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
     pol_cat_info.to_csv(
         os.path.join(intermediate_dir + "/cat_info" + outstring + ".csv"),
         encoding="utf-8",
         header=True
     )
+
+    # save exposure, vulnerability, and access to early warning by country, hazard, return period, income category
     hazard_ratios.to_csv(
         os.path.join(intermediate_dir + "/hazard_ratios" + outstring + ".csv"),
         encoding="utf-8",
