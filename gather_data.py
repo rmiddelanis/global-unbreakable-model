@@ -3,6 +3,8 @@
 import copy
 import os
 
+import numpy as np
+
 # Import package for data analysis
 from lib_gather_data import *
 from apply_policy import *
@@ -428,7 +430,7 @@ cat_info = cat_info.dropna()
 
 # Taxes, redistribution, capital
 
-# compute tau tax and gamma_sp from socail_poor and social_nonpoor. CHECKED!
+# compute tau tax and gamma_sp from social_poor and social_nonpoor. CHECKED!
 df["tau_tax"], cat_info["gamma_SP"] = social_to_tx_and_gsp(econ_scope, cat_info)
 
 # here k in cat_info has poor and non poor, while that from capital_data.csv has only k, regardless of poor or nonpoor
@@ -444,29 +446,26 @@ cat_info["fa"] = hazard_ratios.fa.groupby(level=["country", "income_cat"]).mean(
 # TODO: again, why average over all hazards and return periods?!
 cat_info["shew"] = hazard_ratios.shew.drop("earthquake", level="hazard").groupby(level=["country", "income_cat"]).mean()
 
-_df = df.copy('deep')
-_cat_info = cat_info.copy('deep')
-_hazard_ratios = hazard_ratios.copy('deep')
 
-# Create loop over policies
-# for apol in [None]:
+# apply policies
 for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
                          ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
 
-    # apply policy apol
-    df, cat_info, hazard_ratios, desc = apply_policy(_df, _cat_info, _hazard_ratios, pol_str, pol_opt)
+    # apply policy
+    pol_df, pol_cat_info, pol_hazard_ratios, pol_desc = apply_policy(df.copy(deep=True), cat_info.copy(deep=True),
+                                                                     hazard_ratios.copy(deep=True), pol_str, pol_opt)
 
     # clean up and save out
     if drop_unused_data:
-        cat_info = cat_info.drop([i for i in ["social"] if i in cat_info.columns], axis=1, errors="ignore").dropna()
-        df_in = df.drop([np.intersect1d(["social_p", "social_r", "pov_head", "pe", "vp", "vr", "axfin_p", "axfin_r",
-                                         "rating", "finance_pre"], df.columns)], axis=1, errors="ignore").dropna()
+        pol_cat_info = pol_cat_info.drop(np.intersect1d(["social"], pol_cat_info.columns), axis=1).dropna()
+        pol_df_in = pol_df.drop(np.intersect1d(["social_p", "social_r", "pov_head", "pe", "vp", "vr", "axfin_p",
+                                                "axfin_r", "rating", "finance_pre"], pol_df.columns), axis=1).dropna()
     else:
-        df_in = df.dropna()
-    df_in = df_in.drop(["shew"], axis=1, errors="ignore").dropna()
+        pol_df_in = pol_df.dropna()
+    pol_df_in = pol_df_in.drop(np.intersect1d(["shew"], pol_df_in.columns), axis=1, errors="ignore").dropna()
 
     # Save all data
-    print(df_in.shape[0], 'countries in analysis')
+    print(pol_df_in.shape[0], 'countries in analysis')
     outstring = (pol_str if pol_str is not None else '') + (str(pol_opt) if pol_opt is not None else '')
 
     fa_guessed_gar.to_csv(
@@ -480,12 +479,12 @@ for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], [
         encoding="utf-8",
         header=True
     )
-    df_in.to_csv(
+    pol_df_in.to_csv(
         os.path.join(intermediate_dir + "/macro" + outstring + ".csv"),
         encoding="utf-8",
         header=True
     )
-    cat_info.to_csv(
+    pol_cat_info.to_csv(
         os.path.join(intermediate_dir + "/cat_info" + outstring + ".csv"),
         encoding="utf-8",
         header=True
