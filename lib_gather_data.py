@@ -36,10 +36,13 @@ def get_share_from_sheet(PAGER_XL, pager_code_to_aggcat, iso3_to_wb, sheet_name=
 def social_to_tx_and_gsp(economy, cat_info):
     """(tx_tax, gamma_SP) from cat_info[["social","c","n"]] """
 
+    # paper equation 4: \tau = (\Sigma_i t_i) / (\Sigma_i \mu k_i)
+    # --> tax is the sum of all transfers paid over the sum of all income (excluding transfers ?!)
+    # TODO: doesn't the calculation below include transfers in income?!
     tx_tax = cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum() / \
              cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
 
-    # income from social protection PER PERSON as fraction of PER CAPITA social protection
+    # paper equation 5: \gamma_i = t_i / (\Sigma_i \mu \tau k_i)
     gsp = cat_info[["social", "c"]].prod(axis=1, skipna=False) / \
           cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
 
