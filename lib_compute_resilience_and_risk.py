@@ -142,7 +142,7 @@ def compute_dK(macro_event, cats_event, event_level, affected_cats):
     return macro_event, cats_event_ia
 
 
-def calculate_response(macro_event, cats_event_ia, event_level, helped_cats, optionFee="tax", option_t="data",
+def calculate_response(macro_event, cats_event_ia, event_level, helped_cats, option_fee="tax", option_t="data",
                        option_pds="unif_poor", option_b="data", loss_measure="dk", fraction_inside=1,
                        share_insured=.25):
     cats_event_iah = concat_categories(cats_event_ia, cats_event_ia, index=helped_cats).reset_index(
@@ -151,9 +151,9 @@ def calculate_response(macro_event, cats_event_ia, event_level, helped_cats, opt
     cats_event_iah["help_fee"] = 0.0
 
     # baseline case (no insurance)
-    if optionFee != "insurance_premium":
+    if option_fee != "insurance_premium":
         macro_event, cats_event_iah = compute_response(macro_event, cats_event_iah, event_level, option_t=option_t,
-                                                       option_pds=option_pds, option_b=option_b, option_fee=optionFee,
+                                                       option_pds=option_pds, option_b=option_b, option_fee=option_fee,
                                                        fraction_inside=fraction_inside, loss_measure=loss_measure)
 
     # special case of insurance that adds to existing default PDS
@@ -169,7 +169,7 @@ def calculate_response(macro_event, cats_event_ia, event_level, helped_cats, opt
         # compute post disaster response with insurance ONLY
         macro_event, cats_event_iah = compute_response(macro_event.assign(shareable=share_insured), cats_event_iah_h,
                                                        event_level, option_t=option_t, option_pds=option_pds,
-                                                       option_b=option_b, option_fee=optionFee,
+                                                       option_b=option_b, option_fee=option_fee,
                                                        fraction_inside=fraction_inside, loss_measure=loss_measure)
 
         columns_to_add = ["need", "aid"]
@@ -388,26 +388,26 @@ def compute_response(macro_event, cats_event_iah, event_level, option_t="data", 
 
 
 def compute_dW(macro_event, cats_event_iah, event_level, return_stats=True, return_iah=True):
-    cats_event_iah["dc_npv_post"] = cats_event_iah["dc_npv_pre"] - cats_event_iah["help_received"] + cats_event_iah[
-        "help_fee"]
+    # compute post-support consumption losses including help received and help fee paid
+    cats_event_iah["dc_npv_post"] = (cats_event_iah["dc_npv_pre"]
+                                     - cats_event_iah["help_received"]
+                                     + cats_event_iah["help_fee"])
     cats_event_iah["dw"] = calc_delta_welfare(cats_event_iah, macro_event)
 
-    # aggregates dK and delta_W at df level
-    dK = agg_to_event_level(cats_event_iah, "dk", event_level)
-    delta_W = agg_to_event_level(cats_event_iah, "dw", event_level)
+    # aggregates dK and delta_W at event-level
+    d_k = agg_to_event_level(cats_event_iah, "dk", event_level)
+    d_w = agg_to_event_level(cats_event_iah, "dw", event_level)
 
-    ###########
-    # OUTPUT
+    # generate output df
     df_out = pd.DataFrame(index=macro_event.index)
-
-    df_out["dK"] = dK
-    df_out["dKtot"] = dK * macro_event["pop"]
-    df_out["delta_W"] = delta_W
-    df_out["delta_W_tot"] = delta_W * macro_event["pop"]
+    df_out["dK"] = d_k
+    df_out["dKtot"] = d_k * macro_event["pop"]
+    df_out["delta_W"] = d_w
+    df_out["delta_W_tot"] = d_w * macro_event["pop"]
     df_out["average_aid_cost_pc"] = macro_event["aid"]
 
     if return_stats:
-        if not "has_received_help_from_PDS_cat" in cats_event_iah.columns:
+        if "has_received_help_from_PDS_cat" not in cats_event_iah.columns:
             stats = np.setdiff1d(cats_event_iah.columns, event_level + ['helped_cat', 'affected_cat', 'income_cat'])
         else:
             stats = np.setdiff1d(cats_event_iah.columns, event_level + ['helped_cat', 'affected_cat', 'income_cat',
@@ -424,33 +424,26 @@ def compute_dW(macro_event, cats_event_iah, event_level, return_stats=True, retu
         return df_out
 
 
-def process_output(macro, out, macro_event, economy, default_rp, return_iah=True, is_local_welfare=True):
-    # unpacks if needed
-    if return_iah:
-        dkdw_event, cats_event_iah = out
-    else:
-        dkdw_event = out
-
-    ##AGGREGATES LOSSES
+def process_output(macro, out, macro_event, econ_scope, default_rp, is_local_welfare=True):
+    # aggregate losses
     # Averages over return periods to get dk_{hazard} and dW_{hazard}
-    dkdw_h = average_over_rp(dkdw_event, default_rp, macro_event["protection"])
+    # TODO: flopros protection seems to have gotten lost at some point?!
+    dkdw_h = average_over_rp(out, default_rp, macro_event["protection"])
 
     # Sums over hazard dk, dW (gets one line per economy)
-    dkdw = dkdw_h.groupby(level=economy).sum()
+    dkdw = dkdw_h.groupby(level=econ_scope).sum()
+
+    # summing over hazards gives wrong cat_info data which needs to be corrected for
     for i in ['axfin', 'social', 'gamma_SP']:
-        dkdw[i] = dkdw_h[i].groupby(level=economy).mean()
+        dkdw[i] = dkdw_h[i].groupby(level=econ_scope).mean()
 
     # adds dk and dw-like columns to macro
     macro[dkdw.columns] = dkdw
 
-    # computes socio economic capacity and risk at economy level
-    macro = calc_risk_and_resilience_from_k_w(macro, is_local_welfare)
+    # computes socio-economic capacity and risk at economy level
+    macro = calc_risk_and_resilience_from_k_w(df=macro, is_local_welfare=is_local_welfare)
 
-    ###OUTPUTS
-    if return_iah:
-        return macro, cats_event_iah
-    else:
-        return macro
+    return macro
 
 
 def unpack_social(macro, cat_info):
@@ -546,10 +539,11 @@ def agg_to_event_level(df, seriesname, event_level):
 
 def calc_delta_welfare(micro, macro):
     """welfare cost from consumption before (c)
-    an after (dc_npv_post) event. Line by line"""
+    and after (dc_npv_post) event. Line by line"""
     # computes welfare losses per category
-    dw = welf(micro["c"] / macro["rho"], macro["income_elast"]) - welf(
-        micro["c"] / macro["rho"] - (micro["dc_npv_post"]), macro["income_elast"])
+    # as per eqs. 9-11 in the technical paper
+    dw = (welf(micro["c"] / macro["rho"], macro["income_elast"])
+          - welf(micro["c"] / macro["rho"] - micro["dc_npv_post"], macro["income_elast"]))
 
     return dw
 
@@ -598,37 +592,41 @@ def average_over_rp(df, default_rp, protection=None):
 
 
 def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
-    """Computes risk and resilience from dk, dw and protection. Line by line: multiple return periods or hazard is transparent to this function"""
+    """Computes risk and resilience from dk, dw and protection.
+    Line by line: multiple return periods or hazard is transparent to this function"""
     df = df.copy()
 
-    ############################
     # Expressing welfare losses in currency
     # discount rate
     rho = df["rho"]
     h = 1e-4
 
+    # linearly approximated derivative of welfare with respect to consumption
     if is_local_welfare:
-        wprime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elast"]) - welf(df["gdp_pc_pp"] / rho - h,
-                                                                             df["income_elast"])) / (2 * h)
+        w_prime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elast"])
+                   - welf(df["gdp_pc_pp"] / rho - h, df["income_elast"])) / (2 * h)
     else:
-        wprime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elast"]) - welf(df["gdp_pc_pp_nat"] / rho - h,
-                                                                                 df["income_elast"])) / (2 * h)
+        w_prime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elast"])
+                   - welf(df["gdp_pc_pp_nat"] / rho - h, df["income_elast"])) / (2 * h)
 
-    dWref = wprime * df["dK"]
+    # TODO: why? assuming that in the reference case, capital loss equals consumption loss? The paper states that this
+    #   would be the case for \mu = \rho
+    d_w_ref = w_prime * df["dK"]
 
     # expected welfare loss (per family and total)
-    df["dWpc_currency"] = df["delta_W"] / wprime
+    # TODO: why does division by w prime result in a currency value?
+    df["dWpc_currency"] = df["delta_W"] / w_prime
     df["dWtot_currency"] = df["dWpc_currency"] * df["pop"]
 
     # Risk to welfare as percentage of local GDP
-    df["risk"] = df["dWpc_currency"] / (df["gdp_pc_pp"])
+    df["risk"] = df["dWpc_currency"] / df["gdp_pc_pp"]
 
-    ############
-    # SOCIO-ECONOMIC CAPACITY)
-    df["resilience"] = dWref / (df["delta_W"])
+    # socio-economic capacity
+    # TODO: in the paper, socio-econ. resilience = asset losses / welfare losses
+    df["resilience"] = d_w_ref / df["delta_W"]
 
-    ############
-    # RISK TO ASSETS
+    # risk to assets
+    # TODO: this is the same as d_w_ref / (w_prime * df["gdp_pc_pp"]). What does it mean?
     df["risk_to_assets"] = df.resilience * df.risk
 
     return df
