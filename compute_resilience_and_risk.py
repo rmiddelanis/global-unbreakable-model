@@ -17,9 +17,9 @@ if use_published_inputs:
     intermediate_dir = model + '/orig_intermediate/'  # get outputs data directory
 
 results_policy_summary = pd.DataFrame(index=pd.read_csv(intermediate_dir + "macro.csv", index_col='country').dropna().index)
-# for pol_str in ['', '_bbb_complete1', '_bbb_incl1', '_bbb_fast1', '_bbb_fast2', '_bbb_fast4', '_bbb_fast5',
-#                 '_bbb_50yrstand1']:
-for pol_str in ['']:
+for pol_str in ['', '_bbb_complete1', '_bbb_incl1', '_bbb_fast1', '_bbb_fast2', '_bbb_fast4', '_bbb_fast5',
+                '_bbb_50yrstand1']:
+# for pol_str in ['']:
 
     print(pol_str)
     option_fee = "tax"

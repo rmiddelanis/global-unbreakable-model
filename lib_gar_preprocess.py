@@ -1,11 +1,32 @@
 import os
-
+import warnings
 import pandas as pd
-from replace_with_warning import replace_with_warning
 from pandas_helper import broadcast_simple
 import numpy as np
 
-from res_ind_lib import average_over_rp
+from lib_compute_resilience_and_risk import average_over_rp
+
+
+def replace_with_warning(series_in, dico, ignore_case=True, joiner=", "):
+    # preprocessing
+    series_to_use = series_in.copy()
+    dico_to_use = dico.copy()
+
+    if ignore_case:
+        series_to_use = series_to_use.str.lower()
+        dico_to_use.index = dico_to_use.index.str.lower()
+
+    # processing
+    out = series_to_use.replace(dico_to_use)
+
+    # post processing
+    are_missing = ~out.isin(dico_to_use)
+
+    if are_missing.sum() > 0:
+        warnings.warn(
+            "These entries were not found in the dictionary:\n" + joiner.join(series_in[are_missing].unique()))
+
+    return out
 
 
 ###########################
@@ -33,7 +54,7 @@ def str_to_float(s):
         return s
 
 
-def gar_preprocessing(input_dir, intermediate_dir):
+def gar_preprocessing(input_dir, intermediate_dir, default_rp):
     # global iso3_to_wb
 
     iso3_to_wb = pd.read_csv(os.path.join(input_dir, 'iso3_to_wb_name.csv'), index_col='iso3').squeeze()
@@ -131,12 +152,6 @@ def gar_preprocessing(input_dir, intermediate_dir):
     frac_value_destroyed_gar.to_csv(os.path.join(intermediate_dir, "frac_value_destroyed_gar.csv"), encoding="utf-8",
                                     header=True)
 
-
-
-
-
-
-
     # add frequent events
     last_rp = 20
     new_rp = 1
@@ -146,7 +161,7 @@ def gar_preprocessing(input_dir, intermediate_dir):
     # average_over_rp() simply averages return period losses, weighted with the probability of each return period, i.e.
     # the inverse of the return period
     # TODO: why divide by added_proba?
-    new_frac_destroyed = (AAL_splitted - average_over_rp(frac_value_destroyed_gar).squeeze()) / added_proba
+    new_frac_destroyed = (AAL_splitted - average_over_rp(frac_value_destroyed_gar, default_rp).squeeze()) / added_proba
 
     hop = frac_value_destroyed_gar.unstack()
     hop[new_rp] = new_frac_destroyed
@@ -157,7 +172,7 @@ def gar_preprocessing(input_dir, intermediate_dir):
     # ^ this shows earthquake was not updated
 
     # double check. expecting zeroes expect for quakes and tsunamis:
-    (average_over_rp(frac_value_destroyed_gar_completed).squeeze() - AAL_splitted).abs().sort_values(
+    (average_over_rp(frac_value_destroyed_gar_completed, default_rp).squeeze() - AAL_splitted).abs().sort_values(
         ascending=False).sample(10)
 
     # places where new values are higher than values for 20-yr RP
@@ -178,7 +193,7 @@ def gar_preprocessing(input_dir, intermediate_dir):
     new_rp = 2000
     added_proba = 1 / 2000
 
-    new_frac_destroyed = (AAL_splitted - average_over_rp(frac_value_destroyed_gar_completed).squeeze()) / added_proba
+    new_frac_destroyed = (AAL_splitted - average_over_rp(frac_value_destroyed_gar_completed, default_rp).squeeze()) / added_proba
 
     hop = frac_value_destroyed_gar_completed.unstack()
     hop[new_rp] = new_frac_destroyed.clip(upper=0.99)

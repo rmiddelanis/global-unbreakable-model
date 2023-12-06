@@ -1,9 +1,8 @@
 from pandas_helper import *
-# from res_ind_lib import *
-import os, time
+import os
+from lib_compute_resilience_and_risk import agg_to_event_level
 
-
-def apply_policy(m_, c_, h_, policy_name=None, policy_opt=None, verbose=True):
+def apply_policy(m_, c_, h_, event_level, policy_name=None, policy_opt=None, verbose=True):
     """Choses a policy by name, applies it to m, c, and/or h, and returns new values as well as a policy description"""
 
     # duplicate inputes
@@ -245,40 +244,40 @@ def apply_policy(m_, c_, h_, policy_name=None, policy_opt=None, verbose=True):
 
 
     elif policy_name == "PDSpackage":
-        m, c, h, desc = apply_policy(m, c, h, "borrow_abi")
-        m, c, h, desc = apply_policy(m, c, h, "prepare_scaleup")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "borrow_abi")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "prepare_scaleup")
 
         desc = "Postdisaster\nsupport\npackage"
 
     elif policy_name == "ResiliencePackage":
-        m, c, h, desc = apply_policy(m, c, h, "PDSpackage")
-        m, c, h, desc = apply_policy(m, c, h, "axfin")
-        m, c, h, desc = apply_policy(m, c, h, "T_rebuild_K")
-        m, c, h, desc = apply_policy(m, c, h, "social_p")
-        m, c, h, desc = apply_policy(m, c, h, "prop_nonpoor_lms")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "PDSpackage")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "axfin")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "T_rebuild_K")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "social_p")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "prop_nonpoor_lms")
         desc = "Resilience package"
 
 
     elif policy_name == "ResiliencePlusEW":
-        m, c, h, desc = apply_policy(m, c, h, "ResiliencePackage")
-        m, c, h, desc = apply_policy(m, c, h, "shew")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "ResiliencePackage")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "shew")
 
         desc = "Resilience Package + Early Warning Package"
 
     elif policy_name == "Asset_losses":
-        m, c, h, desc = apply_policy(m, c, h, "fap")
-        m, c, h, desc = apply_policy(m, c, h, "far")
-        m, c, h, desc = apply_policy(m, c, h, "vp")
-        m, c, h, desc = apply_policy(m, c, h, "vr")
-        m, c, h, desc = apply_policy(m, c, h, "shew")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "fap")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "far")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "vp")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "vr")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "shew")
 
         desc = "Asset losses package "
 
     elif policy_name == "Asset_losses_no_EW":
-        m, c, h, desc = apply_policy(m, c, h, "fap")
-        m, c, h, desc = apply_policy(m, c, h, "far")
-        m, c, h, desc = apply_policy(m, c, h, "vp")
-        m, c, h, desc = apply_policy(m, c, h, "vr")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "fap")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "far")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "vp")
+        m, c, h, desc = apply_policy(m, c, h, event_level, "vr")
         desc = "Asset losses package (excluding early warnings)"
 
     elif policy_name == "":

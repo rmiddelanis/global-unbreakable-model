@@ -1,16 +1,10 @@
 # This script provides data input for the resilience indicator multihazard model.
 # The script was developed by Adrien Vogt-Schilb and improved by Jinqiang Chen.
 import copy
-import os
-
-import numpy as np
-
-# Import package for data analysis
 from lib_gather_data import *
 from apply_policy import *
 from pandas import isnull
 import time
-import warnings
 from lib_gar_preprocess import *
 
 warnings.filterwarnings("always", category=UserWarning)
@@ -31,11 +25,6 @@ intermediate_dir = os.path.join(root_dir, year_str + 'intermediate')  # get outp
 # ^ if the depository directory doesn't exist, create one
 if not os.path.exists(intermediate_dir):
     os.makedirs(intermediate_dir)
-
-# Run GAR preprocessing
-gar_preprocessing(input_dir, intermediate_dir)
-
-debug = False
 
 # Options and parameters
 use_flopros_protection = True  # FLOPROS is a global database of flood potection standards. Used in Protection.
@@ -60,6 +49,9 @@ discount_rate = 0.06  # discount rate
 asset_loss_covered = 0.8  # target of asset losses to be covered by scale up
 max_support = 0.05  # 5% of GDP in post-disaster support maximum, if everything is ready
 fa_threshold = 0.9  # if fa (=exposure) is above this threshold, then it is capped at this value
+
+# Run GAR preprocessing
+gar_preprocessing(input_dir, intermediate_dir, default_rp=default_rp)
 
 # Country dictionaries
 any_to_wb = pd.read_csv(os.path.join(input_dir, "any_name_to_wb_name.csv"), index_col="any")  # Names to WB names
@@ -386,8 +378,9 @@ if constant_fa:
     if use_2016_inputs:
         fa_guessed_gar.to_csv(input_dir + 'constant_fa.csv', header=True)
     else:
+        # TODO: what is this constant_fa.csv in orig_inputs? keeping it for now, but need to clean this.
         fa_guessed_gar['fa'].update(
-            pd.read_csv('orig_inputs/constant_fa.csv', index_col=['country', 'hazard', 'rp', 'income_cat'])['fa'])
+            pd.read_csv('__legacy_structure/orig_inputs/constant_fa.csv', index_col=['country', 'hazard', 'rp', 'income_cat'])['fa'])
 
 # gathers hazard ratios
 hazard_ratios = copy.deepcopy(fa_guessed_gar)
@@ -455,7 +448,8 @@ for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], [
 
     # apply policy
     pol_df, pol_cat_info, pol_hazard_ratios, pol_desc = apply_policy(df.copy(deep=True), cat_info.copy(deep=True),
-                                                                     hazard_ratios.copy(deep=True), pol_str, pol_opt)
+                                                                     hazard_ratios.copy(deep=True), event_level,
+                                                                     pol_str, pol_opt)
 
     # clean up and save out
     if drop_unused_data:
