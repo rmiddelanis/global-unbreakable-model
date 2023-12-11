@@ -2,3 +2,5 @@ __pycache__/*
 .idea
 .DS_Store
 __pycache__
+__legacy_structure/__pycache__
+__legacy_structure/.DS_Store
