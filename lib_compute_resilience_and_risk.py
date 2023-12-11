@@ -601,7 +601,7 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
     rho = df["rho"]
     h = 1e-4
 
-    # linearly approximated derivative of welfare with respect to consumption
+    # linearly approximated derivative of welfare with respect to NPV of future consumption
     if is_local_welfare:
         w_prime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elast"])
                    - welf(df["gdp_pc_pp"] / rho - h, df["income_elast"])) / (2 * h)
@@ -609,12 +609,13 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
         w_prime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elast"])
                    - welf(df["gdp_pc_pp_nat"] / rho - h, df["income_elast"])) / (2 * h)
 
-    # TODO: why? assuming that in the reference case, capital loss equals consumption loss? The paper states that this
-    #   would be the case for \mu = \rho
+    # TODO: @Bramka why? assuming that in the reference case, capital loss equals consumption loss? The paper
+    #  states that this would be the case for \mu = \rho
     d_w_ref = w_prime * df["dK"]
 
     # expected welfare loss (per family and total)
-    # TODO: why does division by w prime result in a currency value?
+    # TODO: @Bramka why does division by w prime result in a currency value?
+    # this is to compute consumption equivalent of welfare loss!
     df["dWpc_currency"] = df["delta_W"] / w_prime
     df["dWtot_currency"] = df["dWpc_currency"] * df["pop"]
 
@@ -622,11 +623,11 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
     df["risk"] = df["dWpc_currency"] / df["gdp_pc_pp"]
 
     # socio-economic capacity
-    # TODO: in the paper, socio-econ. resilience = asset losses / welfare losses
+    # TODO: @Bramka in the paper, socio-econ. resilience = asset losses / welfare losses
     df["resilience"] = d_w_ref / df["delta_W"]
 
     # risk to assets
-    # TODO: this is the same as d_w_ref / (w_prime * df["gdp_pc_pp"]). What does it mean?
+    # TODO: @Bramka this is the same as d_w_ref / (w_prime * df["gdp_pc_pp"]). What does it mean?
     df["risk_to_assets"] = df.resilience * df.risk
 
     return df

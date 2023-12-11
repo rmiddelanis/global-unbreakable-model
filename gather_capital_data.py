@@ -17,7 +17,8 @@ iso2_iso3 = pd.read_csv("inputs/names_to_iso.csv", usecols=["iso2", "iso3"]).dro
     "iso2").squeeze()
 
 # GAR names with SIDS spec
-# TODO: what is SIDS?
+# TODO: SIDS = Small Island Developing States?
+#   send email to Bramka regarding this
 gar_name_sids = pd.read_csv("inputs/gar_name_sids.csv")
 gar_name_sids['wbcountry'] = gar_name_sids.reset_index().country.replace(any_to_wb)
 sids_list = gar_name_sids[gar_name_sids.isaSID == "SIDS"].dropna().reset_index().wbcountry

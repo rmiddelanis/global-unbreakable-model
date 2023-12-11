@@ -65,11 +65,11 @@ for _c in any_to_wb.index:
 
 any_to_wb = any_to_wb.squeeze()
 
-iso3_to_wb = pd.read_csv(os.path.join(input_dir, "iso3_to_wb_name.csv")).set_index(
-    "iso3").squeeze()  # iso3 to wb country name table
+# iso3 to wb country name table
+iso3_to_wb = pd.read_csv(os.path.join(input_dir, "iso3_to_wb_name.csv")).set_index("iso3").squeeze()
+# iso2 to iso3 table
 iso2_iso3 = pd.read_csv(os.path.join(input_dir, "names_to_iso.csv"),
-                        usecols=["iso2", "iso3"]).drop_duplicates().set_index(
-    "iso2").squeeze()  # iso2 to iso3 table
+                        usecols=["iso2", "iso3"]).drop_duplicates().set_index("iso2").squeeze()
 
 # Read data
 ##Macro data
@@ -93,23 +93,28 @@ df["shareable"] = asset_loss_covered  # target of asset losses to be covered by 
 df["max_increased_spending"] = max_support  # 5% of GDP in post-disaster support maximum, if everything is ready
 
 # Social transfer Data from EUsilc (European Union Survey of Income and Living Conditions) and other countries.
-silc_file = pd.read_csv(
-    os.path.join(input_dir, "social_ratios.csv")
-)  # XXX: there is data from ASPIRE in social_ratios. Use fillna instead to update df.
-silc_file = silc_file.set_index(silc_file.cc.replace({"EL": "GR", "UK": "GB"}).replace(iso2_iso3).replace(
-    iso3_to_wb))  # Change indexes with wold bank names. UK and greece have differnt codes in Europe than ISO2. The first replace is to change EL to GR, and change UK to GB. The second one is to change iso2 to iso3, and the third one is to change iso3 to the wb
+# TODO: update SILC data? keep it at all?
+# XXX: there is data from ASPIRE in social_ratios. Use fillna instead to update df.
+silc_file = pd.read_csv(os.path.join(input_dir, "social_ratios.csv"))
+
+# Change indexes with wold bank names. UK and greece have differnt codes in Europe than ISO2. The first replace is to
+# change EL to GR, and change UK to GB. The second one is to change iso2 to iso3, and the third one is to change iso3
+# to the wb
+silc_file = silc_file.set_index(silc_file.cc.replace({"EL": "GR", "UK": "GB"}).replace(iso2_iso3).replace(iso3_to_wb))
 
 # TODO: Czech Republic not in silc; ignore for now
 df.loc[np.intersect1d(df.index, silc_file.index), ["social_p", "social_r"]] = silc_file[["social_p", "social_r"]].loc[
     np.intersect1d(df.index, silc_file.index)]  # Update social transfer from EUsilc.
 
-where = (isnull(df.social_r) & ~isnull(df.social_p)) | (isnull(df.social_p) & ~isnull(
-    df.social_r))  # shows the country where social_p and social_r are not both NaN.
+# shows the country where social_p and social_r are not both NaN.
+where = (isnull(df.social_r) & ~isnull(df.social_p)) | (isnull(df.social_p) & ~isnull(df.social_r))
 print("social_p and social_r are not both NaN for " + "; ".join(df.loc[where].index))
 df.loc[isnull(df.social_r), ['social_p', 'social_r']] = np.nan
 df.loc[isnull(df.social_p), ['social_p', 'social_r']] = np.nan
 
 # Guess social transfer
+# TODO: @Bramka this appears to be the econometric model data mentioned in paper p. 16/17. Is this model still
+#   available? Should we use it? @Stephane
 guessed_social = pd.read_csv(os.path.join(input_dir, "df_social_transfers_statistics.csv"), index_col=0)[
     ["social_p_est", "social_r_est"]]
 guessed_social.columns = ["social_p", "social_r"]
@@ -141,6 +146,7 @@ hfa["shew"] = 1 / 5 * hfa["P2-C3"]
 hfa["prepare_scaleup"] = (hfa["P4-C2"] + hfa["P5-C2"] + hfa["P4-C5"]) / 3 / 5
 
 # between 0 and 1	!!!!!!!!!!!!!!!!!!!REMARK: INCONSISTENT WITH THE TECHNICAL PAPER. Q_f=1/2(ratings+P5C3/5)
+# TODO @Bramka @Stephane
 hfa["finance_pre"] = (1 + hfa["P5-C3"]) / 6
 df[["shew", "prepare_scaleup", "finance_pre"]] = hfa[["shew", "prepare_scaleup", "finance_pre"]]
 
@@ -199,7 +205,8 @@ df["rating"].fillna(0, inplace=True)  # assumes no rating is bad rating
 df["borrow_abi"] = (df["rating"] + df["finance_pre"]) / 2
 
 # If contingent finance instrument then borrow_abo = 1
-# TODO: what are these countries?
+# TODO: @Bramka what are these countries? @Stephane
+#   catDDO is an indicator whether countries have received aids previously from the WB
 contingent_file = os.path.join(input_dir, "contingent_finance_countries.csv")
 if use_2016_inputs:
     contingent_file = os.path.join(input_dir, "contingent_finance_countries_orig.csv")
@@ -211,8 +218,9 @@ df.drop(["catDDO"], axis=1, inplace=True)
 
 
 # Capital data
-# TODO: does this data come from Penn World Table (similar to gather_capital_data)?
+# TODO: @Bramka does this data come from Penn World Table (similar to gather_capital_data)?
 #  values don't appear to match PWT data.
+#   --> we stick to the PWT, use this data
 k_data = pd.read_csv(os.path.join(input_dir, "capital_data.csv"), usecols=["code", "cgdpo", "ck"])
 
 # Zair is congo
@@ -232,7 +240,8 @@ k_data = k_data.reset_index().set_index("country")
 df["avg_prod_k"] = k_data["prod_from_k"] / k_data["k"]
 
 # for SIDS, adding capital data from GAR
-# TODO: what is SIDS?
+# TODO: @Bramka why is there a special file for SIDS avg. prod. of capital? (SIDS = Small Island Developing States?)
+#   see comment re: this above
 sids_k = pd.read_csv("intermediate/avg_prod_k_with_gar_for_sids.csv")
 sids_k = sids_k.rename(columns={"Unnamed: 0": "country"}).set_index("country")
 df = df.fillna(sids_k)
@@ -263,8 +272,8 @@ hous_share_urb_res = get_share_from_sheet(pager_excel, housing_categories, iso3_
 hous_share_urb_nonres = get_share_from_sheet(pager_excel, housing_categories, iso3_to_wb, sheet_name='Urban_Non_Res')
 hous_share_urb = .5 * hous_share_urb_res + .5 * hous_share_urb_nonres
 
-# the sum(axis=1) of rural_share is equal to 1, so rural_share needs to be weighted by the 1-urbanization_rate
-# same for urban_share
+# the sum(axis=1) of hous_share_rur is equal to 1, so hous_share_rur needs to be weighted by the 1-urbanization_rate
+# same for hous_share_urb
 hous_share_tot = (hous_share_rur.stack() * (1 - df.urbanization_rate) + hous_share_urb.stack() * df.urbanization_rate).unstack().dropna()
 hous_share_tot = hous_share_tot[hous_share_tot.index.isin(iso3_to_wb)]  # the share of building inventory for fragile, median and robust
 
@@ -279,6 +288,7 @@ hous_cat_vulnerability = pd.read_csv(os.path.join(input_dir, "aggregate_category
 # quality. I think we need to correct this matter. @adrien_vogt_schilb also agreed on that, if he didn't change his
 # opinion. How to do that? I think once we incorporate household data, we can allocate buildings on the decile of
 # households, rather than population. I think it's a more realistic assumption.
+# TODO @Bramka @Stephane --> GMD data?
 p = (hous_share_tot.cumsum(axis=1).add(-df["pov_head"], axis=0)).clip(lower=0)
 poor = (hous_share_tot - p).clip(lower=0)
 rich = hous_share_tot - poor
@@ -361,14 +371,13 @@ pe = df.pop("pe")
 # NB: fa_guessed_gar*(1+pe) gives f_p^a and fa_guessed_gar*(1-df.pov_head*(1+pe))/(1-df.pov_head) gives f_r^a. TESTED
 # fa_guessed_gar.update(fa_with_pe) #updates fa_guessed_gar where necessary
 
-fa_with_pe = fa_guessed_gar.query("hazard in ['flood','surge']")[
-    ['income_cat', 'fa']].copy()  # selects just flood and surge
-fa_with_pe.loc[fa_with_pe['income_cat'] == 'poor', 'fa'] = fa_with_pe.loc[fa_with_pe['income_cat'] == 'poor', 'fa'] * (
-        1 + pe)
-fa_with_pe.loc[fa_with_pe['income_cat'] == 'nonpoor', 'fa'] = fa_with_pe.loc[
-                                                                  fa_with_pe['income_cat'] == 'nonpoor', 'fa'] * (
-                                                                      1 - df.pov_head * (1 + pe)) / (
-                                                                      1 - df.pov_head)
+# selects just flood and surge
+fa_with_pe = fa_guessed_gar.query("hazard in ['flood','surge']")[['income_cat', 'fa']].copy()
+fa_with_pe.loc[fa_with_pe['income_cat'] == 'poor', 'fa'] = (
+        fa_with_pe.loc[fa_with_pe['income_cat'] == 'poor', 'fa'] * (1 + pe))
+fa_with_pe.loc[fa_with_pe['income_cat'] == 'nonpoor', 'fa'] = (
+        fa_with_pe.loc[fa_with_pe['income_cat'] == 'nonpoor', 'fa'] * (1 - df.pov_head * (1 + pe)) / (1 - df.pov_head)
+)
 
 fa_with_pe = fa_with_pe.reset_index().set_index(event_level + ['income_cat'])
 fa_guessed_gar = fa_guessed_gar.reset_index().set_index(event_level + ['income_cat'])
@@ -378,7 +387,8 @@ if constant_fa:
     if use_2016_inputs:
         fa_guessed_gar.to_csv(input_dir + 'constant_fa.csv', header=True)
     else:
-        # TODO: what is this constant_fa.csv in orig_inputs? keeping it for now, but need to clean this.
+        # TODO: @Bramka what is this constant_fa.csv in orig_inputs? keeping it for now, but need to clean this.
+        #   --> can probably stay unused in the update
         fa_guessed_gar['fa'].update(
             pd.read_csv('__legacy_structure/orig_inputs/constant_fa.csv', index_col=['country', 'hazard', 'rp', 'income_cat'])['fa'])
 
@@ -399,6 +409,7 @@ if not no_protection:
 hazard_ratios = hazard_ratios.drop("Finland")  # because Finland has fa=0 everywhere.
 
 # Protection
+# TODO: is this applied to all hazards or just floods?
 if use_flopros_protection:  # in this code, this protection is overwritten by no_protection
     minrp = 1 / 2  # assumes nobody is flooded more than twice a year
     df["protection"] = pd.read_csv(os.path.join(input_dir, "protection_national_from_flopros.csv"),
