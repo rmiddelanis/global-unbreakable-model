@@ -166,34 +166,8 @@ df.loc[df.catDDO == 1, "borrow_abi"] = 1
 df.drop(["catDDO"], axis=1, inplace=True)
 
 
-# Capital data
-# TODO: @Bramka does this data come from Penn World Table (similar to gather_capital_data)?
-#  values don't appear to match PWT data.
-#   --> we stick to the PWT, use this data
-k_data = load_input_data(root_dir, "capital_data.csv", usecols=["code", "cgdpo", "ck"])
-
-# Zair is congo
-k_data = k_data.replace({"ROM": "ROU", "ZAR": "COD"}).rename(columns={"cgdpo": "prod_from_k", "ck": "k"})
-
-# matches names in the dataset with world bank country names
-iso_country = load_input_data(root_dir, "iso3_to_wb_name.csv", index_col="iso3")
-k_data.set_index("code", inplace=True)
-k_data["country"] = iso_country["country"]
-if k_data["country"].isnull().sum() > 0:
-    warnings.warn(
-        "Countries missing in iso3_to_wb_name.csv: " + " , ".join(k_data.index[k_data["country"].isnull()].values)
-    )
-k_data = k_data.reset_index().set_index("country")
-
 # \mu in the technical paper -- average productivity of capital
-df["avg_prod_k"] = k_data["prod_from_k"] / k_data["k"]
-
-# for SIDS, adding capital data from GAR
-# TODO: @Bramka why is there a special file for SIDS avg. prod. of capital? (SIDS = Small Island Developing States?)
-#   see comment re: this above
-sids_k = pd.read_csv("intermediate/avg_prod_k_with_gar_for_sids.csv")
-sids_k = sids_k.rename(columns={"Unnamed: 0": "country"}).set_index("country")
-df = df.fillna(sids_k)
+df["avg_prod_k"] = gather_capital_data(root_dir).avg_prod_k
 
 # Hazards data
 # Vulnerability from Pager data

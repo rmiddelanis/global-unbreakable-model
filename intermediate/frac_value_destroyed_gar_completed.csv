@@ -2914,7 +2914,7 @@ Finland,wind,500.0,0.0
 Finland,wind,1000.0,0.0
 Finland,wind,1500.0,0.0
 Finland,wind,2000.0,0.0
-France,earthquake,1.0,4.271855826550814e-05
+France,earthquake,1.0,1.7421302120971163e-05
 France,earthquake,20.0,0.00022841959198147588
 France,earthquake,50.0,0.0005914218212511871
 France,earthquake,100.0,0.0011013256150288451
@@ -2923,7 +2923,7 @@ France,earthquake,500.0,0.003231835371399239
 France,earthquake,1000.0,0.004513153301481922
 France,earthquake,1500.0,0.005273208352774661
 France,earthquake,2000.0,0.0
-France,flood,1.0,0.00010660967718204554
+France,flood,1.0,0.00010546054196522947
 France,flood,20.0,0.00046280090261428196
 France,flood,50.0,0.0019113281466412338
 France,flood,100.0,0.004193720816547592
@@ -2941,7 +2941,7 @@ France,surge,500.0,0.0011663406412157687
 France,surge,1000.0,0.0012005521598947352
 France,surge,1500.0,0.0012306919669874384
 France,surge,2000.0,0.0
-France,tsunami,1.0,0.0
+France,tsunami,1.0,-9.224548699812725e-09
 France,tsunami,20.0,0.0
 France,tsunami,50.0,0.0
 France,tsunami,100.0,0.0
@@ -2949,7 +2949,7 @@ France,tsunami,250.0,8.665242150372814e-08
 France,tsunami,500.0,1.8425542374693842e-06
 France,tsunami,1000.0,5.256278754951422e-06
 France,tsunami,1500.0,7.493053899042162e-06
-France,tsunami,2000.0,3.579792454957314e-05
+France,tsunami,2000.0,-1.6543612251060553e-21
 France,wind,1.0,3.631471177315779e-05
 France,wind,20.0,0.0003208977224386085
 France,wind,50.0,0.0016370118369893048
@@ -8709,7 +8709,7 @@ United Arab Emirates,wind,500.0,0.0
 United Arab Emirates,wind,1000.0,0.0
 United Arab Emirates,wind,1500.0,0.0
 United Arab Emirates,wind,2000.0,0.0
-United Kingdom,earthquake,1.0,4.794457641427472e-05
+United Kingdom,earthquake,1.0,4.752208033690387e-05
 United Kingdom,earthquake,20.0,0.00034142164239614925
 United Kingdom,earthquake,50.0,0.0011198014331999003
 United Kingdom,earthquake,100.0,0.002238620923591712
@@ -8718,7 +8718,7 @@ United Kingdom,earthquake,500.0,0.008424039981771205
 United Kingdom,earthquake,1000.0,0.013358355082187114
 United Kingdom,earthquake,1500.0,0.017060879900462407
 United Kingdom,earthquake,2000.0,0.0
-United Kingdom,flood,1.0,4.1534303136519656e-05
+United Kingdom,flood,1.0,4.15832435786831e-05
 United Kingdom,flood,20.0,0.00026406635119367595
 United Kingdom,flood,50.0,0.0006560326480216274
 United Kingdom,flood,100.0,0.0014653240029048335

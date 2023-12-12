@@ -91,9 +91,6 @@ def gar_preprocessing(root_dir, intermediate_dir, default_rp):
     # agg data
     gar_aal_data = load_input_data(root_dir, 'GAR15 results feb 2016_AALmundo.csv')
 
-    # These are part of France and the UKxs
-    gar_aal_data.ISO.replace(['GUF', 'GLP', 'MTQ', 'MYT', 'REU'], 'FRA', inplace=True)
-    gar_aal_data.ISO.replace(['FLK', 'GIB', 'MSR'], 'GBR', inplace=True)
 
     # WB spellings
     gar_aal_data = gar_aal_data.set_index(replace_with_warning(gar_aal_data.ISO.astype(str), iso3_to_wb)).drop(
@@ -269,6 +266,23 @@ def get_country_name_dicts(root_dir):
     # iso2 to iso3 table
     iso2_iso3 = load_input_data(root_dir, "names_to_iso.csv",
                                 usecols=["iso2", "iso3"]).drop_duplicates().set_index("iso2").squeeze()
+
+    # TODO: do we want to aggregate these regions into FRA / GBR or keep them individually?
+    # iso3_to_wb = pd.concat((
+    #     iso3_to_wb,
+    #     pd.Series(index=['GUF', 'GLP', 'MTQ', 'MYT', 'REU'], data=iso3_to_wb['FRA']),
+    #     pd.Series(index=['FLK', 'GIB', 'MSR'], data=iso3_to_wb['GBR'])
+    # ))
+
+    # rename PWT countries to WB names:
+    any_to_wb.loc["Côte d'Ivoire"] = "Cote d'Ivoire"
+    any_to_wb.loc['D.R. of the Congo'] = 'Congo, Dem. Rep.'
+    any_to_wb.loc['China, Hong Kong SAR'] = 'Hong Kong SAR, China'
+    any_to_wb.loc["Lao People's DR"] = "Lao PDR"
+    any_to_wb.loc['China, Macao SAR'] = 'Macao SAR, China'
+    any_to_wb.loc["North Macedonia"] = "Macedonia, FYR"
+    any_to_wb.loc["Eswatini"] = "Swaziland"
+    any_to_wb.loc['U.R. of Tanzania: Mainland'] = 'Tanzania'
     return any_to_wb, iso3_to_wb, iso2_iso3
 
 
@@ -307,3 +321,45 @@ def average_over_rp(df, default_rp, protection=None):
         level=idxlevels).sum()  # frequency times each variables in the columns including rp.
 
     return averaged.drop("rp", axis=1)  # here drop rp.
+
+
+def gather_capital_data(root_dir):
+    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
+
+    # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
+    # pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
+    pwt_data = load_input_data(root_dir, "pwt1001.xlsx", sheet_name="Data")
+    # retain only the most recent year
+    pwt_data = pwt_data.groupby("country").apply(lambda x: x.loc[(x['year']) == np.max(x['year']), :])
+    pwt_data = pwt_data.drop("country", axis=1).reset_index().drop("level_1", axis=1)
+
+    # !! NOTE: PWT variable for capital stock has been renamed from 'ck' to 'cn' in the 10.0.0 version
+    # pwt_data = pwt_data[['countrycode', 'country', 'year', 'cgdpo', 'ck']]
+    pwt_data = pwt_data[['countrycode', 'country', 'year', 'cgdpo', 'cn']].rename({'cn': 'ck'}, axis=1)
+    pwt_data["country"] = pwt_data.country.replace(any_to_wb)
+    pwt_data = pwt_data.dropna()
+    pwt_data.set_index("country", inplace=True)
+    pwt_data.drop(["countrycode", 'year'], axis=1, inplace=True)
+
+    # get capital data for SIDS from GAR
+    sids_list = load_input_data(root_dir, "gar_name_sids.csv")
+    sids_list['wbcountry'] = sids_list.reset_index().country.replace(any_to_wb)
+    sids_list = sids_list[sids_list.isaSID == "SIDS"].dropna().reset_index().wbcountry
+    sids_capital_gar = load_input_data(root_dir, "GAR_capital.csv")[['country', 'GDP', 'K']]
+    sids_capital_gar["country"] = sids_capital_gar.country.replace(any_to_wb)
+    sids_capital_gar.dropna(inplace=True)
+    sids_capital_gar = sids_capital_gar.set_index("country")
+    sids_capital_gar = sids_capital_gar.loc[np.intersect1d(sids_list.values, sids_capital_gar.index.values), :]
+    sids_capital_gar = sids_capital_gar.replace(0, np.nan).dropna()
+    sids_capital_gar.rename({'K': 'ck', 'GDP': 'cgdpo'}, axis=1, inplace=True)
+
+    # merge capital data from PWT and GAR (SIDS)
+    # compute average productivity of capital
+    capital_data = pd.merge(pwt_data, sids_capital_gar, on='country', how='outer')
+    capital_data['cgdpo'] = capital_data.cgdpo_x.fillna(capital_data.cgdpo_y)
+    capital_data['ck'] = capital_data.ck_x.fillna(capital_data.ck_y)
+    capital_data.drop(['cgdpo_x', 'cgdpo_y', 'ck_x', 'ck_y'], axis=1, inplace=True)
+    capital_data["avg_prod_k"] = capital_data.cgdpo / capital_data.ck
+    capital_data = capital_data.dropna()
+
+    return capital_data
