@@ -57,7 +57,7 @@ wb_ids = [
 
 
 root_dir = os.getcwd()  # get current directory
-input_dir = os.path.join(root_dir, 'inputs')  # get inputs data directory
+input_dir = os.path.join(root_dir, 'inputs', '2018_inputs')  # get inputs data directory
 
 # Country dictionaries
 any_to_wb = pd.read_csv(os.path.join(input_dir, "any_name_to_wb_name.csv"), index_col="any")  # Names to WB names
@@ -85,7 +85,9 @@ res = pd.DataFrame(index=silc_countries, columns=wb_ids, data=False)
 for wb_id in tqdm.tqdm(wb_ids):
     try:
         data = get_wb_mrv(wb_id, '')
+        available_countries = np.intersect1d(res.index, data.index)
+        res.loc[list(available_countries), wb_id] = True
     except ValueError as e:
         print("Warning. Could not find data for wb_id:", wb_id)
-    available_countries = np.intersect1d(res.index, data.index)
-    res.loc[list(available_countries), wb_id] = True
+        res.drop(wb_id, axis=1, inplace=True)
+print(res)
