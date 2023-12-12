@@ -1,37 +1,32 @@
+import os
 import warnings
-import pandas as pd
 import numpy as np
+import pandas as pd
+
+from lib_gather_data import get_country_name_dicts
+from pandas_helper import load_input_data
 
 warnings.filterwarnings("always", category=UserWarning)
+root_dir = os.getcwd()
 
-# Names to WB names
-any_to_wb = pd.read_csv("inputs/any_name_to_wb_name.csv", index_col="any").squeeze()
-any_to_wb = any_to_wb[~any_to_wb.index.duplicated(keep='first')]  # drop duplicates
-
-# iso3 to wb country name table
-iso3_to_wb = pd.read_csv("inputs/iso3_to_wb_name.csv").set_index("iso3").squeeze()
-
-# iso2 to iso3 table
-# the tables has more lines than countries to account for several ways of writing country names
-iso2_iso3 = pd.read_csv("inputs/names_to_iso.csv", usecols=["iso2", "iso3"]).drop_duplicates().set_index(
-    "iso2").squeeze()
+any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
 # GAR names with SIDS spec
 # TODO: SIDS = Small Island Developing States?
 #   send email to Bramka regarding this
-gar_name_sids = pd.read_csv("inputs/gar_name_sids.csv")
+gar_name_sids = load_input_data(root_dir, "gar_name_sids.csv")
 gar_name_sids['wbcountry'] = gar_name_sids.reset_index().country.replace(any_to_wb)
 sids_list = gar_name_sids[gar_name_sids.isaSID == "SIDS"].dropna().reset_index().wbcountry
 
 # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
-pwt_data = pd.read_excel("inputs/pwt90.xlsx", "Data")
+pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
 # retain only the most recent year
 pwt_data = pwt_data.groupby("country").apply(lambda x: x.loc[(x['year']) == np.max(x['year']), :])
 pwt_data = pwt_data.drop("country", axis=1).reset_index().drop("level_1", axis=1)
 pwt_data = pwt_data[['countrycode', 'country', 'year', 'cgdpo', 'ck']]
 pwt_data["country"] = pwt_data.country.replace(any_to_wb)
 
-gar_capital = pd.read_csv("inputs/GAR_capital.csv")
+gar_capital = load_input_data(root_dir, "GAR_capital.csv")
 gar_capital["country"] = gar_capital.country.replace(any_to_wb)
 gar_capital.dropna(inplace=True)
 gar_sids = gar_capital.set_index("country").loc[np.intersect1d(sids_list.values, gar_capital.country.values), :].replace(0, np.nan).dropna()

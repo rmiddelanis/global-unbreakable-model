@@ -1,4 +1,7 @@
-import pandas as pd   
+import os
+from functools import partial
+
+import pandas as pd
  
 # from sorted_nicely import sorted_nicely
 
@@ -115,3 +118,27 @@ def concat_categories(p,np, index):
     
     #makes sure a series is returned when possible
     return y.squeeze()
+
+
+# only for updating purposes; load data from inputs or __legacy_structure/inputs, depending on whether it has
+# already been updated
+def load_input_data(root_dir, filename, version='infer', **kwargs):
+    if filename.split('.')[-1] == 'csv':
+        load_func = partial(pd.read_csv, **kwargs)
+    elif filename.split('.')[-1] == 'xlsx':
+        load_func = partial(pd.read_excel, **kwargs)
+    else:
+        raise ValueError('Unknown file type for file {}'.format(filename))
+    if os.path.exists(os.path.join(root_dir, 'inputs', filename)) and version in ['new', 'infer']:
+        if version != 'new':
+            print('loading file {} from inputs'.format(filename))
+        return load_func(os.path.join(root_dir, 'inputs', filename))
+    elif version in ['legacy', 'infer']:
+        if os.path.exists(os.path.join(root_dir, '__legacy_structure', 'inputs', filename)):
+            if version != 'legacy':
+                print('loading file {} from __legacy_structure/inputs'.format(filename))
+            return load_func(os.path.join(root_dir, '__legacy_structure', 'inputs', filename))
+        elif os.path.exists(os.path.join(root_dir, '__legacy_structure', 'orig_inputs', filename)):
+            print('loading file {} from __legacy_structure/orig_inputs'.format(filename))
+            return load_func(os.path.join(root_dir, '__legacy_structure', 'orig_inputs', filename))
+    raise ValueError('File {} not found with version={}'.format(filename, version))

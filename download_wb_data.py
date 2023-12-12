@@ -2,11 +2,20 @@
 # %load_ext autoreload
 # %autoreload
 # %matplotlib inline
+import os
 
 import pandas as pd
+from pandas import isnull
+
+from lib_gather_data import get_country_name_dicts
+from pandas_helper import load_input_data
 from wb_api_wrapper import *
 
 include_remitances = True
+use_guessed_social = True  # else keeps nans
+
+root_dir = os.getcwd()  # get current directory
+any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
 # Pandas display optionsa
 
@@ -14,6 +23,7 @@ pd.set_option('display.max_colwidth', 200)
 pd.set_option('display.width', 200)
 pd.set_option('display.precision', 10)
 pd.set_option('display.max_rows', 500)
+
 
 # World Development Indicators
 gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp
@@ -139,23 +149,49 @@ df["axfin_p"] = saved40
 df["axfin_r"] = saved60
 
 # Comptues share of income from transfers
-
 df["social_p"] = la_1
 df["social_r"] = (t_2 + t_3 + t_4 + t_5) / (y_2 + y_3 + y_4 + y_5)
 
-print(df[df.social_p > 0.6].social_p)
 
-print(df[df.social_r > 0.3].social_r)
+# FROM HERE: FILL MISSING VALUES IN ASPIRE DATA
 
 # GDP per capita from google (GDP per capita plays no role in the indicator. only usefull to plot the data)
 # TODO: what about these two countries?!
 df.loc["Argentina", "gdp_pc_pp"] = 18600 / 10700 * 10405.
 df.loc["Syrian Arab Republic", "gdp_pc_pp"] = 5100 / 10700 * 10405.
 
-
 # for SIDS, manual addition from online research
-manual_additions_sids = pd.read_csv('inputs/sids_missing_data_manual_input.csv', index_col='country')
+manual_additions_sids = load_input_data(root_dir=root_dir, filename='sids_missing_data_manual_input.csv',
+                                        index_col='country')
 df = df.fillna(manual_additions_sids)
+
+# Social transfer Data from EUsilc (European Union Survey of Income and Living Conditions) and other countries.
+# TODO: update SILC data? keep it at all?
+# XXX: there is data from ASPIRE in social_ratios. Use fillna instead to update df.
+silc_file = load_input_data(root_dir, "social_ratios.csv")
+
+# Change indexes with wold bank names. UK and greece have differnt codes in Europe than ISO2. The first replace is to
+# change EL to GR, and change UK to GB. The second one is to change iso2 to iso3, and the third one is to change iso3
+# to the wb
+silc_file = silc_file.set_index(silc_file.cc.replace({"EL": "GR", "UK": "GB"}).replace(iso2_iso3).replace(iso3_to_wb))
+
+# TODO: Czech Republic not in silc; ignore for now
+df.loc[np.intersect1d(df.index, silc_file.index), ["social_p", "social_r"]] = silc_file[["social_p", "social_r"]].loc[
+    np.intersect1d(df.index, silc_file.index)]  # Update social transfer from EUsilc.
+
+# shows the country where social_p and social_r are not both NaN.
+where = (isnull(df.social_r) & ~isnull(df.social_p)) | (isnull(df.social_p) & ~isnull(df.social_r))
+print("social_p and social_r are not both NaN for " + "; ".join(df.loc[where].index))
+df.loc[isnull(df.social_r), ['social_p', 'social_r']] = np.nan
+df.loc[isnull(df.social_p), ['social_p', 'social_r']] = np.nan
+
+# Guess social transfer
+# TODO: @Bramka this appears to be the econometric model data mentioned in paper p. 16/17. Is this model still
+#   available? Should we use it? @Stephane
+guessed_social = load_input_data(root_dir, "df_social_transfers_statistics.csv", index_col=0)[["social_p_est", "social_r_est"]]
+guessed_social.columns = ["social_p", "social_r"]
+if use_guessed_social:
+    df = df.fillna(guessed_social.clip(lower=0, upper=1))  # replace the NaN with guessed social transfer.
 
 print(df.dropna().shape, 'countries!')
 df.dropna(how="all", inplace=True)

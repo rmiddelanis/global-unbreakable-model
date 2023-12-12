@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pandas_helper import get_list_of_index_names, broadcast_simple, concat_categories
 from scipy.interpolate import interp1d
-from lib_gather_data import social_to_tx_and_gsp
+from lib_gather_data import social_to_tx_and_gsp, average_over_rp
 
 pd.set_option('display.width', 220)
 
@@ -552,43 +552,6 @@ def welf(c, elast):
     """"Welfare function"""
     y = (c ** (1 - elast) - 1) / (1 - elast)
     return y
-
-
-def average_over_rp(df, default_rp, protection=None):
-    """Aggregation of the outputs over return periods"""
-    if protection is None:
-        protection = pd.Series(0, index=df.index)
-
-    # just drops rp index if df contains default_rp
-    if default_rp in df.index.get_level_values("rp"):
-        print("default_rp detected, droping rp")
-        return (df.T / protection).T.reset_index("rp", drop=True)
-
-    df = df.copy().reset_index("rp")
-    protection = protection.copy().reset_index("rp", drop=True)
-
-    # computes frequency of each return period
-    return_periods = np.unique(df["rp"].dropna())
-
-    proba = pd.Series(np.diff(np.append(1 / return_periods, 0)[::-1])[::-1],
-                      index=return_periods)  # removes 0 from the rps
-
-    # matches return periods and their frequency
-    proba_serie = df["rp"].replace(proba)
-
-    # removes events below the protection level
-    proba_serie[protection > df.rp] = 0
-
-    # handles cases with multi index and single index (works around pandas limitation)
-    idxlevels = list(range(df.index.nlevels))
-    if idxlevels == [0]:
-        idxlevels = 0
-
-    # average weighted by proba
-    averaged = df.mul(proba_serie, axis=0).groupby(
-        level=idxlevels).sum()  # frequency times each variables in the columns including rp.
-
-    return averaged.drop("rp", axis=1)  # here drop rp.
 
 
 def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
