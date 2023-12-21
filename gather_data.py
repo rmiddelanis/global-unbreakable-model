@@ -1,8 +1,11 @@
 # This script provides data input for the resilience indicator multihazard model.
 # The script was developed by Adrien Vogt-Schilb and improved by Jinqiang Chen.
 import copy
+
+from gather_gir_data import load_gir_hazard_losses
 from lib_gather_data import *
 from apply_policy import *
+import pandas as pd
 from pandas import isnull
 import time
 from lib_gather_data import replace_with_warning, get_country_name_dicts
@@ -57,7 +60,7 @@ gar_preprocessing(root_dir, intermediate_dir, default_rp=default_rp)
 # Read data
 ##Macro data
 ###Economic data from the world bank
-df = load_input_data(root_dir, "wb_data.csv").set_index(econ_scope)
+df = load_input_data(root_dir, "WB_socio_economic_data/wb_data.csv").set_index(econ_scope)
 print("Note: check that the wb_data.csv file is up to date. If not, download it using the script download_wb_data.py")
 df = df[['gdp_pc_pp', 'pop', 'share1', 'urbanization_rate', 'gdp_pc_cd', 'axfin_p', 'axfin_r', 'social_p', 'social_r']]
 
@@ -115,6 +118,7 @@ if use_2016_inputs or use_2016_ratings:
 print("Warning. Check that credit_ratings_scrapy.csv is up to date. If not, download it from "
       "http://www.tradingeconomics.com/country-list/rating")
 
+# TODO: Fitch no longer on tradingeconomics.com. Find a different source? Also, here DBRS is not used. Why?
 # drop rows where only all columns are NaN.
 ratings_raw = load_input_data(root_dir, credit_ratings_file, dtype="str", encoding="utf8", na_values=['NR']).dropna(how="all")
 
@@ -166,40 +170,44 @@ df.loc[df.catDDO == 1, "borrow_abi"] = 1
 df.drop(["catDDO"], axis=1, inplace=True)
 
 
+
 # \mu in the technical paper -- average productivity of capital
 df["avg_prod_k"] = gather_capital_data(root_dir).avg_prod_k
 
 # Hazards data
-# Vulnerability from Pager data
-pager_category_matching = load_input_data(root_dir, "pager_description_to_aggregate_category.csv",
-                                      index_col="pager_description").squeeze()
-pager_excel_file = "PAGER_Inventory_database_v2.0.xlsx"
-pager_data = load_input_data(root_dir, "PAGER_Inventory_database_v2.0.xlsx", sheet_name="Release_Notes", usecols="B:C",
-                             skiprows=56).dropna().squeeze()
+# # Vulnerability from Pager data
+# pager_category_matching = load_input_data(root_dir, "pager_description_to_aggregate_category.csv",
+#                                       index_col="pager_description").squeeze()
+# pager_excel_file = "PAGER_Inventory_database_v2.0.xlsx"
+# pager_data = load_input_data(root_dir, "PAGER_Inventory_database_v2.0.xlsx", sheet_name="Release_Notes", usecols="B:C",
+#                              skiprows=56).dropna().squeeze()
+#
+# # removes spaces and dots from PAGER description
+# pager_data.Description = pager_data.Description.str.strip(". ")
+#
+# # replace double spaces with single spaces
+# pager_data.Description = pager_data.Description.str.replace("  ", " ")
+# pager_data = pager_data.set_index("PAGER-STR")
+#
+# # results in a table with PAGER-STR index and associated category (fragile, median etc.)
+# housing_categories = replace_with_warning(pager_data.Description, pager_category_matching, joiner="\n")
+#
+# # total share of each category of building per country
+# hous_share_rur_res = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Rural_Res'), housing_categories, iso3_to_wb)
+# hous_share_rur_nonres = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Rural_Non_Res'), housing_categories, iso3_to_wb)
+# hous_share_rur = .5 * hous_share_rur_res + .5 * hous_share_rur_nonres
+#
+# hous_share_urb_res = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Urban_Res'), housing_categories, iso3_to_wb)
+# hous_share_urb_nonres = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Urban_Non_Res'), housing_categories, iso3_to_wb)
+# hous_share_urb = .5 * hous_share_urb_res + .5 * hous_share_urb_nonres
+#
+# # the sum(axis=1) of hous_share_rur is equal to 1, so hous_share_rur needs to be weighted by the 1-urbanization_rate
+# # same for hous_share_urb
+# hous_share_tot = (hous_share_rur.stack() * (1 - df.urbanization_rate) + hous_share_urb.stack() * df.urbanization_rate).unstack().dropna()
+# hous_share_tot = hous_share_tot[hous_share_tot.index.isin(iso3_to_wb)]  # the share of building inventory for fragile, median and robust
 
-# removes spaces and dots from PAGER description
-pager_data.Description = pager_data.Description.str.strip(". ")
-
-# replace double spaces with single spaces
-pager_data.Description = pager_data.Description.str.replace("  ", " ")
-pager_data = pager_data.set_index("PAGER-STR")
-
-# results in a table with PAGER-STR index and associated category (fragile, median etc.)
-housing_categories = replace_with_warning(pager_data.Description, pager_category_matching, joiner="\n")
-
-# total share of each category of building per country
-hous_share_rur_res = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Rural_Res'), housing_categories, iso3_to_wb)
-hous_share_rur_nonres = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Rural_Non_Res'), housing_categories, iso3_to_wb)
-hous_share_rur = .5 * hous_share_rur_res + .5 * hous_share_rur_nonres
-
-hous_share_urb_res = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Urban_Res'), housing_categories, iso3_to_wb)
-hous_share_urb_nonres = get_share_from_sheet(load_input_data(root_dir, pager_excel_file, sheet_name='Urban_Non_Res'), housing_categories, iso3_to_wb)
-hous_share_urb = .5 * hous_share_urb_res + .5 * hous_share_urb_nonres
-
-# the sum(axis=1) of hous_share_rur is equal to 1, so hous_share_rur needs to be weighted by the 1-urbanization_rate
-# same for hous_share_urb
-hous_share_tot = (hous_share_rur.stack() * (1 - df.urbanization_rate) + hous_share_urb.stack() * df.urbanization_rate).unstack().dropna()
-hous_share_tot = hous_share_tot[hous_share_tot.index.isin(iso3_to_wb)]  # the share of building inventory for fragile, median and robust
+hous_share_tot = load_input_data(root_dir, "GEM_vulnerability/country_vulnerability_classes.csv",
+                                 index_col="country").drop('iso3', axis=1)
 
 # matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
 hous_cat_vulnerability = load_input_data(root_dir, "aggregate_category_to_vulnerability.csv", sep=";",
@@ -227,10 +235,13 @@ vulnerability_tot.index.name = "country"
 
 # apply \delta_K = f_a * V, and use destroyed capital from GAR data, and fa_threshold to recalculate vulnerability
 # \delta_K, Generated by pre_process\ GAR.ipynb
-frac_value_destroyed_gar = pd.read_csv(
-    os.path.join(intermediate_dir, "frac_value_destroyed_gar_completed.csv"),
-    index_col=["country", "hazard", "rp"]
-).squeeze()
+frac_value_destroyed_gar = load_gir_hazard_losses(root_dir, "GIR_hazard_loss_data/export_all_metrics.csv",
+                                                  default_rp)
+
+# frac_value_destroyed_gar = pd.read_csv(
+#     os.path.join(intermediate_dir, "frac_value_destroyed_gar_completed.csv"),
+#     index_col=["country", "hazard", "rp"]
+# ).squeeze()
 
 # fa is the fraction of asset affected (=exposure): \Delta K = f_a * V; with f_a the exposure.
 # broadcast_simple, substitute the value in frac_value_destroyed_gar by values in vulnerability_tot.
@@ -334,11 +345,13 @@ hazard_ratios = hazard_ratios.drop("Finland")  # because Finland has fa=0 everyw
 
 # Protection
 # TODO: is this applied to all hazards or just floods?
+# TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
 if use_flopros_protection:  # in this code, this protection is overwritten by no_protection
     minrp = 1 / 2  # assumes nobody is flooded more than twice a year
     df["protection"] = load_input_data(root_dir, "protection_national_from_flopros.csv",
                                    index_col="country").squeeze().clip(lower=minrp)
 else:  # assumed a function of the country's income group
+    # note: "protection_level_assumptions.csv" can be found in orig_inputs.
     protection_assumptions = load_input_data(root_dir, "protection_level_assumptions.csv",
                                          index_col="Income group").squeeze()
     df["protection"] = load_input_data(root_dir, "income_groups.csv", header=4, index_col=2)[
@@ -406,13 +419,13 @@ for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], [
     #     header=True
     # )
 
-    # # save vulnerability (total, poor, rich) by country
-    # pd.DataFrame(
-    #     [vulnerability_poor, vulnerability_rich, vulnerability_tot], index=["vp", "vr", "v"]).T.to_csv(
-    #     os.path.join(intermediate_dir + "/v_pr_fromPAGER_shaved_GAR" + outstring + ".csv"),
-    #     encoding="utf-8",
-    #     header=True
-    # )
+    # save vulnerability (total, poor, rich) by country
+    pd.DataFrame(
+        [vulnerability_poor, vulnerability_rich, vulnerability_tot], index=["vp", "vr", "v"]).T.to_csv(
+        os.path.join(intermediate_dir + "/v_pr_fromPAGER_shaved_GAR" + outstring + ".csv"),
+        encoding="utf-8",
+        header=True
+    )
 
     # save macro-economic country economic data
     pol_df_in.to_csv(

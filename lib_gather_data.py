@@ -286,41 +286,35 @@ def get_country_name_dicts(root_dir):
     return any_to_wb, iso3_to_wb, iso2_iso3
 
 
+# TODO: fix protection. In it's current form, df and protection are required to have the same index. Protection needs
+#  to be a Series object with boolean values indicating protection or not.
 def average_over_rp(df, default_rp, protection=None):
     """Aggregation of the outputs over return periods"""
-    if protection is None:
-        protection = pd.Series(0, index=df.index)
 
     # just drops rp index if df contains default_rp
     if default_rp in df.index.get_level_values("rp"):
-        print("default_rp detected, droping rp")
+        print("default_rp detected, dropping rp")
         return (df.T / protection).T.reset_index("rp", drop=True)
 
-    df = df.copy().reset_index("rp")
-    protection = protection.copy().reset_index("rp", drop=True)
+    # compute probability of each return period
+    return_periods = df.index.get_level_values('rp').unique()
+    rp_probabilities = pd.Series(1 / return_periods - np.append(1 / return_periods, 0)[1:], index=return_periods)
 
-    # computes frequency of each return period
-    return_periods = np.unique(df["rp"].dropna())
-
-    proba = pd.Series(np.diff(np.append(1 / return_periods, 0)[::-1])[::-1],
-                      index=return_periods)  # removes 0 from the rps
-
-    # matches return periods and their frequency
-    proba_serie = df["rp"].replace(proba)
+    # match return periods and their frequency
+    probabilities = pd.Series(data=df.reset_index('rp').rp.replace(rp_probabilities).values, index=df.index,
+                              name='probability')
 
     # removes events below the protection level
-    proba_serie[protection > df.rp] = 0
+    if protection:
+        raise NotImplementedError("Warning. Need to fix protection before using.")
+        probabilities[protection] = 0
 
-    # handles cases with multi index and single index (works around pandas limitation)
-    idxlevels = list(range(df.index.nlevels))
-    if idxlevels == [0]:
-        idxlevels = 0
-
-    # average weighted by proba
-    averaged = df.mul(proba_serie, axis=0).groupby(
-        level=idxlevels).sum()  # frequency times each variables in the columns including rp.
-
-    return averaged.drop("rp", axis=1)  # here drop rp.
+    # average weighted by probability
+    res = df.mul(probabilities, axis=0).reset_index('rp', drop=True)
+    res = res.groupby(level=list(range(res.index.nlevels))).sum()
+    if type(df) is pd.Series:
+        res.name = df.name
+    return res
 
 
 def gather_capital_data(root_dir):
@@ -328,7 +322,7 @@ def gather_capital_data(root_dir):
 
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
     # pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
-    pwt_data = load_input_data(root_dir, "pwt1001.xlsx", sheet_name="Data")
+    pwt_data = load_input_data(root_dir, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
     # retain only the most recent year
     pwt_data = pwt_data.groupby("country").apply(lambda x: x.loc[(x['year']) == np.max(x['year']), :])
     pwt_data = pwt_data.drop("country", axis=1).reset_index().drop("level_1", axis=1)

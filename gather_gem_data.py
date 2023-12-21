@@ -22,8 +22,7 @@ GEM_LAT_LOAD_MAT_FIRST_LEVEL = ['MAT99', 'C99', 'CU', 'CR', 'SRC', 'S', 'ME', 'M
 GEM_LAT_LOAD_MAT_SECOND_LEVEL = ['CT99', 'CIP', 'PC', 'CIPPS', 'PCPS', 'S99', 'SL', 'SR', 'SO', 'ME99', 'MEIR', 'MEO',
                                  'MUN99', 'ADO', 'ST99', 'STRUB', 'STDRE', 'CL99', 'CLBRS', 'CLBRH', 'CLBLH', 'CB99',
                                  'CBS', 'CBH', 'MO', 'MR99', 'RS', 'RW', 'RB', 'RCM', 'RBC', 'ET99', 'ETR', 'ETC',
-                                 'ETO',
-                                 'W99', 'WHE', 'WLI', 'WS', 'WWD', 'WBB', 'WO']
+                                 'ETO', 'W99', 'WHE', 'WLI', 'WS', 'WWD', 'WBB', 'WO']
 GEM_LAT_LOAD_MAT_THIRD_LEVEL = ['SC99', 'WEL', 'RIV', 'BOL', 'MO99', 'MON', 'MOM', 'MOL', 'MOC', 'MOCL', 'SP99', 'SPLI',
                                 'SPSA', 'SPTU', 'SPSL', 'SPGR', 'SPBA', 'SPO']
 
@@ -134,19 +133,40 @@ VULNERABILITY_MAPPING = {
 
     'CR': 'robust',  # Concrete, reinforced ==> PAGER 'C'
     'CR+CIP': {  # Concrete, reinforced + Cast in place
-        'LDUAL': {'HBET:3,1': 'median', 'default': 'robust'},
-        'LFINF': {'HBET:3,1': 'median', 'default': 'robust'},
-        'LFM': {'HBET:3,1': 'median', 'default': 'robust'},
-        'default': 'robust',  # other lat load sys values: None, LWAL
+        'LDUAL': {
+            'HBET:3,1': 'median',  # Concrete, reinforced + Cast in place + Dual frame-wall system, low rise
+            'default': 'robust'  # Concrete, reinforced + Cast in place + Dual frame-wall system, other heights
+        },
+        'LFINF': {
+            'HBET:3,1': 'median',  # Concrete, reinforced + Cast in place + Infilled frame, low rise
+            'default': 'robust'  # Concrete, reinforced + Cast in place + Infilled frame, other heights
+        },
+        'LFM': {
+            'HBET:3,1': 'median',  # Concrete, reinforced + Cast in place + Moment frame, low rise
+            'default': 'robust'  # Concrete, reinforced + Cast in place + Moment frame, other heights
+        },
+        'default': 'robust',  # other possible lat load sys values in data: None, LWAL
     },
     'CR+PCPS': {  # Concrete, reinforced + Precast prestressed concrete
-        'LFM': {'HBET:3,1': 'median', 'default': 'robust'},  # define exception as for CR+CIP
+        'LFM': {
+            'HBET:3,1': 'median',  # distinguish heights as for CR+CIP; Concrete, reinforced + Precast prestressed concrete + Moment frame, low rise
+            'default': 'robust'  # distinguish heights as for CR+CIP; Concrete, reinforced + Precast prestressed concrete + Moment frame, other heights
+        },
         'default': 'robust',  # only other lat load system is 'LWAL'
     },
     'CR+PC': {  # Concrete, reinforced + Precast concrete
-        'LDUAL': {'HBET:3,1': 'median', 'default': 'robust'},
-        'LFINF': {'HBET:3,1': 'median', 'default': 'robust'},
-        'LFM': {'HBET:3,1': 'median', 'default': 'robust'},
+        'LDUAL': {
+            'HBET:3,1': 'median',  # Concrete, reinforced + Precast concrete + Dual frame-wall system, low rise
+            'default': 'robust'  # Concrete, reinforced + Precast concrete + Dual frame-wall system, other heights
+        },
+        'LFINF': {
+            'HBET:3,1': 'median',  # Concrete, reinforced + Precast concrete + Infilled frame, low rise
+            'default': 'robust'  # Concrete, reinforced + Precast concrete + Infilled frame, other heights
+        },
+        'LFM': {
+            'HBET:3,1': 'median',  # Concrete, reinforced + Precast concrete + Moment frame, low rise
+            'default': 'robust'  # Concrete, reinforced + Precast concrete + Moment frame, other heights
+        },
         'default': 'robust',  # TODO: What about LFM, LPB which also occur in GEM data but not in PAGER vulnerabilities?
     },
 
@@ -163,16 +183,16 @@ VULNERABILITY_MAPPING = {
     'W+WBB': 'fragile',  # Wood + Bamboo
     'W+WO': 'fragile',  # Wood + Wood other
     'W+WS': 'fragile',  # Wood + Solid Wood ==> PAGER W4
-    'W+WLI': {  # Wood + Light wood members
-        'LPB': 'fragile',
-        'LWAL': 'median',  # PAGER MH (mobile homes) maps to W+WLI/LWAL/HBET:1,2; but it does not seem useful to distinguish here
-        'LFBR': 'fragile',  # TODO discuss
-        'LFM': 'fragile',  # according to the documentation, this is not a valid system for 'Wood'; TODO discuss vulnerability
+    'W+WLI': {
+        'LPB': 'fragile',  # Wood + Light wood members + Post and beam
+        'LWAL': 'median',  # Wood + Light wood members + Wall; PAGER MH (mobile homes) maps to W+WLI/LWAL/HBET:1,2; but it does not seem useful to distinguish here
+        'LFBR': 'fragile',  # Wood + Light wood members + Braced frame TODO discuss
+        'LFM': 'fragile',  # Wood + Light wood members + Moment frame; according to the documentation, this is not a valid system for 'Wood'; TODO discuss vulnerability
         'default': 'fragile',  # TODO discuss
     },
-    'W+WHE': {  # Wood + Heavy wood
-        'LPB': 'median',  # PAGER 'W2'
-        'LWAL': 'fragile',  # PAGER 'W6'
+    'W+WHE': {
+        'LPB': 'median',  # Wood + Heavy wood + Post and beam; defined as PAGER 'W2'
+        'LWAL': 'fragile',  # Wood + Heavy wood + Wall; defined as PAGER 'W6'
         'default': 'fragile',  # TODO discuss
     },
     'ME': 'fragile',  # Metal (except steel) TODO: should metal always be fragile?
@@ -211,10 +231,10 @@ VULNERABILITY_MAPPING = {
 }
 
 # add mapping for occurring full material strings
-VULNERABILITY_MAPPING['S+S99+SC99'] = VULNERABILITY_MAPPING['S']
-VULNERABILITY_MAPPING['S+SL+SC99'] = VULNERABILITY_MAPPING['S+SL']
-VULNERABILITY_MAPPING['MR+MUN99+MR99+MO99'] = VULNERABILITY_MAPPING['MR']
-VULNERABILITY_MAPPING['MUR+MUN99+MO99'] = VULNERABILITY_MAPPING['MUR']
+VULNERABILITY_MAPPING['S+S99+SC99'] = VULNERABILITY_MAPPING['S']  # same as S
+VULNERABILITY_MAPPING['S+SL+SC99'] = VULNERABILITY_MAPPING['S+SL']  # same as S+SL
+VULNERABILITY_MAPPING['MR+MUN99+MR99+MO99'] = VULNERABILITY_MAPPING['MR']  # same as MR
+VULNERABILITY_MAPPING['MUR+MUN99+MO99'] = VULNERABILITY_MAPPING['MUR']  # same as MUR
 
 
 def assign_vulnerability(material, resistance_system, height, mapping):
@@ -260,14 +280,18 @@ def assign_vulnerability(material, resistance_system, height, mapping):
     return 'unknown'
 
 
-def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path):
+def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_class_output=None,
+                    weight_by='replacement_cost'):
     # Initialize an empty DataFrame
     gem_data = pd.DataFrame()
 
-    vars_to_keep = {'ID_0': 'iso3', 'NAME_0': 'country', 'OCCUPANCY': 'building_type',
-                    'MACRO_TAXO': 'macro_taxonomy', 'TAXONOMY': 'taxonomy', 'BUILDINGS': 'n_buildings',
-                    'DWELLINGS': 'n_dwellings', 'OCCUPANTS_PER_ASSET': 'occupants_per_asset',
-                    'TOTAL_AREA_SQM': 'total_area_sqm'}
+    vars_to_keep = {
+        'ID_0': 'iso3', 'NAME_0': 'country', 'OCCUPANCY': 'building_type', 'MACRO_TAXO': 'macro_taxonomy',
+        'TAXONOMY': 'taxonomy', 'BUILDINGS': 'n_buildings',  # 'DWELLINGS': 'n_dwellings',
+        # 'OCCUPANTS_PER_ASSET': 'occupants_per_asset', 'TOTAL_AREA_SQM': 'total_area_sqm',
+        'TOTAL_REPL_COST_USD': 'replacement_cost',
+
+    }
     index_vars = ['ID_0', 'NAME_0', 'OCCUPANCY', 'MACRO_TAXO', 'TAXONOMY']
 
     # Walk through root_dir
@@ -332,6 +356,12 @@ def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path):
     res['vulnerability'] = res.apply(lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height,
                                                                     VULNERABILITY_MAPPING), axis=1)
 
+    if vulnerability_class_output:
+        vulnerability = res.groupby(['iso3', 'country', 'vulnerability'])[weight_by].sum()
+        vulnerability = vulnerability / res.groupby('iso3')[weight_by].sum()
+        vulnerability = vulnerability.unstack()
+        vulnerability.fillna(0, inplace=True)
+        vulnerability.to_csv(vulnerability_class_output)
     return res
 
 
@@ -561,8 +591,9 @@ def get_vulnerability_for_taxonomy(material, system, height, gem_to_vulnerabilit
 
 
 # TODO
-def plot_average_vulnerability(gem_data, gadm_path, v_fragile=.7, v_median=.3, v_robust=.1):
-    vulnerability = gem_data.groupby(['iso3', 'vulnerability']).n_buildings.sum() / gem_data.groupby('iso3').n_buildings.sum()
+def plot_average_vulnerability(gem_data, gadm_path, v_fragile=.7, v_median=.3, v_robust=.1, weight_by='n_buildings'):
+    vulnerability = gem_data.groupby(['iso3', 'country', 'vulnerability'])[weight_by].sum()
+    vulnerability = vulnerability / gem_data.groupby('iso3')[weight_by].sum()
     vulnerability = vulnerability.unstack()
     vulnerability.fillna(0, inplace=True)
     vulnerability['fragile'] = vulnerability['fragile'] * v_fragile
@@ -570,13 +601,15 @@ def plot_average_vulnerability(gem_data, gadm_path, v_fragile=.7, v_median=.3, v
     vulnerability['robust'] = vulnerability['robust'] * v_robust
     vulnerability = vulnerability.sum(axis=1)
 
-    # Load GADM shapefile data
-    world = gpd.read_file(gadm_path)
+    return vulnerability
 
-    # Merge GADM data with gem_data
-    merged = world.set_index('iso3').join(vulnerability)
-
-    # Plot the merged DataFrame
-    fig, ax = plt.subplots(1, 1)
-    merged.plot(column='vulnerability', ax=ax, legend=True, cmap='coolwarm')
-    plt.show()
+    # # Load GADM shapefile data
+    # world = gpd.read_file(gadm_path)
+    #
+    # # Merge GADM data with gem_data
+    # merged = world.set_index('iso3').join(vulnerability)
+    #
+    # # Plot the merged DataFrame
+    # fig, ax = plt.subplots(1, 1)
+    # merged.plot(column='vulnerability', ax=ax, legend=True, cmap='coolwarm')
+    # plt.show()

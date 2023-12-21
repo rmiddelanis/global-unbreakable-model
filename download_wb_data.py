@@ -195,4 +195,4 @@ if use_guessed_social:
 
 print(df.dropna().shape, 'countries!')
 df.dropna(how="all", inplace=True)
-df.to_csv("inputs/wb_data.csv", encoding="utf8")
+df.to_csv("inputs/WB_socio_economic_data/wb_data.csv", encoding="utf8")
