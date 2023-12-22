@@ -123,9 +123,9 @@ def concat_categories(p,np, index):
 # only for updating purposes; load data from inputs or __legacy_structure/inputs, depending on whether it has
 # already been updated
 def load_input_data(root_dir, filename, version='infer', **kwargs):
-    if filename.split('.')[-1] == 'csv':
+    if filename.endswith('.csv') or filename.endswith('.csv.zip'):
         load_func = partial(pd.read_csv, **kwargs)
-    elif filename.split('.')[-1] == 'xlsx':
+    elif filename.endswith('.xlsx'):
         load_func = partial(pd.read_excel, **kwargs)
     else:
         raise ValueError('Unknown file type for file {}'.format(filename))

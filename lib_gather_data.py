@@ -46,10 +46,12 @@ def social_to_tx_and_gsp(economy, cat_info):
     # TODO: doesn't the calculation below include transfers in income?!
     tx_tax = cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum() / \
              cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+    tx_tax.name = 'tau_tax'
 
     # paper equation 5: \gamma_i = t_i / (\Sigma_i \mu \tau k_i)
     gsp = cat_info[["social", "c"]].prod(axis=1, skipna=False) / \
           cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+    gsp.name = 'gamma_SP'
 
     return tx_tax, gsp
 

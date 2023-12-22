@@ -386,7 +386,7 @@ cat_info["fa"] = hazard_ratios.fa.groupby(level=["country", "income_cat"]).mean(
 
 # access to early warnings
 # TODO: again, why average over all hazards and return periods?!
-cat_info["shew"] = hazard_ratios.shew.drop("earthquake", level="hazard").groupby(level=["country", "income_cat"]).mean()
+cat_info["shew"] = hazard_ratios.shew.drop("Earthquake", level="hazard").groupby(level=["country", "income_cat"]).mean()
 
 
 # apply policies
