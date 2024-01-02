@@ -34,7 +34,7 @@ def get_cat_info_and_tau_tax(wb_data_, poverty_head_, avg_prod_k_):
 
     cat_info_["c"] = c
 
-    # compute tau tax and gamma_sp from social_poor and social_nonpoor. CHECKED!
+    # compute tau tax and gamma_sp from social_poor and social_nonpoor.
     tau_tax_, cat_info_["gamma_SP"] = social_to_tx_and_gsp(econ_scope, cat_info_)
 
     # compute capital per income category
@@ -91,7 +91,8 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, poverty_headcount_, p
                                 peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"):
     # Exposure bias from WB povmaps study
     exposure_bias_wb = load_input_data(root_dir, peb_povmaps_filepath_)[["iso", "peb"]].dropna()
-    peb = exposure_bias_wb.set_index(exposure_bias_wb.iso.replace(iso3_to_wb)).peb - 1
+    exposure_bias_wb = exposure_bias_wb.set_index(exposure_bias_wb.iso.replace(iso3_to_wb)).peb - 1
+    exposure_bias_wb.index.name = 'country'
 
     # Exposure bias from older WB DELTARES study
     exposure_bias_deltares = load_input_data(root_dir, peb_deltares_filepath_, skiprows=[0, 1, 2],
@@ -99,19 +100,16 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, poverty_headcount_, p
 
     # Replace with warning is used for columns, for index set_index is needed.
     exposure_bias_deltares["country"] = replace_with_warning(exposure_bias_deltares["Country"], any_to_wb)
+    exposure_bias_deltares = exposure_bias_deltares.set_index('country').drop('Country', axis=1)
+    exposure_bias_deltares.rename({'Nation-wide': 'peb'}, axis=1, inplace=True)
+    exposure_bias_deltares.dropna(inplace=True)
 
-    # Completes with bias from previous study when pov maps not available. squeeze is needed or else it's impossible to
-    # fillna with a dataframe
-    peb.fillna(exposure_bias_deltares.set_index("country").drop(["Country"], axis=1).squeeze(), inplace=True)
-
-    # if use_avg_pe, use averaged pe from global data for countries that don't have PE. Otherwise use 0.
-    if use_avg_pe_:
-        if population_data_ is not None:
-            peb.fillna(wavg(peb, population_data_), inplace=True)
-        else:
-            raise Exception("Population data not available. Cannot use average PE.")
-    else:
-        peb.fillna(0, inplace=True)
+    # Completes with bias from previous study when pov maps not available.
+    peb = pd.merge(exposure_bias_wb, exposure_bias_deltares, how='outer', left_index=True, right_index=True)
+    peb['peb_x'].fillna(peb['peb_y'], inplace=True)
+    peb.drop('peb_y', axis=1, inplace=True)
+    peb.rename({'peb_x': 'peb'}, axis=1, inplace=True)
+    peb = peb.peb
 
     # incorporates exposure bias, but only for (riverine) flood and surge, and gets an updated fa for income_cats
     # fa_hazard_cat = broadcast_simple(fa_guessed_gar,index=income_cats) #fraction of assets affected per hazard and
@@ -126,6 +124,15 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, poverty_headcount_, p
     fa_with_peb = exposure_fa_.copy(deep=True)
     fa_with_peb = fa_with_peb.reset_index()
     fa_with_peb['peb'] = fa_with_peb.country.apply(lambda x: peb.loc[x] if x in peb.index else np.nan)
+
+    # if use_avg_pe, use averaged pe from global data for countries that don't have PE. Otherwise use 0.
+    if use_avg_pe_:
+        if population_data_ is not None:
+            fa_with_peb.peb = fa_with_peb.peb.fillna(wavg(peb, population_data_))
+        else:
+            raise Exception("Population data not available. Cannot use average PE.")
+    else:
+        peb.fillna(0, inplace=True)
 
     selector = (fa_with_peb.hazard.isin(peb_hazards_)) & (fa_with_peb.income_cat == 'poor')
     fa_with_peb.loc[selector, "peb_factor"] = 1 + fa_with_peb.loc[selector, "peb"]
@@ -159,9 +166,9 @@ def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, 
 
     # clip f_a to fa_threshold; increase v s.th. \Delta K = f_a * v is constant
     if np.any(fa_v_merged.fa > fa_threshold_):
-        print("Some exposure values f_a are above fa_threshold. Setting them to fa_threshold and adjusting "
-              "vulnerability accordingly.")
         excess_exposure = fa_v_merged.loc[fa_v_merged.fa > fa_threshold_, 'fa']
+        print(f"Exposure values f_a are above fa_threshold for {len(excess_exposure)} countries. Setting them to "
+              f"fa_threshold and adjusting vulnerability accordingly.")
         r = excess_exposure / fa_threshold_  # ratio by which fa is above fa_threshold
         r.name = 'r'
         fa_v_merged.loc[excess_exposure.index, 'fa'] = fa_threshold_  # set f_a to fa_threshold
@@ -219,7 +226,7 @@ def load_vulnerability_data(poverty_headcount_, income_share_poor_,
 
 
 def compute_borrowing_ability(credit_ratings_, finance_preparedness_, cat_ddo_filepath="contingent_finance_countries.csv"):
-    borrowing_ability_ = (credit_ratings_ + finance_preparedness_) / 2
+    borrowing_ability_ = credit_ratings_.add(finance_preparedness_, fill_value=0) / 2
     contingent_countries = load_input_data(root_dir, cat_ddo_filepath).iloc[:, 0].values
     borrowing_ability_.loc[contingent_countries] = 1
     borrowing_ability_.name = 'borrowing_ability'
