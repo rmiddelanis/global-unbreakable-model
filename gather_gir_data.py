@@ -6,6 +6,21 @@ from pandas_helper import load_input_data
 
 
 def load_gir_hazard_losses(root_dir, gir_filepath, default_rp):
+    """
+    Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
+    country, hazard, and return period. GIR data contains data for hazards Tropical cyclone, Tsunami, Flood (riverine),
+    Landslide, Earthquake. In addition, subhazards are provided for all hazards; Tropical cyclone: (Wind, Storm surge),
+    Tsunami: (Tsunami), Flood: (Flood), Landslide: (Rain, Earthquake), Earthquake: (Earthquake).
+
+    Parameters:
+    root_dir (str): The root directory of the project repository.
+    gir_filepath (str): The relative path (from input_dir) to the data file.
+    default_rp (str): The default return period to use when no return period is provided in the data.
+
+    Returns:
+    pandas.Series: A pandas Series with a MultiIndex of ['country', 'hazard', 'rp'] and values representing the
+    fraction of value destroyed for each country, hazard, and return period.
+    """
     gir_data = load_input_data(root_dir, gir_filepath, version='new')
     gir_data.rename({'value_axis_2': 'rp', 'value_axis_1': 'loss', 'iso3cd': 'iso3',
                      'country_name': 'country'}, axis=1,
@@ -48,6 +63,8 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp):
     # drop Loss exceedance curve
     gir_data = gir_data[gir_data.risk_metric_abbr.isin(['PML', 'AAL'])]
 
+    # TODO: decide whether to use subhazard or hazard
+    # TODO: Landslides
     # drop Landslides for now --> no overlap of subhazards between hazards
     gir_data = gir_data[gir_data.hazard != 'Landslide']
 
