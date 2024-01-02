@@ -265,7 +265,8 @@ excess = fa_guessed_gar.loc[fa_guessed_gar.fa > fa_threshold, 'fa']
 for c in excess.index:
     r = (excess / fa_threshold)[c]  # ratio by which fa is above fa_threshold
     print('\nExcess case:\n', c, '\n', r, '\n', fa_guessed_gar.loc[c], '\n\n')
-    fa_guessed_gar.loc[c, 'fa'] = fa_guessed_gar.loc[c, 'fa'] / r  # set f_a to fa_threshold
+    # fa_guessed_gar.loc[c, 'fa'] = fa_guessed_gar.loc[c, 'fa'] / r  # set f_a to fa_threshold
+    fa_guessed_gar.loc[c, 'fa'] = fa_threshold
     fa_guessed_gar.loc[c, 'v'] = fa_guessed_gar.loc[c, 'v'] * r  # increase v s.th. \Delta K = f_a * v does not change
     print('r=', r)
     print('changed to:', fa_guessed_gar.loc[c], '\n\n')
@@ -306,7 +307,7 @@ pe = df.pop("pe")
 # fa_guessed_gar.update(fa_with_pe) #updates fa_guessed_gar where necessary
 
 # selects just flood and surge
-fa_with_pe = fa_guessed_gar.query("hazard in ['flood','surge']")[['income_cat', 'fa']].copy()
+fa_with_pe = fa_guessed_gar.query("hazard in ['Flood','Storm surge']")[['income_cat', 'fa']].copy()
 fa_with_pe.loc[fa_with_pe['income_cat'] == 'poor', 'fa'] = (
         fa_with_pe.loc[fa_with_pe['income_cat'] == 'poor', 'fa'] * (1 + pe))
 fa_with_pe.loc[fa_with_pe['income_cat'] == 'nonpoor', 'fa'] = (
@@ -332,13 +333,13 @@ hazard_ratios = pd.merge(hazard_ratios.reset_index(), df['shew'].reset_index(), 
     event_level + ['income_cat'])
 
 # set shew (early warning) to 0 for earthquake
-hazard_ratios["shew"] = hazard_ratios.shew.unstack("hazard").assign(earthquake=0).stack(
+hazard_ratios["shew"] = hazard_ratios.shew.unstack("hazard").assign(Earthquake=0).stack(
     "hazard").reset_index().set_index(event_level + ["income_cat"])
 if not no_protection:
     # protection at 0 for earthquake and wind
     hazard_ratios["protection"] = 1
     # TODO: but this sets protection of earthquake and wind to 1?!
-    hazard_ratios["protection"] = hazard_ratios.protection.unstack("hazard").assign(earthquake=1, wind=1).stack(
+    hazard_ratios["protection"] = hazard_ratios.protection.unstack("hazard").assign(Earthquake=1, Wind=1).stack(
         "hazard").reset_index().set_index(event_level)
 hazard_ratios = hazard_ratios.drop("Finland")  # because Finland has fa=0 everywhere.
 
