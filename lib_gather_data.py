@@ -3,6 +3,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import pycountry as pc
 
 from pandas_helper import get_list_of_index_names, broadcast_simple, concat_categories, load_input_data
 
@@ -319,43 +320,164 @@ def average_over_rp(df, default_rp, protection=None):
     return res
 
 
-def gather_capital_data(root_dir):
-    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
+def gather_capital_data(root_dir_):
+    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir_)
 
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
     # pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
-    pwt_data = load_input_data(root_dir, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
-    # retain only the most recent year
-    pwt_data = pwt_data.groupby("country").apply(lambda x: x.loc[(x['year']) == np.max(x['year']), :])
-    pwt_data = pwt_data.drop("country", axis=1).reset_index().drop("level_1", axis=1)
+    pwt_data = load_input_data(root_dir_, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
+    pwt_data = pwt_data.rename({'countrycode': 'iso3'}, axis=1)
 
     # !! NOTE: PWT variable for capital stock has been renamed from 'ck' to 'cn' in the 10.0.0 version
-    # pwt_data = pwt_data[['countrycode', 'country', 'year', 'cgdpo', 'ck']]
-    pwt_data = pwt_data[['countrycode', 'country', 'year', 'cgdpo', 'cn']].rename({'cn': 'ck'}, axis=1)
-    pwt_data["country"] = pwt_data.country.replace(any_to_wb)
-    pwt_data = pwt_data.dropna()
-    pwt_data.set_index("country", inplace=True)
-    pwt_data.drop(["countrycode", 'year'], axis=1, inplace=True)
+    pwt_data = pwt_data[['iso3', 'cgdpo', 'cn', 'year']].dropna()
+
+    # retain only the most recent year
+    pwt_data = pwt_data.groupby("iso3").apply(lambda x: x.loc[(x['year']) == np.nanmax(x['year']), :])
+    pwt_data = pwt_data.reset_index(drop=True).set_index('iso3')
 
     # get capital data for SIDS from GAR
-    sids_list = load_input_data(root_dir, "gar_name_sids.csv")
-    sids_list['wbcountry'] = sids_list.reset_index().country.replace(any_to_wb)
-    sids_list = sids_list[sids_list.isaSID == "SIDS"].dropna().reset_index().wbcountry
-    sids_capital_gar = load_input_data(root_dir, "GAR_capital.csv")[['country', 'GDP', 'K']]
-    sids_capital_gar["country"] = sids_capital_gar.country.replace(any_to_wb)
+    sids_list = load_input_data(root_dir_, "gar_name_sids.csv")
+    sids_list = df_to_iso3(sids_list, 'country')
+    sids_list = sids_list[sids_list.isaSID == "SIDS"].dropna().reset_index().iso3
+    sids_capital_gar = load_input_data(root_dir_, "GAR_capital.csv")[['country', 'GDP', 'K']]
+    sids_capital_gar = df_to_iso3(sids_capital_gar, 'country').drop('country', axis=1)
     sids_capital_gar.dropna(inplace=True)
-    sids_capital_gar = sids_capital_gar.set_index("country")
+    sids_capital_gar = sids_capital_gar.set_index("iso3")
     sids_capital_gar = sids_capital_gar.loc[np.intersect1d(sids_list.values, sids_capital_gar.index.values), :]
     sids_capital_gar = sids_capital_gar.replace(0, np.nan).dropna()
-    sids_capital_gar.rename({'K': 'ck', 'GDP': 'cgdpo'}, axis=1, inplace=True)
+    sids_capital_gar.rename({'K': 'cn', 'GDP': 'cgdpo'}, axis=1, inplace=True)
 
     # merge capital data from PWT and GAR (SIDS)
     # compute average productivity of capital
-    capital_data = pd.merge(pwt_data, sids_capital_gar, on='country', how='outer')
+    capital_data = pd.merge(pwt_data, sids_capital_gar, on='iso3', how='outer')
     capital_data['cgdpo'] = capital_data.cgdpo_x.fillna(capital_data.cgdpo_y)
-    capital_data['ck'] = capital_data.ck_x.fillna(capital_data.ck_y)
-    capital_data.drop(['cgdpo_x', 'cgdpo_y', 'ck_x', 'ck_y'], axis=1, inplace=True)
+    capital_data['ck'] = capital_data.cn_x.fillna(capital_data.cn_y)
+    capital_data.drop(['cgdpo_x', 'cgdpo_y', 'cn_x', 'cn_y', 'year'], axis=1, inplace=True)
     capital_data["avg_prod_k"] = capital_data.cgdpo / capital_data.ck
     capital_data = capital_data.dropna()
 
     return capital_data
+
+
+def integrate_and_find_recovery_rate(v: float, consump_util: float, discount_rate: float, average_productivity: float, lambda_increment: float, years_to_recover: int) -> float:
+    '''Find recovery rate (lambda) given the value of `v` (household vulnerability).
+
+    Args:
+        v (float): Household vulnerability.
+        consump_util (float): Consumption utility.
+        discount_rate (float): Discount rate.
+        average_productivity (float): Average productivity.
+        lambda_increment (float): Lambda increment for the integration.
+        years_to_recover (int): Number of years to recover.
+
+    Returns:
+        float: Recovery rate (lambda).
+    '''
+
+    # No existing solution found, so we need to optimize
+    tot_weeks = 52 * years_to_recover
+    dt = years_to_recover / tot_weeks
+
+    _lambda = 0
+    last_dwdlambda = 0
+
+    while True:
+        dwdlambda = 0
+        for _t in np.linspace(0, years_to_recover, tot_weeks):
+            factor = average_productivity + _lambda
+            part1 = (average_productivity - factor * v * np.e**(-_lambda * _t))**(-consump_util)
+            part2 = _t * factor - 1
+            part3 = np.e**(-_t * (discount_rate + _lambda))
+            dwdlambda += part1 * part2 * part3 * dt
+
+        if (last_dwdlambda < 0 and dwdlambda > 0) or (last_dwdlambda > 0 and dwdlambda < 0) or _lambda > 10:
+            return _lambda
+
+        last_dwdlambda = dwdlambda
+        _lambda += lambda_increment
+
+
+def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
+    if 'iso3' in df_:
+        raise Exception("iso3 column already exists")
+
+    def get_iso3(name):
+        # hard coded country names:
+        hard_coded = {
+            'congo, dem. rep.': 'COD',
+            'democratic republic of the congo': 'COD',
+            'congo, rep.': 'COG',
+            'cape verde': 'CPV',
+            'hong kong sar, china': 'HKG',
+            'china, hong kong special administrative region': 'HKG',
+            'macao sar, china': 'MAC',
+            'china, macao special administrative region': 'MAC',
+            'korea, rep.': 'KOR',
+            "korea, dem. people's rep.": 'PRK',
+            'korea, dem. rep.': 'PRK',
+            'st. vincent and the grenadines': 'VCT',
+            'st. vincent ': 'VCT',
+            'swaziland': 'SWZ',
+            'bolivia (plurinational state of)': 'BOL',
+            'faeroe islands': 'FRO',
+            'iran (islamic republic of)': 'IRN',
+            'iran, islamic rep.': 'IRN',
+            'micronesia (federated states of)': 'FSM',
+            'micronesia, fed. sts': 'FSM',
+            'micronesia, fed. sts.': 'FSM',
+            'the former yugoslav republic of macedonia': 'MKD',
+            'macedonia, fyr': 'MKD',
+            'united states virgin islands': 'VIR',
+            'virgin islands (u.s.)': 'VIR',
+            'venezuela (bolivarian republic of)': 'VEN',
+            'venezuela, rb': 'VEN',
+            'netherlands antilles': 'ANT',
+            'st. kitts and nevis': 'KNA',
+            'st. lucia': 'LCA',
+            'st. martin (french part)': 'MAF',
+            'bahamas, the': 'BHS',
+            'curacao': 'CUW',
+            'egypt, arab rep.': 'EGY',
+            'gambia, the': 'GMB',
+            'lao pdr': 'LAO',
+            'turkiye': 'TUR',
+            'west bank and gaza': 'PSE',
+            'gaza strip': 'PSE',
+            'west bank': 'PSE',
+            'yemen, rep.': 'YEM',
+            'kosovo': 'XKX',
+            'tanzania, united rep.': 'TZA',
+        }
+        if str.lower(name) in hard_coded:
+            return hard_coded[str.lower(name)]
+
+        # try to find in pycountry
+        if pc.countries.get(name=name) is not None:
+            return pc.countries.get(name=name).alpha_3
+        elif pc.countries.get(common_name=name) is not None:
+            return pc.countries.get(common_name=name).alpha_3
+        elif pc.countries.get(official_name=name) is not None:
+            return pc.countries.get(official_name=name).alpha_3
+        else:
+            try:
+                fuzzy_search_res = pc.countries.search_fuzzy(name)
+            except LookupError:
+                if any_to_wb_ is not None and name in any_to_wb_.index and any_to_wb_.loc[name] != name:
+                    if verbose_:
+                        print(f"Warning: {name} not found in pycountry, but found in any_to_wb. Retry with "
+                              f"{any_to_wb_.loc[name]}")
+                    return get_iso3(any_to_wb_.loc[name])
+                else:
+                    print(f"Warning: {name} not found in pycountry, and fuzzy search failed")
+                    return None
+            if len(fuzzy_search_res) == 1:
+                if verbose_:
+                    print(f"Warning: {name} not found in pycountry, but fuzzy search found {fuzzy_search_res[0].name}")
+                return fuzzy_search_res[0].alpha_3
+            elif len(fuzzy_search_res) > 1:
+                print(f"Warning: {name} not found in pycountry, but fuzzy search found multiple matches: {fuzzy_search_res}")
+                return None
+
+    df = df_.copy()
+    df['iso3'] = df[column_name_].apply(lambda x: get_iso3(x))
+    return df

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from lib_gather_data import get_country_name_dicts, average_over_rp
+from lib_gather_data import average_over_rp
 from pandas_helper import load_input_data
 
 
@@ -18,7 +18,7 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp):
     default_rp (str): The default return period to use when no return period is provided in the data.
 
     Returns:
-    pandas.Series: A pandas Series with a MultiIndex of ['country', 'hazard', 'rp'] and values representing the
+    pandas.Series: A pandas Series with a MultiIndex of ['iso3', 'hazard', 'rp'] and values representing the
     fraction of value destroyed for each country, hazard, and return period.
     """
     gir_data = load_input_data(root_dir, gir_filepath, version='new')
@@ -79,16 +79,16 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp):
     # TODO: check that (gir_data.cap_stock_capita * gir_data.pop) = exposed value is valid
     gir_data['frac_value_destroyed'] = gir_data.loss / (gir_data.cap_stock_capita * gir_data['pop'])
     assert np.all(gir_data.frac_value_destroyed >= 0)
-    frac_value_destroyed = gir_data.set_index(['country', 'hazard', 'rp']).frac_value_destroyed.reset_index()
+    frac_value_destroyed = gir_data.set_index(['iso3', 'hazard', 'rp']).frac_value_destroyed.reset_index()
     frac_value_destroyed_aal = frac_value_destroyed[frac_value_destroyed.rp == 0].drop('rp', axis=1)
-    frac_value_destroyed_aal = frac_value_destroyed_aal.set_index(['country', 'hazard']).frac_value_destroyed
+    frac_value_destroyed_aal = frac_value_destroyed_aal.set_index(['iso3', 'hazard']).frac_value_destroyed
     frac_value_destroyed_pml = frac_value_destroyed[frac_value_destroyed.rp != 0]
-    frac_value_destroyed_pml = frac_value_destroyed_pml.set_index(['country', 'hazard', 'rp']).frac_value_destroyed
+    frac_value_destroyed_pml = frac_value_destroyed_pml.set_index(['iso3', 'hazard', 'rp']).frac_value_destroyed
 
     loss_incoherences = frac_value_destroyed_aal - average_over_rp(frac_value_destroyed_pml, default_rp) < 0
     if loss_incoherences.any():
         print(f"Warning: AAL is smaller than the average loss over all return periods for the following "
-              f"(country, hazard) tuples:\n\n{loss_incoherences[loss_incoherences].index.values}.\n\nThis will result "
+              f"(iso3, hazard) tuples:\n\n{loss_incoherences[loss_incoherences].index.values}.\n\nThis will result "
               f"in negative losses for additional return periods.")
 
     def add_rp(aal_data_, pml_data_, new_rp_):
@@ -111,7 +111,7 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp):
             new_data[new_data < 0] = 0
         new_data = new_data.reset_index()
         new_data['rp'] = new_rp_
-        new_data = new_data.set_index(['country', 'hazard', 'rp']).frac_value_destroyed
+        new_data = new_data.set_index(['iso3', 'hazard', 'rp']).frac_value_destroyed
         res = pd.concat([pml_data_, new_data]).sort_index()
         # check that the new data is consistent with the overall AAL. Values should be 0 (tolerance 1e-10)
         max_deviation = (average_over_rp(res, default_rp).squeeze() - aal_data_).abs().max()
@@ -133,7 +133,7 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp):
 
     # add infrequent events for overflow countries
     if len(overflow_countries) > 0:
-        print("overflow in {n} (country, event) tuples.".format(n=len(overflow_countries)))
+        print("overflow in {n} (iso3, event) tuples.".format(n=len(overflow_countries)))
         # clip the new return period loss s.th. it is not higher than the loss for the previously smallest rp times
         # the overflow_factor
         frac_value_destroyed_completed.loc[:, :, new_min_rp] = frac_value_destroyed_completed.loc[:, :, new_min_rp].clip(

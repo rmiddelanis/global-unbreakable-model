@@ -7,7 +7,7 @@ import os
 import pandas as pd
 from pandas import isnull
 
-from lib_gather_data import get_country_name_dicts
+from lib_gather_data import get_country_name_dicts, df_to_iso3
 from pandas_helper import load_input_data
 from wb_api_wrapper import *
 
@@ -193,6 +193,7 @@ guessed_social.columns = ["social_p", "social_r"]
 if use_guessed_social:
     df = df.fillna(guessed_social.clip(lower=0, upper=1))  # replace the NaN with guessed social transfer.
 
-print(df.dropna().shape, 'countries!')
+df = df_to_iso3(df.reset_index(), 'country', any_to_wb)
+df = df[~df.iso3.isna()].set_index('iso3').drop('country', axis=1)
 df.dropna(how="all", inplace=True)
 df.to_csv("inputs/WB_socio_economic_data/wb_data.csv", encoding="utf8")

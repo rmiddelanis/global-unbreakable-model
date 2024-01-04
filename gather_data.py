@@ -1,25 +1,59 @@
 # This script provides data input for the resilience indicator multihazard model.
 # The script was developed by Adrien Vogt-Schilb and improved by Jinqiang Chen and Robin Middelanis.
 import argparse
-import copy
+import tqdm
+from scipy.interpolate import NearestNDInterpolator
 
 from gather_gir_data import load_gir_hazard_losses
 from lib_gather_data import *
 from apply_policy import *
 import pandas as pd
-from pandas import isnull
-from lib_gather_data import replace_with_warning, get_country_name_dicts
+from lib_gather_data import get_country_name_dicts
 
 # TODO: switch to continuous use of ISO3 for better consistency
+
+
+# TODO: Note: compute_recovery_duration does not use the adjusted vulnerability. However, adjusted vulnerability is
+#  hazard specific, so it cannot be used for computing recovery duration.
+# TODO: discuss standard parameter values
+def get_recovery_duration(avg_prod_k_, vulnerability_, discount_rate_, consump_util_=1.5, force_recompute=True,
+                          lambda_increment_=.001, years_to_recover_=20, max_duration_=10, store_output=False):
+    if not force_recompute and os.path.exists(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv')):
+        print("Loading recovery rates from file.")
+        df = pd.read_csv(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv'), index_col=['iso3', 'income_cat'])
+    else:
+        vulnerability__ = vulnerability_.rename({'v_poor': 'poor', 'v_rich': 'nonpoor'}, axis=1)[['poor', 'nonpoor']]
+        vulnerability__ = vulnerability__.stack().reset_index().rename({'level_1': 'income_cat', 0: 'v'}, axis=1)
+        df = pd.merge(vulnerability__, avg_prod_k_, on='iso3', how='inner')
+        df.set_index(['iso3', 'income_cat'], inplace=True)
+        for row in tqdm.tqdm(df.itertuples(), total=len(df), desc="Computing recovery duration"):
+            df.loc[row.Index, 'recovery_rate'] = integrate_and_find_recovery_rate(
+                v=row.v, consump_util=consump_util_, discount_rate=discount_rate_, average_productivity=row.avg_prod_k,
+                lambda_increment=lambda_increment_, years_to_recover=years_to_recover_
+            )
+        df_ = df.loc[df['recovery_rate'] < max_duration_]
+        interp = NearestNDInterpolator(list(zip(df_.v, df_.avg_prod_k)), df_['recovery_rate'])
+        df_error = df.loc[df['recovery_rate'] >= max_duration_]
+        df_error['recovery_rate'] = interp(df_error.v, df_error.avg_prod_k)
+        df = pd.concat((df_, df_error))
+
+        # calculate years needed to recover to 95% of the initial welfare
+        df['recovery_time'] = np.log(1 / 0.05) / df['recovery_rate']
+
+        # recovery years are very high for very low vulnerability, so cap to 20 years for now
+        df.loc[df['recovery_time'] > years_to_recover_, 'recovery_time'] = years_to_recover_
+        if store_output:
+            df[['recovery_rate', 'recovery_time']].to_csv(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv'))
+    return df[['recovery_rate', 'recovery_time']]
 
 
 def get_cat_info_and_tau_tax(wb_data_, poverty_head_, avg_prod_k_):
     axfin = wb_data_[['axfin_p', 'axfin_r']].rename({'axfin_p': 'poor', 'axfin_r': 'nonpoor'}, axis=1).stack(dropna=False)
     axfin.name = 'axfin'
-    axfin.index.names = ['country', 'income_cat']
+    axfin.index.names = ['iso3', 'income_cat']
     social = wb_data_[['social_p', 'social_r']].rename({'social_p': 'poor', 'social_r': 'nonpoor'}, axis=1).stack(dropna=False)
     social.name = 'social'
-    social.index.names = ['country', 'income_cat']
+    social.index.names = ['iso3', 'income_cat']
     cat_info_ = pd.concat([axfin, social], axis=1)
 
     cat_info_.loc[(slice(None), 'poor'), "n"] = poverty_head_
@@ -45,12 +79,13 @@ def get_cat_info_and_tau_tax(wb_data_, poverty_head_, avg_prod_k_):
     # cat_info["fa"] = hazard_ratios.fa.groupby(level=["country", "income_cat"]).mean()
     # cat_info["shew"] = hazard_ratios.shew.drop("earthquake", level="hazard").groupby(
     #     level=["country", "income_cat"]).mean()
+    cat_info_ = cat_info_.loc[cat_info_.drop('n', axis=1).dropna(how='all').index]
     return cat_info_, tau_tax_
 
 
 # TODO: discuss protection approach with Bramka
 # compare to gather_data_old.py: before, protection was simply set to rp=1, since no_protection==True
-def load_protection(index_, protection_data="FLOPROS", min_rp=1,
+def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="Flood+Storm surge",
                     flopros_protection_file="protection_national_from_flopros.csv",
                     protection_level_assumptions_file="protection_level_assumptions.csv",
                     income_groups_file="income_groups.csv"):
@@ -58,26 +93,35 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1,
     # TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
     prot = pd.Series(index=index_, name="protection", data=min_rp).reset_index()
     if protection_data == 'FLOPROS':
-        prot_data = load_input_data(root_dir, flopros_protection_file, index_col="country").squeeze()
+        prot_data = load_input_data(root_dir, flopros_protection_file)
+        prot_data = df_to_iso3(prot_data, 'country', any_to_wb)
+        prot_data = prot_data[~prot_data.iso3.isna()]
+        # set ISO3 country codes and average over duplicates (for West Bank and Gaza Strip, which are both assigned to
+        # ISO3 code PSE)
+        prot_data = prot_data.drop('country', axis=1).groupby('iso3').mean().iloc[:, 0]
     elif protection_data == 'country_income':  # assumed a function of the country's income group
         # note: "protection_level_assumptions.csv" can be found in orig_inputs.
         prot_assumptions = load_input_data(root_dir, protection_level_assumptions_file,
                                            index_col="Income group").squeeze()
-        prot_data = load_input_data(root_dir, income_groups_file, header=4, index_col=2)["Income group"].dropna()
+        prot_data = load_input_data(root_dir, income_groups_file, header=4, index_col=3)["Income group"].dropna()
         prot_data.replace(prot_assumptions, inplace=True)
+        prot_data = prot_data[~prot_data.iso3.isna()]
     else:
         raise ValueError("Unknown protection_data: {}".format(protection_data))
-    prot_data.replace(any_to_wb, inplace=True)
-    prot.protection = prot.country.apply(lambda x: max(min_rp, prot_data.loc[x] if x in prot_data.index else 0))
+    prot.protection = float(min_rp)
+    flood_protection = prot[prot.hazard.isin(hazard_types.split('+'))].iso3.apply(
+        lambda x: max(min_rp, prot_data.loc[x] if x in prot_data.index else 0)
+    )
+    prot.loc[flood_protection.index, 'protection'] = flood_protection
     prot.set_index(index_.names, inplace=True)
     return prot
 
 
 def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthquake"):
-    common_idx = index_.drop(np.setdiff1d(index_.get_level_values('country').unique(), ew_per_country_.index))
+    common_idx = index_.drop(np.setdiff1d(index_.get_level_values('iso3').unique(), ew_per_country_.index))
     ew_per_hazard_ = pd.Series(
         index=common_idx,
-        data=ew_per_country_.loc[common_idx.get_level_values('country')].values,
+        data=ew_per_country_.loc[common_idx.get_level_values('iso3')].values,
         name='ew'
     )
     ew_per_hazard_.index.names = index_.names
@@ -91,16 +135,13 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, poverty_headcount_, p
                                 peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"):
     # Exposure bias from WB povmaps study
     exposure_bias_wb = load_input_data(root_dir, peb_povmaps_filepath_)[["iso", "peb"]].dropna()
-    exposure_bias_wb = exposure_bias_wb.set_index(exposure_bias_wb.iso.replace(iso3_to_wb)).peb - 1
-    exposure_bias_wb.index.name = 'country'
+    exposure_bias_wb = exposure_bias_wb.rename({'iso': 'iso3'}, axis=1).set_index('iso3').peb - 1
 
     # Exposure bias from older WB DELTARES study
     exposure_bias_deltares = load_input_data(root_dir, peb_deltares_filepath_, skiprows=[0, 1, 2],
                                              usecols=["Country", "Nation-wide"])
-
-    # Replace with warning is used for columns, for index set_index is needed.
-    exposure_bias_deltares["country"] = replace_with_warning(exposure_bias_deltares["Country"], any_to_wb)
-    exposure_bias_deltares = exposure_bias_deltares.set_index('country').drop('Country', axis=1)
+    exposure_bias_deltares = df_to_iso3(exposure_bias_deltares, 'Country', any_to_wb)
+    exposure_bias_deltares = exposure_bias_deltares.set_index('iso3').drop('Country', axis=1)
     exposure_bias_deltares.rename({'Nation-wide': 'peb'}, axis=1, inplace=True)
     exposure_bias_deltares.dropna(inplace=True)
 
@@ -123,7 +164,7 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, poverty_headcount_, p
 
     fa_with_peb = exposure_fa_.copy(deep=True)
     fa_with_peb = fa_with_peb.reset_index()
-    fa_with_peb['peb'] = fa_with_peb.country.apply(lambda x: peb.loc[x] if x in peb.index else np.nan)
+    fa_with_peb['peb'] = fa_with_peb.iso3.apply(lambda x: peb.loc[x] if x in peb.index else np.nan)
 
     # if use_avg_pe, use averaged pe from global data for countries that don't have PE. Otherwise use 0.
     if use_avg_pe_:
@@ -193,7 +234,7 @@ def load_vulnerability_data(poverty_headcount_, income_share_poor_,
                             gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
                             aggregate_category_to_vulnerability_filepath_="aggregate_category_to_vulnerability.csv"):
     hous_share_tot = load_input_data(root_dir, gem_vulnerability_classes_filepath_,
-                                     index_col="country").drop('iso3', axis=1)
+                                     index_col="iso3").drop('country', axis=1)
 
     # matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
     hous_cat_vulnerability = load_input_data(root_dir, aggregate_category_to_vulnerability_filepath_, sep=";",
@@ -210,7 +251,7 @@ def load_vulnerability_data(poverty_headcount_, income_share_poor_,
     p = (hous_share_tot.cumsum(axis=1).add(-poverty_headcount_, axis=0)).clip(lower=0)
     poor = (hous_share_tot - p).clip(lower=0)
     rich = hous_share_tot - poor
-    vulnerability_poor_ = ((poor * hous_cat_vulnerability).sum(axis=1, skipna=False) / poverty_headcount_)
+    vulnerability_poor_ = (poor * hous_cat_vulnerability).sum(axis=1, skipna=False) / poverty_headcount_
     vulnerability_poor_.name = "v_poor"
     vulnerability_rich_ = (rich * hous_cat_vulnerability).sum(axis=1, skipna=False) / (1 - poverty_headcount_)
     vulnerability_rich_.name = "v_rich"
@@ -219,15 +260,16 @@ def load_vulnerability_data(poverty_headcount_, income_share_poor_,
     # TODO: why? shouldn't this be simply (hous_share_tot * hous_cat_vulnerability).sum(axis=1) ?
     vulnerability_tot_ = vulnerability_poor_ * income_share_poor_ + vulnerability_rich_ * (1 - income_share_poor_)
     vulnerability_tot_.name = "v_tot"
-    vulnerability_tot_.index.name = "country"
+    vulnerability_tot_.index.name = "iso3"
 
     vulnerability = pd.concat([vulnerability_tot_, vulnerability_poor_, vulnerability_rich_], axis=1)
+    vulnerability.dropna(how='all', inplace=True)
     return vulnerability
 
 
 def compute_borrowing_ability(credit_ratings_, finance_preparedness_, cat_ddo_filepath="contingent_finance_countries.csv"):
     borrowing_ability_ = credit_ratings_.add(finance_preparedness_, fill_value=0) / 2
-    contingent_countries = load_input_data(root_dir, cat_ddo_filepath).iloc[:, 0].values
+    contingent_countries = df_to_iso3(load_input_data(root_dir, cat_ddo_filepath), 'country').iso3.values
     borrowing_ability_.loc[contingent_countries] = 1
     borrowing_ability_.name = 'borrowing_ability'
     return borrowing_ability_
@@ -238,13 +280,13 @@ def load_hfa_data():
     # TODO: check Côte d'Ivoire naming in HFA
     # 2015 hfa
     hfa15 = load_input_data(root_dir, "HFA_all_2013_2015.csv")
-    hfa15 = hfa15.set_index(replace_with_warning(hfa15["Country name"], any_to_wb))
+    hfa15 = hfa15.set_index('ISO 3')
     # READ THE LAST HFA DATA
     hfa_newest = load_input_data(root_dir, "HFA_all_2011_2013.csv")
-    hfa_newest = hfa_newest.set_index(replace_with_warning(hfa_newest["Country name"], any_to_wb))
+    hfa_newest = hfa_newest.set_index('ISO 3')
     # READ THE PREVIOUS HFA DATA
     hfa_previous = load_input_data(root_dir, "HFA_all_2009_2011.csv")
-    hfa_previous = hfa_previous.set_index(replace_with_warning(hfa_previous["Country name"], any_to_wb))
+    hfa_previous = hfa_previous.set_index('ISO 3')
     # most recent values... if no 2011-2013 reporting, we use 2009-2011
 
     # concat to harmonize indices
@@ -264,7 +306,7 @@ def load_hfa_data():
 
     hfa_data = hfa_data[["ew", "prepare_scaleup", "finance_pre"]]
     hfa_data.fillna(0, inplace=True)
-    hfa_data.index.name = 'country'
+    hfa_data.index.name = 'iso3'
 
     return hfa_data
 
@@ -286,13 +328,16 @@ def load_credit_ratings(credit_ratings_file="credit_ratings_scrapy.csv"):
     # In the raw data, Congo has some spaces after "o". If not used str.strip(), nothing is replaced.
     ratings_raw.country_in_ratings = ratings_raw.country_in_ratings.str.strip().replace(["Congo"], ["Congo, Dem. Rep."])
 
-    # change country name to wb's name
-    ratings_raw["country"] = replace_with_warning(ratings_raw.country_in_ratings.apply(str.strip), any_to_wb)
+    # drop EU
+    ratings_raw = ratings_raw[ratings_raw.country_in_ratings != 'EuropeanUnion']
 
-    ratings_raw = ratings_raw.set_index("country").drop("country_in_ratings", axis=1)
+    # change country name to iso3
+    ratings_raw = df_to_iso3(ratings_raw, "country_in_ratings", any_to_wb)
+
+    ratings_raw = ratings_raw.set_index("iso3").drop("country_in_ratings", axis=1)
 
     # mystriper is a function in lib_gather_data. To lower case and strips blanks.
-    ratings_raw = ratings_raw.applymap(mystriper)
+    ratings_raw = ratings_raw.map(mystriper)
 
     # Transforms ratings letters into 1-100 numbers
     rat_disc = load_input_data(root_dir, "cred_rat_dict.csv")
@@ -304,8 +349,7 @@ def load_credit_ratings(credit_ratings_file="credit_ratings_scrapy.csv"):
     # average rating over all agencies
     ratings["rating"] = ratings.mean(axis=1) / 100
 
-    print("No rating available for regions:\n" + "; ".join(
-        ratings[ratings.rating.isna()].index) + ".\nSetting rating to 0.")
+    print("No rating available for regions:", "; ".join(ratings[ratings.rating.isna()].index), ". Setting rating to 0.")
     ratings.rating.fillna(0, inplace=True)
 
     return ratings.rating
@@ -322,7 +366,7 @@ if __name__ == '__main__':
     parser.add_argument('--drop_unused_data', type=bool, default=True, help='Drop unused data')
     parser.add_argument('--update_exposure_with_constant_fa', type=bool, default=True,
                         help='Update exposure data with constant_fa.csv')
-    parser.add_argument('--econ_scope', type=str, default='country', help='Economic scope')
+    parser.add_argument('--econ_scope', type=str, default='iso3', help='Economic scope')
     parser.add_argument('--default_rp', type=str, default='default_rp', help='Default return period')
     parser.add_argument('--poverty_head', type=float, default=0.2, help='Poverty headcount')
     parser.add_argument('--reconstruction_time', type=float, default=3.0, help='Reconstruction time')
@@ -398,8 +442,10 @@ if __name__ == '__main__':
     exposure_fa = apply_poverty_exposure_bias(exposure_fa, use_avg_pe, poverty_headcount, wb_data["pop"])
     if update_exposure_with_constant_fa:
         # TODO: figure out what these data are and if to keep them
-        exposure_fa.update(load_input_data(root_dir, 'constant_fa.csv',
-                                           index_col=['country', 'hazard', 'rp', 'income_cat']).fa)
+        constant_fa = load_input_data(root_dir, 'constant_fa.csv')
+        constant_fa = df_to_iso3(constant_fa, 'country', any_to_wb)
+        constant_fa.set_index(event_level + ['income_cat'], inplace=True)
+        exposure_fa.update(constant_fa.fa)
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake)
@@ -417,6 +463,8 @@ if __name__ == '__main__':
     # get data per income categories TODO: previously also contained fa and early warning, check if this is necessary
     cat_info, tau_tax = get_cat_info_and_tau_tax(wb_data, poverty_headcount, avg_prod_k)
 
+    recovery = get_recovery_duration(avg_prod_k, vulnerability, args.discount_rate, force_recompute=False)
+
     # TODO: include recovery duration
     # TODO: before, also included pov_head, pi (vulnerability reduction with early warning), income_elast, rho,
     #  shareable, max_increased_spending, protection; check if this is necessary
@@ -426,8 +474,9 @@ if __name__ == '__main__':
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
 
-    for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
-                             ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
+    # for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
+    #                          ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
+    for pol_str, pol_opt in [[None, None]]:
 
         # apply policy
         pol_df, pol_cat_info, pol_hazard_ratios, pol_desc = apply_policy(macro.copy(deep=True), cat_info.copy(deep=True),
@@ -454,6 +503,7 @@ if __name__ == '__main__':
         #     header=True
         # )
 
+        # TODO: should save vulenrability_per_income_cat_adjusted instead of vulnerability here!
         # save vulnerability (total, poor, rich) by country
         vulnerability.to_csv(
             os.path.join(intermediate_dir + "/v_pr_fromPAGER_shaved_GAR" + outstring + ".csv"),
