@@ -74,11 +74,6 @@ def get_cat_info_and_tau_tax(wb_data_, poverty_head_, avg_prod_k_):
     # compute capital per income category
     cat_info_["k"] = (1 - cat_info_.social) * cat_info_.c / ((1 - tau_tax_) * avg_prod_k_)
 
-    # TODO: fa and shew were previously also included in cat_info. IMO averaging here makes no sense, leaving it out
-    #  for now.
-    # cat_info["fa"] = hazard_ratios.fa.groupby(level=["country", "income_cat"]).mean()
-    # cat_info["shew"] = hazard_ratios.shew.drop("earthquake", level="hazard").groupby(
-    #     level=["country", "income_cat"]).mean()
     cat_info_ = cat_info_.loc[cat_info_.drop('n', axis=1).dropna(how='all').index]
     return cat_info_, tau_tax_
 
@@ -91,28 +86,28 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
                     income_groups_file="income_groups.csv"):
     # TODO: is this applied to all hazards or just floods?
     # TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
-    prot = pd.Series(index=index_, name="protection", data=min_rp).reset_index()
-    if protection_data == 'FLOPROS':
-        prot_data = load_input_data(root_dir, flopros_protection_file)
-        prot_data = df_to_iso3(prot_data, 'country', any_to_wb)
-        prot_data = prot_data[~prot_data.iso3.isna()]
-        # set ISO3 country codes and average over duplicates (for West Bank and Gaza Strip, which are both assigned to
-        # ISO3 code PSE)
-        prot_data = prot_data.drop('country', axis=1).groupby('iso3').mean().iloc[:, 0]
-    elif protection_data == 'country_income':  # assumed a function of the country's income group
-        # note: "protection_level_assumptions.csv" can be found in orig_inputs.
-        prot_assumptions = load_input_data(root_dir, protection_level_assumptions_file,
-                                           index_col="Income group").squeeze()
-        prot_data = load_input_data(root_dir, income_groups_file, header=4, index_col=3)["Income group"].dropna()
-        prot_data.replace(prot_assumptions, inplace=True)
-        prot_data = prot_data[~prot_data.iso3.isna()]
-    else:
-        raise ValueError("Unknown protection_data: {}".format(protection_data))
-    prot.protection = float(min_rp)
-    flood_protection = prot[prot.hazard.isin(hazard_types.split('+'))].iso3.apply(
-        lambda x: max(min_rp, prot_data.loc[x] if x in prot_data.index else 0)
-    )
-    prot.loc[flood_protection.index, 'protection'] = flood_protection
+    prot = pd.Series(index=index_, name="protection", data=float(min_rp)).reset_index()
+    if protection_data is not None:
+        if protection_data == 'FLOPROS':
+            prot_data = load_input_data(root_dir, flopros_protection_file)
+            prot_data = df_to_iso3(prot_data, 'country', any_to_wb)
+            prot_data = prot_data[~prot_data.iso3.isna()]
+            # set ISO3 country codes and average over duplicates (for West Bank and Gaza Strip, which are both assigned to
+            # ISO3 code PSE)
+            prot_data = prot_data.drop('country', axis=1).groupby('iso3').mean().iloc[:, 0]
+        elif protection_data == 'country_income':  # assumed a function of the country's income group
+            # note: "protection_level_assumptions.csv" can be found in orig_inputs.
+            prot_assumptions = load_input_data(root_dir, protection_level_assumptions_file,
+                                               index_col="Income group").squeeze()
+            prot_data = load_input_data(root_dir, income_groups_file, header=4, index_col=3)["Income group"].dropna()
+            prot_data.replace(prot_assumptions, inplace=True)
+            prot_data = prot_data[~prot_data.iso3.isna()]
+        else:
+            raise ValueError("Unknown protection_data: {}".format(protection_data))
+        flood_protection = prot[prot.hazard.isin(hazard_types.split('+'))].iso3.apply(
+            lambda x: max(min_rp, prot_data.loc[x] if x in prot_data.index else 0)
+        )
+        prot.loc[flood_protection.index, 'protection'] = flood_protection
     prot.set_index(index_.names, inplace=True)
     return prot
 
@@ -358,8 +353,7 @@ def load_credit_ratings(credit_ratings_file="credit_ratings_scrapy.csv"):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
     parser.add_argument('--use_flopros_protection', type=bool, default=True, help='Use FLOPROS for protection')
-    parser.add_argument('--no_protection', type=bool, default=True, help='No protection')
-    parser.add_argument('--use_GLOFRIS_flood', type=bool, default=False, help='Use GLOFRIS for flood')
+    parser.add_argument('--no_protection', action='store_true', help='No protection')
     parser.add_argument('--use_avg_pe', type=bool, default=True, help='Use average PE')
     parser.add_argument('--use_newest_wdi_findex_aspire', type=bool, default=False,
                         help='Use newest WDI, Findex, Aspire')
@@ -371,32 +365,33 @@ if __name__ == '__main__':
     parser.add_argument('--poverty_head', type=float, default=0.2, help='Poverty headcount')
     parser.add_argument('--reconstruction_time', type=float, default=3.0, help='Reconstruction time')
     parser.add_argument('--reduction_vul', type=float, default=0.2, help='Reduction in vulnerability')
-    parser.add_argument('--inc_elast', type=float, default=1.5, help='Income elasticity')
+    parser.add_argument('--income_elasticity', type=float, default=1.5, help='Income elasticity')
     parser.add_argument('--discount_rate', type=float, default=0.06, help='Discount rate')
     parser.add_argument('--asset_loss_covered', type=float, default=0.8, help='Asset loss covered')
     parser.add_argument('--max_support', type=float, default=0.05, help='Maximum support')
     parser.add_argument('--fa_threshold', type=float, default=0.9, help='FA threshold')
     parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
     parser.add_argument('--income_categories', type=str, default="poor+nonpoor", help='Income categories.')
+    parser.add_argument('--optimize_recovery', action='store_true', help='Compute recovery duration')
     args = parser.parse_args()
 
     # use_flopros_protection = args.use_flopros_protection
-    # no_protection = args.no_protection
-    # use_GLOFRIS_flood = args.use_GLOFRIS_flood
+    no_protection = args.no_protection
     use_avg_pe = args.use_avg_pe
     # use_newest_wdi_findex_aspire = args.use_newest_wdi_findex_aspire
     # drop_unused_data = args.drop_unused_data
     default_rp = args.default_rp  # TODO: check if this can be removed
     poverty_headcount = args.poverty_head
     # reconstruction_time = args.reconstruction_time
-    # reduction_vul = args.reduction_vul
-    # inc_elast = args.inc_elast
-    # discount_rate = args.discount_rate
-    # asset_loss_covered = args.asset_loss_covered
-    # max_support = args.max_support
+    reduction_vul = args.reduction_vul
+    income_elasticity = args.income_elasticity
+    discount_rate = args.discount_rate
+    asset_loss_covered = args.asset_loss_covered
+    max_support = args.max_support
     fa_threshold = args.fa_threshold
     update_exposure_with_constant_fa = args.update_exposure_with_constant_fa
     income_categories = args.income_categories.split("+")
+    optimize_recovery = args.optimize_recovery
 
     econ_scope = args.econ_scope
     event_level = [econ_scope, "hazard", "rp"]  # levels of index at which one event happens
@@ -457,15 +452,14 @@ if __name__ == '__main__':
     hazard_ratios = pd.concat((exposure_fa, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
                               axis=1)
 
-    # get protection
-    protection = load_protection(exposure_fa.index, protection_data="FLOPROS", min_rp=1)
-
     # get data per income categories TODO: previously also contained fa and early warning, check if this is necessary
     cat_info, tau_tax = get_cat_info_and_tau_tax(wb_data, poverty_headcount, avg_prod_k)
 
-    recovery = get_recovery_duration(avg_prod_k, vulnerability, args.discount_rate, force_recompute=False)
+    # TODO: fa and shew were previously also included in cat_info. IMO averaging here makes no sense, but keeping it
+    #  for now.
+    cat_info["fa"] = hazard_ratios.fa.groupby(level=["iso3", "income_cat"]).mean()
+    cat_info["ew"] = hazard_ratios.ew.drop("Earthquake", level="hazard").groupby(level=["iso3", "income_cat"]).mean()
 
-    # TODO: include recovery duration
     # TODO: before, also included pov_head, pi (vulnerability reduction with early warning), income_elast, rho,
     #  shareable, max_increased_spending, protection; check if this is necessary
     macro = wb_data.join(hfa_data, how='left')
@@ -473,6 +467,26 @@ if __name__ == '__main__':
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
+    # TODO: these global parameters should eventually be moved elsewhere and not stored in macro!
+    macro['rho'] = discount_rate
+    macro['pi'] = reduction_vul
+    macro['max_increased_spending'] = max_support
+    macro['shareable'] = asset_loss_covered
+    macro['income_elasticity'] = income_elasticity
+
+    # TODO: originally, recovery is set per country; should be per country and income group, therefore later move to
+    #  cat_info
+    if optimize_recovery:
+        recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate, force_recompute=False)
+    else:
+        macro['T_rebuild_K'] = 3.0
+
+    # TODO: originally, protection is set per country; should be per country and hazard, therefore later move to
+    #  hazard_ratios
+    if no_protection:
+        macro['protection'] = 1.0
+    else:
+        protection = load_protection(exposure_fa.index, protection_data="FLOPROS", min_rp=1)
 
     # for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
     #                          ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
@@ -506,28 +520,28 @@ if __name__ == '__main__':
         # TODO: should save vulenrability_per_income_cat_adjusted instead of vulnerability here!
         # save vulnerability (total, poor, rich) by country
         vulnerability.to_csv(
-            os.path.join(intermediate_dir + "/v_pr_fromPAGER_shaved_GAR" + outstring + ".csv"),
+            os.path.join(intermediate_dir + "/scenario__vulnerability_unadjusted" + outstring + ".csv"),
             encoding="utf-8",
             header=True
         )
 
         # save macro-economic country economic data
         pol_df_in.to_csv(
-            os.path.join(intermediate_dir + "/macro" + outstring + ".csv"),
+            os.path.join(intermediate_dir + "/scenario__macro" + outstring + ".csv"),
             encoding="utf-8",
             header=True
         )
 
         # save consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
         pol_cat_info.to_csv(
-            os.path.join(intermediate_dir + "/cat_info" + outstring + ".csv"),
+            os.path.join(intermediate_dir + "/scenario__cat_info" + outstring + ".csv"),
             encoding="utf-8",
             header=True
         )
 
         # save exposure, vulnerability, and access to early warning by country, hazard, return period, income category
         pol_hazard_ratios.to_csv(
-            os.path.join(intermediate_dir + "/hazard_ratios" + outstring + ".csv"),
+            os.path.join(intermediate_dir + "/scenario__hazard_ratios" + outstring + ".csv"),
             encoding="utf-8",
             header=True
         )

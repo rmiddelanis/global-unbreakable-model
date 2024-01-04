@@ -80,72 +80,76 @@ def process_input(macro, cat_info, hazard_ratios, econ_scope, event_level, defau
     macro_event = broadcast_simple(macro, event_level_index)
 
     # updates columns in macro with columns in hazard_ratios_event
-    common_cols = [c for c in macro_event if c in hazard_ratios_event]  # cols in both macro_event, hazard_ratios_event
-    if not common_cols == []:
-        if verbose_replace:
-            flag1 = True
-            print("Replaced in macro: " + ", ".join(common_cols))
-            macro_event[common_cols] = hazard_ratios_event[common_cols]
+    # TODO: this code block fails due to different indexing; in the original model, it is never executed due to empty
+    #  common_cols; removing code block for now
+    # common_cols = [c for c in macro_event if c in hazard_ratios_event]  # cols in both macro_event, hazard_ratios_event
+    # if not common_cols == []:
+    #     if verbose_replace:
+    #         flag1 = True
+    #         print("Replaced in macro: " + ", ".join(common_cols))
+    #         macro_event[common_cols] = hazard_ratios_event[common_cols]
 
     # Broadcast categories to event level
-    cats_event = broadcast_simple(cat_info, event_level_index)
-    cats_event['v'] = hazard_ratios['v']
-    print("pulling 'v' into cats_event from hazard_ratios")
+    cat_info_event = broadcast_simple(cat_info, event_level_index)
+    cat_info_event['v'] = hazard_ratios['v']
+    print("pulling 'v' into cat_info_event from hazard_ratios")
 
     # updates columns in cats with columns in hazard_ratios_event
     # applies mh ratios to relevant columns
-    cols_c = [c for c in cats_event if c in hazard_ratios_event]  # cols in both macro_event, hazard_ratios_event
+    cols_c = [c for c in cat_info_event if c in hazard_ratios_event]  # cols in both macro_event, hazard_ratios_event
     if not cols_c == []:
         hrb = broadcast_simple(hazard_ratios_event[cols_c], cat_info.index).reset_index().set_index(
-            get_list_of_index_names(cats_event))  # explicitly broadcasts hazard ratios to contain income categories
-        cats_event[cols_c] = hrb
+            get_list_of_index_names(cat_info_event))  # explicitly broadcasts hazard ratios to contain income categories
+        cat_info_event[cols_c] = hrb
         if verbose_replace:
             flag2 = True
             print("Replaced in cats: " + ", ".join(cols_c))
-    if (flag1 and flag2):
-        print("Replaced in both: " + ", ".join(np.intersect1d(common_cols, cols_c)))
 
-    return macro_event, cats_event, hazard_ratios_event, macro
+    # TODO: see comment above
+    # if (flag1 and flag2):
+    #     print("Replaced in both: " + ", ".join(np.intersect1d(common_cols, cols_c)))
+
+    return macro_event, cat_info_event, hazard_ratios_event, macro
 
 
-def compute_dK(macro_event, cats_event, event_level, affected_cats):
-    cats_event_ia = concat_categories(cats_event, cats_event, index=affected_cats)
+def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
+    cat_info_event_ia = concat_categories(cat_info_event, cat_info_event, index=affected_cats)
     # counts affected and non affected
-    n_affected = cats_event["n"] * cats_event.fa
-    n_not_affected = cats_event["n"] * (1 - cats_event.fa)
-    cats_event_ia["n"] = concat_categories(n_affected, n_not_affected, index=affected_cats)
+    n_affected = cat_info_event["n"] * cat_info_event.fa
+    n_not_affected = cat_info_event["n"] * (1 - cat_info_event.fa)
+    cat_info_event_ia["n"] = concat_categories(n_affected, n_not_affected, index=affected_cats)
 
     # de_index so can access cats as columns and index is still event
-    cats_event_ia = cats_event_ia.reset_index(["income_cat", "affected_cat"]).sort_index()
+    cat_info_event_ia = cat_info_event_ia.reset_index(["income_cat", "affected_cat"]).sort_index()
 
     # actual vulnerability
     # equation 12: V_a = V(1 - HFA_P2C3 / 5 * \pi)
-    cats_event_ia["v_shew"] = cats_event_ia["v"] * (1 - macro_event["pi"] * cats_event_ia["shew"])
+    cat_info_event_ia["v_ew"] = cat_info_event_ia["v"] * (1 - macro_event["pi"] * cat_info_event_ia["ew"])
 
     # capital losses and total capital losses
-    cats_event_ia["dk"] = cats_event_ia[["k", "v_shew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
+    cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
 
-    cats_event_ia.loc[(cats_event_ia.affected_cat == 'na'), "dk"] = 0
+    cat_info_event_ia.loc[(cat_info_event_ia.affected_cat == 'na'), "dk"] = 0
 
     # "national" losses
-    macro_event["dk_event"] = agg_to_event_level(cats_event_ia, "dk", event_level)
+    macro_event["dk_event"] = agg_to_event_level(cat_info_event_ia, "dk", event_level)
 
     # immediate consumption losses: direct capital losses plus losses through event-scale depression of transfers
-    cats_event_ia["dc"] = (
-            (1 - macro_event["tau_tax"]) * cats_event_ia["dk"]
-            + cats_event_ia["gamma_SP"] * macro_event["tau_tax"] * macro_event["dk_event"]
+    cat_info_event_ia["dc"] = (
+            (1 - macro_event["tau_tax"]) * cat_info_event_ia["dk"]
+            + cat_info_event_ia["gamma_SP"] * macro_event["tau_tax"] * macro_event["dk_event"]
     )
 
     # NPV consumption losses accounting for reconstruction and productivity of capital (pre-response)
-    cats_event_ia["dc_npv_pre"] = cats_event_ia["dc"] * macro_event["macro_multiplier_Gamma"]
+    cat_info_event_ia["dc_npv_pre"] = cat_info_event_ia["dc"] * macro_event["macro_multiplier_Gamma"]
 
-    return macro_event, cats_event_ia
+    return macro_event, cat_info_event_ia
 
 
-def calculate_response(macro_event, cats_event_ia, event_level, helped_cats, option_fee="tax", option_t="data",
+def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats, option_fee="tax", option_t="data",
                        option_pds="unif_poor", option_b="data", loss_measure="dk", fraction_inside=1,
                        share_insured=.25):
-    cats_event_iah = concat_categories(cats_event_ia, cats_event_ia, index=helped_cats).reset_index(
+    cats_event_iah = concat_categories(cat_info_event_ia, cat_info_event_ia, index=helped_cats).reset_index(
         helped_cats.name).sort_index()
     cats_event_iah["help_received"] = 0.0
     cats_event_iah["help_fee"] = 0.0
@@ -242,7 +246,7 @@ def compute_response(macro_event, cats_event_iah, event_level, option_t="data", 
     # print(cats_event_iah_.n.groupby(level=event_level).sum())
 
     # Step 0: define max_aid
-    macro_event_["max_aid"] = (macro_event_["max_increased_spending"] * macro_event_["borrow_abi"]
+    macro_event_["max_aid"] = (macro_event_["max_increased_spending"] * macro_event_["borrowing_ability"]
                                * macro_event_["gdp_pc_pp"])
 
     if option_fee == 'insurance_premium':
@@ -324,7 +328,7 @@ def compute_response(macro_event, cats_event_iah, event_level, option_t="data", 
         # Step 3: total need (cost) for all helped hh clipped at max_aid
         macro_event_["aid"] = (macro_event_["need"]
                                * macro_event_["prepare_scaleup"]
-                               * macro_event_["borrow_abi"]).clip(upper=macro_event_["max_aid"])
+                               * macro_event_["borrowing_ability"]).clip(upper=macro_event_["max_aid"])
     elif option_b == "unif_poor":
         macro_event_["aid"] = macro_event_["need"].clip(upper=macro_event_["max_aid"])
     elif option_b == "max01":
@@ -427,7 +431,7 @@ def compute_dW(macro_event, cats_event_iah, event_level, return_stats=True, retu
 def process_output(macro, out, macro_event, econ_scope, default_rp, is_local_welfare=True):
     # aggregate losses
     # Averages over return periods to get dk_{hazard} and dW_{hazard}
-    # TODO: flopros protection seems to have gotten lost at some point?!
+    # TODO: will move protection level to another location to allow for country- and hazard-specific protection levels
     dkdw_h = average_over_rp(out, default_rp, macro_event["protection"])
 
     # Sums over hazard dk, dW (gets one line per economy)
@@ -542,8 +546,8 @@ def calc_delta_welfare(micro, macro):
     and after (dc_npv_post) event. Line by line"""
     # computes welfare losses per category
     # as per eqs. 9-11 in the technical paper
-    dw = (welf(micro["c"] / macro["rho"], macro["income_elast"])
-          - welf(micro["c"] / macro["rho"] - micro["dc_npv_post"], macro["income_elast"]))
+    dw = (welf(micro["c"] / macro["rho"], macro["income_elasticity"])
+          - welf(micro["c"] / macro["rho"] - micro["dc_npv_post"], macro["income_elasticity"]))
 
     return dw
 
@@ -566,11 +570,11 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
 
     # linearly approximated derivative of welfare with respect to NPV of future consumption
     if is_local_welfare:
-        w_prime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elast"])
-                   - welf(df["gdp_pc_pp"] / rho - h, df["income_elast"])) / (2 * h)
+        w_prime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elasticity"])
+                   - welf(df["gdp_pc_pp"] / rho - h, df["income_elasticity"])) / (2 * h)
     else:
-        w_prime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elast"])
-                   - welf(df["gdp_pc_pp_nat"] / rho - h, df["income_elast"])) / (2 * h)
+        w_prime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elasticity"])
+                   - welf(df["gdp_pc_pp_nat"] / rho - h, df["income_elasticity"])) / (2 * h)
 
     # TODO: @Bramka why? assuming that in the reference case, capital loss equals consumption loss? The paper
     #  states that this would be the case for \mu = \rho

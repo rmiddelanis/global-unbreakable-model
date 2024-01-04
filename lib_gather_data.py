@@ -308,9 +308,9 @@ def average_over_rp(df, default_rp, protection=None):
                               name='probability')
 
     # removes events below the protection level
-    if protection:
-        raise NotImplementedError("Warning. Need to fix protection before using.")
-        probabilities[protection] = 0
+    if protection is not None:
+        protection_index = protection.index[protection.reset_index().protection >= protection.reset_index().rp]
+        probabilities.loc[protection_index] = 0
 
     # average weighted by probability
     res = df.mul(probabilities, axis=0).reset_index('rp', drop=True)

@@ -29,7 +29,7 @@ pd.set_option('display.max_rows', 500)
 gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp
 pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population
 # ppp_over_mer = get_wb_mrv('PA.NUS.PPPC.RF',"ppp_over_mer")#conversion factor PPP over MER
-gdp_pc_cd = get_wb_mrv('ny.gdp.pcap.cd', "gdp_pc_cd")  # gdp per capita mer
+# gdp_pc_cd = get_wb_mrv('ny.gdp.pcap.cd', "gdp_pc_cd")  # gdp per capita mer
 # gap2     =get_wb_mrv('1.0.PGap.2.5usd'  ,"gap2")#poverty gap at 2$
 # head2    =get_wb_mrv('SI.POV.2DAY'      ,"head2")# povety count at 2$
 
@@ -141,7 +141,8 @@ saved60 = get_wb_mrv('fin17a.t.d.8', "saved60") / 100  # Saved this year, income
 search_wb("Urban population ")
 urbanization_rate = get_wb_mrv("SP.URB.TOTL.IN.ZS", "urbanization_rate") / 100
 
-df = pd.concat([gdp_pc_pp, pop, share1, urbanization_rate, gdp_pc_cd], axis=1)
+# df = pd.concat([gdp_pc_pp, pop, share1, urbanization_rate, gdp_pc_cd], axis=1)
+df = pd.concat([gdp_pc_pp, pop, share1, urbanization_rate], axis=1)
 df.index.names = ['country']
 
 # We take only savings as an insurance against destitution
