@@ -17,14 +17,6 @@ use_guessed_social = True  # else keeps nans
 root_dir = os.getcwd()  # get current directory
 any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
-# Pandas display optionsa
-
-pd.set_option('display.max_colwidth', 200)
-pd.set_option('display.width', 200)
-pd.set_option('display.precision', 10)
-pd.set_option('display.max_rows', 500)
-
-
 # World Development Indicators
 gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp
 pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population
@@ -41,11 +33,6 @@ share5 = get_wb_mrv('SI.DST.05th.20', "share5") / 100  # share of income 5th
 
 search_wb("coverage.*poor.*all.*ass.*").query("name=='Coverage in poorest quintile (%) - All Social Assistance '")
 
-poor_cov_assistance = mrv(get_wb("per_sa_allsa.cov_q1_tot"))
-other_cov_assistance = (mrv(get_wb("per_sa_allsa.cov_q2_tot")) + mrv(get_wb("per_sa_allsa.cov_q3_tot")) + mrv(
-    get_wb("per_sa_allsa.cov_q4_tot")) + mrv(get_wb("per_sa_allsa.cov_q5_tot"))) / 4
-
-
 # Aspire
 
 # Averages
@@ -60,8 +47,6 @@ tra2_ = get_wb_series('per_allsp.avt_q2_tot', 'tra2')  # Average per capita tran
 tra3_ = get_wb_series('per_allsp.avt_q3_tot', 'tra3')  # Average per capita transfer held by  -All
 tra4_ = get_wb_series('per_allsp.avt_q4_tot', 'tra4')  # Average per capita transfer held by  -All
 tra5_ = get_wb_series('per_allsp.avt_q5_tot', 'tra5')  # Average per capita transfer held by  -All
-# per_pr_allpr.adq_q1_tot
-
 
 # Adequacies
 ade1_remit = get_wb_series('per_pr_allpr.adq_q1_tot', 'ade1_remit') / 100  # Adequacy of benefits for Q1, Remittances
@@ -122,13 +107,6 @@ y_4 = mrv(rem4 + tra4_) / la_4
 y_5 = mrv(rem5 + tra5_) / la_5
 
 
-search_wb("Saved at a financial institution");
-
-# Findex wave one
-# loan40   =get_wb_mrv('WP11651_5.8'      ,"loan40")/100 #Loan in the past year                                  
-# loan60   =get_wb_mrv('WP11651_5.9'      ,"loan60")/100 #Loaan in the past year                                  
-
-
 # Findex wave two
 # RM: TODO: THESE DATASETS ARE NOT AVAILABLE IN THE WB API --> using id's below
 # loan40 = get_wb_mrv('WP14924_8.8', "loan40") / 100
@@ -136,9 +114,8 @@ search_wb("Saved at a financial institution");
 # saved40 = get_wb_mrv('WP_time_04.8', "saved40") / 100  # Saved at a financial institution in the past year, bottom 40%
 # saved60 = get_wb_mrv('WP_time_04.9', "saved60") / 100  # Saved this year, income, top 60% (% age 15+)
 saved40 = get_wb_mrv("fin17a.t.d.7", "saved40") / 100  # Saved at a financial institution in the past year, bottom 40%
-saved60 = get_wb_mrv('fin17a.t.d.8', "saved60") / 100  # Saved this year, income, top 60% (% age 15+)
+saved60 = get_wb_mrv('fin17a.t.d.8', "saved60") / 100  # Saved at a financial institution in the past year, richest 60%
 
-search_wb("Urban population ")
 urbanization_rate = get_wb_mrv("SP.URB.TOTL.IN.ZS", "urbanization_rate") / 100
 
 # df = pd.concat([gdp_pc_pp, pop, share1, urbanization_rate, gdp_pc_cd], axis=1)

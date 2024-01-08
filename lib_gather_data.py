@@ -1,9 +1,11 @@
+import copy
 import os
 import warnings
 
 import numpy as np
 import pandas as pd
 import pycountry as pc
+from scipy.interpolate import interp1d
 
 from pandas_helper import get_list_of_index_names, broadcast_simple, concat_categories, load_input_data
 
@@ -256,7 +258,6 @@ def get_country_name_dicts(root_dir):
     any_to_wb = load_input_data(root_dir, "any_name_to_wb_name.csv", index_col="any")  # Names to WB names
     any_to_wb = any_to_wb[~any_to_wb.index.duplicated(keep='first')]  # drop duplicates
 
-    # TODO: keep this? why?
     for _c in any_to_wb.index:
         __c = _c.replace(' ', '')
         if __c != _c:
@@ -481,3 +482,135 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
     df = df_.copy()
     df['iso3'] = df[column_name_].apply(lambda x: get_iso3(x))
     return df
+
+
+def agg_to_economy_level(df, seriesname, economy):
+    """ aggregates seriesname in df (string of list of string) to economy (country) level using n in df as weight
+    does NOT normalize weights to 1."""
+    return (df[seriesname].T * df["n"]).T.groupby(level=economy).sum()
+
+
+def unpack_social(macro, cat_info):
+    """Compute social from gamma_SP, taux tax and k and avg_prod_k"""
+    c = cat_info.c
+    gs = cat_info.gamma_SP
+
+    # gdp*tax should give the total social protection. gs=each one's social protection/(total social protection).
+    # social is defined as t(=social protection)/c_i(=consumption)
+    social = gs * macro.gdp_pc_pp * macro.tau_tax / c
+    # TODO: check that social <= 1 ?! The share of income that is obtained from transfers cannot be larger than 1.
+    return social
+
+
+def interpolate_rps(hazard_ratios, protection_list, default_rp):
+    """Extends return periods in hazard_ratios to a finer grid as defined in protection_list, by extrapolating to rp=0.
+    hazard_ratios: dataframe with columns of return periods, index with countries and hazards.
+    protection_list: list of protection levels that hazard_ratios should be extended to.
+    default_rp: function does not do anything if default_rp is already present in hazard_ratios.
+    """
+    # check input
+    if hazard_ratios is None:
+        print("hazard_ratios is None, skipping...")
+        return None
+    if default_rp in hazard_ratios.index:
+        print(f"default_rp={default_rp} already in hazard_ratios, skipping...")
+        return hazard_ratios
+    hazard_ratios_ = hazard_ratios.copy(deep=True)
+    protection_list_ = copy.deepcopy(protection_list)
+
+    flag_stack = False
+    if "rp" in get_list_of_index_names(hazard_ratios_):
+        original_index_names = hazard_ratios_.index.names
+        hazard_ratios_ = hazard_ratios_.unstack("rp")
+        flag_stack = True
+
+    if type(protection_list_) in [pd.Series, pd.DataFrame]:
+        protection_list_ = protection_list_.squeeze().unique().tolist()
+
+    # in case of a Multicolumn dataframe, perform this function on each one of the higher level columns
+    if type(hazard_ratios_.columns) is pd.MultiIndex:
+        keys = hazard_ratios_.columns.get_level_values(0).unique()
+        res = pd.concat(
+            {col: interpolate_rps(hazard_ratios_[col], protection_list_, default_rp) for col in keys},
+            axis=1
+        )
+    else:
+        # actual function
+        # figures out all the return periods to be included
+        all_rps = list(set(protection_list_ + hazard_ratios_.columns.tolist()))
+
+        res = hazard_ratios_.copy()
+
+        # extrapolates linearly towards the 0 return period exposure (this creates negative exposure that is tackled after
+        # interp.) (mind the 0 rp when computing probabilities)
+        if len(res.columns) == 1:
+            res[0] = res.squeeze()
+        else:
+            res[0] = (
+                # exposure of smallest return period
+                res.iloc[:, 0] -
+                # smallest return period * (exposure of second-smallest rp - exposure of smallest rp) /
+                res.columns[0] * (res.iloc[:, 1] - res.iloc[:, 0]) /
+                # (second-smallest rp - smallest rp)
+                (res.columns[1] - res.columns[0])
+            )
+
+        # add new, interpolated values for fa_ratios, assuming constant exposure on the right
+        x = res.columns.values
+        y = res.values
+        res = pd.DataFrame(
+            data=interp1d(x, y, bounds_error=False)(all_rps),
+            index=res.index,
+            columns=all_rps
+        ).sort_index(axis=1).clip(lower=0).ffill(axis=1)
+        res.columns.name = "rp"
+
+    if flag_stack:
+        res = res.stack("rp").reset_index().set_index(original_index_names)
+    return res
+
+
+def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_, axfin_impact_, pi_, default_rp_):
+    macro_ = macro_.copy(deep=True)
+    cat_info_ = cat_info_.copy(deep=True)
+    hazard_ratios_ = hazard_ratios_.copy(deep=True)
+
+    # here we assume that gdp = consumption = prod_from_k
+    macro_["gdp_pc_pp"] = macro_["avg_prod_k"] * agg_to_economy_level(cat_info_, "k", econ_scope_)
+    cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
+                      cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
+                      * agg_to_economy_level(cat_info_, "k", econ_scope_))
+
+    # add finance to diversification and taxation
+    cat_info_["social"] = unpack_social(macro_, cat_info_)
+
+    # from the Paper: "We assume that the fraction of income that is diversified increases by 10% for people who have
+    # bank accounts
+    cat_info_["social"] += axfin_impact_ * cat_info_["axfin"]
+
+    # TODO: here, tau_tax and gamma_SP are (re)computed from social transfers *including* the markup for financial
+    #  inclusion. Check whether this is correct!
+    macro_["tau_tax"], cat_info_["gamma_SP"] = social_to_tx_and_gsp(econ_scope_, cat_info_)
+
+    # Recompute consumption from k and new gamma_SP and tau_tax
+    cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
+                      cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
+                      * agg_to_economy_level(cat_info_, "k", econ_scope_))
+
+    # rebuilding exponentially to 95% of initial stock in reconst_duration
+    three = np.log(1 / 0.05)
+    recons_rate = three / macro_["T_rebuild_K"]
+
+    # Calculation of macroeconomic resilience (Gamma in the technical paper)
+    # \Gamma = (\mu + 3/N) / (\rho + 3/N)
+    macro_["macro_multiplier_Gamma"] = (macro_["avg_prod_k"] + recons_rate) / (macro_["rho"] + recons_rate)
+
+    hazard_ratios_["v"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
+    hazard_ratios_.drop('ew', inplace=True, axis=1)
+
+    # interpolates data to a more granular grid for return periods that includes all protection values that are
+    # potentially not the same in hazard_ratios.
+    # TODO: later, need to account for protection per hazard and country!
+    hazard_ratios_ = interpolate_rps(hazard_ratios_, macro_.protection, default_rp=default_rp_)
+
+    return macro_, cat_info_, hazard_ratios_

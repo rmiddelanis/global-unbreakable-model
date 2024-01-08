@@ -47,13 +47,17 @@ def get_recovery_duration(avg_prod_k_, vulnerability_, discount_rate_, consump_u
     return df[['recovery_rate', 'recovery_time']]
 
 
-def get_cat_info_and_tau_tax(wb_data_, poverty_head_, avg_prod_k_):
+def get_cat_info_and_tau_tax(wb_data_, poverty_head_, avg_prod_k_, axfin_impact_):
     axfin = wb_data_[['axfin_p', 'axfin_r']].rename({'axfin_p': 'poor', 'axfin_r': 'nonpoor'}, axis=1).stack(dropna=False)
     axfin.name = 'axfin'
     axfin.index.names = ['iso3', 'income_cat']
     social = wb_data_[['social_p', 'social_r']].rename({'social_p': 'poor', 'social_r': 'nonpoor'}, axis=1).stack(dropna=False)
     social.name = 'social'
     social.index.names = ['iso3', 'income_cat']
+
+    # TODO: this is again recomputed in recompute_after_policy_change()
+    social += axfin_impact_ * axfin
+
     cat_info_ = pd.concat([axfin, social], axis=1)
 
     cat_info_.loc[(slice(None), 'poor'), "n"] = poverty_head_
@@ -370,6 +374,8 @@ if __name__ == '__main__':
     parser.add_argument('--asset_loss_covered', type=float, default=0.8, help='Asset loss covered')
     parser.add_argument('--max_support', type=float, default=0.05, help='Maximum support')
     parser.add_argument('--fa_threshold', type=float, default=0.9, help='FA threshold')
+    parser.add_argument('--axfin_impact', type=float, default=0.1, help='Increase of the fraction of diversified '
+                                                                        'income through financial inclusion')
     parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
     parser.add_argument('--income_categories', type=str, default="poor+nonpoor", help='Income categories.')
     parser.add_argument('--optimize_recovery', action='store_true', help='Compute recovery duration')
@@ -389,6 +395,7 @@ if __name__ == '__main__':
     asset_loss_covered = args.asset_loss_covered
     max_support = args.max_support
     fa_threshold = args.fa_threshold
+    axfin_impact = args.axfin_impact
     update_exposure_with_constant_fa = args.update_exposure_with_constant_fa
     income_categories = args.income_categories.split("+")
     optimize_recovery = args.optimize_recovery
@@ -434,42 +441,37 @@ if __name__ == '__main__':
     )
 
     # apply poverty exposure bias
-    exposure_fa = apply_poverty_exposure_bias(exposure_fa, use_avg_pe, poverty_headcount, wb_data["pop"])
+    exposure_fa_with_peb = apply_poverty_exposure_bias(exposure_fa, use_avg_pe, poverty_headcount, wb_data["pop"])
     if update_exposure_with_constant_fa:
         # TODO: figure out what these data are and if to keep them
         constant_fa = load_input_data(root_dir, 'constant_fa.csv')
         constant_fa = df_to_iso3(constant_fa, 'country', any_to_wb)
         constant_fa.set_index(event_level + ['income_cat'], inplace=True)
-        exposure_fa.update(constant_fa.fa)
+        exposure_fa_with_peb.update(constant_fa.fa)
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake)
-    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa.index, hfa_data.ew)
+    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, hfa_data.ew)
 
     # concatenate exposure, vulnerability and early warning into one dataframe
     # TODO: In the original code, a 'protection' column was added if no_protection was set to False. However, this
     #  variable was set to True, therefore this option is not implemented here. Refer to gather_data_old.py.
-    hazard_ratios = pd.concat((exposure_fa, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
+    hazard_ratios = pd.concat((exposure_fa_with_peb, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
                               axis=1)
+    # hazard_ratios = pd.concat((exposure_fa_with_peb, vulnerability_per_income_cat_adjusted), axis=1)
 
-    # get data per income categories TODO: previously also contained fa and early warning, check if this is necessary
-    cat_info, tau_tax = get_cat_info_and_tau_tax(wb_data, poverty_headcount, avg_prod_k)
-
-    # TODO: fa and shew were previously also included in cat_info. IMO averaging here makes no sense, but keeping it
-    #  for now.
-    cat_info["fa"] = hazard_ratios.fa.groupby(level=["iso3", "income_cat"]).mean()
-    cat_info["ew"] = hazard_ratios.ew.drop("Earthquake", level="hazard").groupby(level=["iso3", "income_cat"]).mean()
+    # get data per income categories
+    cat_info, tau_tax = get_cat_info_and_tau_tax(wb_data, poverty_headcount, avg_prod_k, axfin_impact)
 
     # TODO: before, also included pov_head, pi (vulnerability reduction with early warning), income_elast, rho,
     #  shareable, max_increased_spending, protection; check if this is necessary
-    macro = wb_data.join(hfa_data, how='left')
-    macro = macro.join(credit_ratings, how='left')
+    macro = wb_data[['gdp_pc_pp', 'pop', 'share1', 'urbanization_rate']]
+    macro = macro.join(hfa_data['prepare_scaleup'], how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
     # TODO: these global parameters should eventually be moved elsewhere and not stored in macro!
     macro['rho'] = discount_rate
-    macro['pi'] = reduction_vul
     macro['max_increased_spending'] = max_support
     macro['shareable'] = asset_loss_covered
     macro['income_elasticity'] = income_elasticity
@@ -486,36 +488,47 @@ if __name__ == '__main__':
     if no_protection:
         macro['protection'] = 1.0
     else:
-        protection = load_protection(exposure_fa.index, protection_data="FLOPROS", min_rp=1)
+        protection = load_protection(exposure_fa_with_peb.index, protection_data="FLOPROS", min_rp=1)
+
+    # clean and harmonize data frames
+    macro.dropna(inplace=True)
+    cat_info.dropna(inplace=True)
+    hazard_ratios.dropna(inplace=True)
+    common_regions = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index]
+    macro = macro.loc[common_regions]
+    cat_info = cat_info.loc[common_regions]
+    hazard_ratios = hazard_ratios.loc[common_regions]
 
     # for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
     #                          ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
     for pol_str, pol_opt in [[None, None]]:
 
         # apply policy
-        pol_df, pol_cat_info, pol_hazard_ratios, pol_desc = apply_policy(macro.copy(deep=True), cat_info.copy(deep=True),
-                                                                         hazard_ratios.copy(deep=True), event_level,
-                                                                         pol_str, pol_opt)
+        scenario_macro, scenario_cat_info, scenario_hazard_ratios, pol_desc = apply_policy(
+            m_=macro.copy(deep=True),
+            c_=cat_info.copy(deep=True),
+            h_=hazard_ratios.copy(deep=True),
+            event_level=event_level,
+            policy_name=pol_str,
+            policy_opt=pol_opt
+        )
 
-        # clean up and save out
-        # drop_unused_data:
-        pol_cat_info = pol_cat_info.drop(np.intersect1d(["social"], pol_cat_info.columns), axis=1).dropna()
-        pol_df_in = pol_df.drop(np.intersect1d(["social_p", "social_r", "pov_head", "pe", "vp", "vr", "axfin_p",
-                                                "axfin_r", "rating", "finance_pre"], pol_df.columns),
-                                axis=1).dropna()
-
-        pol_df_in = pol_df_in.drop(np.intersect1d(["es"], pol_df_in.columns), axis=1, errors="ignore").dropna()
+        # TODO: ideally, all variables that are computed in gather_data.py should be computed in
+        #  recomputed_after_policy_change(); before, only input data should be loaded to avoid double computation and
+        #  recomputation errors.
+        scenario_macro_rec, scenario_cat_info_rec, scenario_hazard_ratios_rec = recompute_after_policy_change(
+            macro_=scenario_macro,
+            cat_info_=scenario_cat_info,
+            hazard_ratios_=scenario_hazard_ratios,
+            econ_scope_=econ_scope,
+            axfin_impact_=axfin_impact,
+            pi_=reduction_vul,
+            default_rp_=default_rp,
+        )
 
         # Save all data
-        print(pol_df_in.shape[0], 'countries in analysis')
+        print(scenario_macro_rec.shape[0], 'countries in analysis')
         outstring = (f"_{pol_str}" if pol_str is not None else '') + (str(pol_opt) if pol_opt is not None else '')
-
-        # # save exposure and vulnerability by return country, hazard, return period, income category
-        # fa_guessed_gar.to_csv(
-        #     os.path.join(intermediate_dir, "fa_guessed_from_GAR_and_PAGER_shaved" + outstring + ".csv"),
-        #     encoding="utf-8",
-        #     header=True
-        # )
 
         # TODO: should save vulenrability_per_income_cat_adjusted instead of vulnerability here!
         # save vulnerability (total, poor, rich) by country
@@ -526,21 +539,21 @@ if __name__ == '__main__':
         )
 
         # save macro-economic country economic data
-        pol_df_in.to_csv(
+        scenario_macro_rec.to_csv(
             os.path.join(intermediate_dir + "/scenario__macro" + outstring + ".csv"),
             encoding="utf-8",
             header=True
         )
 
         # save consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
-        pol_cat_info.to_csv(
+        scenario_cat_info_rec.to_csv(
             os.path.join(intermediate_dir + "/scenario__cat_info" + outstring + ".csv"),
             encoding="utf-8",
             header=True
         )
 
         # save exposure, vulnerability, and access to early warning by country, hazard, return period, income category
-        pol_hazard_ratios.to_csv(
+        scenario_hazard_ratios.to_csv(
             os.path.join(intermediate_dir + "/scenario__hazard_ratios" + outstring + ".csv"),
             encoding="utf-8",
             header=True

@@ -26,7 +26,7 @@ for pol_str in ['']:
         option_b = 'data'
         option_t = 'data'
 
-    print('optionFee =', option_fee, 'optionPDS =', option_pds, 'optionB =', option_b, 'optionT =', option_t)
+    print(f'optionFee ={option_fee}, optionPDS ={option_pds}, optionB ={option_b}, optionT ={option_t}')
 
     # Options and parameters
     econ_scope = "iso3"  # province, deparmtent
@@ -38,38 +38,38 @@ for pol_str in ['']:
     # read data
 
     # macro-economic country economic data
-    macro = pd.read_csv(os.path.join(intermediate_dir, 'scenario__macro' + pol_str + ".csv"), index_col=econ_scope).dropna()
+    macro = pd.read_csv(os.path.join(intermediate_dir, 'scenario__macro' + pol_str + ".csv"), index_col=econ_scope)
 
     # consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
     cat_info = pd.read_csv(os.path.join(intermediate_dir, 'scenario__cat_info' + pol_str + ".csv"),
-                           index_col=[econ_scope, "income_cat"]).dropna()
+                           index_col=[econ_scope, "income_cat"])
 
     # exposure, vulnerability, and access to early warning by country, hazard, return period, income category
     hazard_ratios = pd.read_csv(os.path.join(intermediate_dir, 'scenario__hazard_ratios' + pol_str + ".csv"),
-                                index_col=event_level + ["income_cat"]).dropna()
+                                index_col=event_level + ["income_cat"])
 
     # compute
-    # (re)compute some of the data
-    # replace common columns in macro_event and cats_event with those in hazard_ratios_event
-    macro_event, cat_info_event, hazard_ratios_event, macro = process_input(
+    # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
+    macro_event, cat_info_event = reshape_input(
         macro=macro,
         cat_info=cat_info,
         hazard_ratios=hazard_ratios,
-        econ_scope=econ_scope,
         event_level=event_level,
         default_rp=default_rp,
-        verbose_replace=True
     )
 
-    # calculate the actual vulnerability, the potential damage to capital, and consumption
+    # calculate the potential damage to capital, and consumption
+    # adds 'dk', 'dc', 'dc_npv_pre' to cat_info_event_ia, also adds aggregated 'dk' to macro_event
     macro_event, cat_info_event_ia = compute_dK(
         macro_event=macro_event,
         cat_info_event=cat_info_event,
         event_level=event_level,
-        affected_cats=affected_cats
+        affected_cats=affected_cats,
     )
 
     # calculate the post-disaster response
+    # adds 'error_incl', 'error_excl', 'max_aid', 'need', 'aid', 'unif_aid' to macro_event
+    # adds 'help_received', 'help_fee', 'help_needed' to cat_info_event_ia(h)
     macro_event, cat_info_event_iah = calculate_response(
         macro_event=macro_event, 
         cat_info_event_ia=cat_info_event_ia,
@@ -81,39 +81,43 @@ for pol_str in ['']:
         option_b=option_b, 
         loss_measure="dk", 
         fraction_inside=1,
-        share_insured=.25
+        share_insured=.25,
     )
 
-    # Save output
-    macro_event.to_csv('output/macro_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8",
-                       header=True)
-    cat_info_event_iah.to_csv('output/cats_event_iah_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv',
-                              encoding="utf-8", header=True)
-
-    # compute welfare losses and aggregate to event-level (ie no more income_cat, helped_cat, affected_cat, n)
-    out, iah = compute_dW(
+    # compute welfare losses
+    # adds 'dc_npv_post', 'dw' to cat_info_event_iah
+    cat_info_event_iah = compute_dW(
         macro_event=macro_event,
-        cats_event_iah=cat_info_event_iah,
-        event_level=event_level,
-        return_stats=True,
-        return_iah=True
+        cat_info_event_iah_=cat_info_event_iah,
     )
 
-    # Computes
-    # results
-    results = process_output(
+    # aggregate to event-level (ie no more income_cat, helped_cat, affected_cat, n)
+    # Computes results
+    # results consists of all variables from macro, as well as 'aid' and 'dk' from macro_event
+    results = prepare_output(
         macro=macro,
-        out=out,
         macro_event=macro_event,
+        cat_info_event_iah=cat_info_event_iah,
+        event_level=event_level,
         econ_scope=econ_scope,
         default_rp=default_rp,
-        is_local_welfare=True
+        is_local_welfare=True,
+        return_stats=True,
     )
 
-    # Save output
+    # save macro_event
+    macro_event.to_csv('output/macro_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8",
+                       header=True)
+
+    # save cat_info_event_iah
+    cat_info_event_iah.to_csv('output/iah_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8",
+                              header=True)
+
+    # Save results
     results.to_csv('output/results_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8",
                    header=True)
-    iah.to_csv('output/iah_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8", header=True)
 
     results_policy_summary[pol_str + '_dw_tot_curr'] = results['dWtot_currency']
+
+# save results_policy_summary
 results_policy_summary.to_csv('output/results_policy_summary.csv')
