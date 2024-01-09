@@ -258,11 +258,6 @@ def get_country_name_dicts(root_dir):
     any_to_wb = load_input_data(root_dir, "any_name_to_wb_name.csv", index_col="any")  # Names to WB names
     any_to_wb = any_to_wb[~any_to_wb.index.duplicated(keep='first')]  # drop duplicates
 
-    for _c in any_to_wb.index:
-        __c = _c.replace(' ', '')
-        if __c != _c:
-            any_to_wb.loc[__c] = any_to_wb.loc[_c, 'wb_name']
-
     any_to_wb = any_to_wb.squeeze()
 
     # iso3 to wb country name table
@@ -287,6 +282,17 @@ def get_country_name_dicts(root_dir):
     any_to_wb.loc["North Macedonia"] = "Macedonia, FYR"
     any_to_wb.loc["Eswatini"] = "Swaziland"
     any_to_wb.loc['U.R. of Tanzania: Mainland'] = 'Tanzania'
+    any_to_wb.loc['Taiwan, China'] = 'Taiwan'
+    any_to_wb.loc['Czechia'] = 'Czech Republic'
+
+    for _c in any_to_wb.index:
+        _c_nospace = _c.replace(' ', '')
+        _c_lower = str.lower(_c)
+        _c_lower_nospace = str.lower(_c_nospace)
+        for __c in [_c_nospace, _c_lower, _c_lower_nospace]:
+            if __c != _c:
+                any_to_wb.loc[__c] = any_to_wb.loc[_c]
+
     return any_to_wb, iso3_to_wb, iso2_iso3
 
 
@@ -603,6 +609,7 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
 
     # Calculation of macroeconomic resilience (Gamma in the technical paper)
     # \Gamma = (\mu + 3/N) / (\rho + 3/N)
+    # TODO: need to make macro_multiplier_Gamma income_cat dependent
     macro_["macro_multiplier_Gamma"] = (macro_["avg_prod_k"] + recons_rate) / (macro_["rho"] + recons_rate)
 
     hazard_ratios_["v"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
