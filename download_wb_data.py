@@ -79,6 +79,8 @@ cat_info_df.index.names = ['country', 'income_cat']
 income_shares = download_cat_info(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
                                   id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
                                   most_recent_value=True, upper_bound=100, lower_bound=0) / 100
+# make sure income shares add up to 1
+income_shares /= income_shares.unstack('income_cat').sum(axis=1)
 cat_info_df = clean_merge_update(cat_info_df, income_shares)
 
 
