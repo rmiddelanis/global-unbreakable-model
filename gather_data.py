@@ -12,8 +12,6 @@ from apply_policy import *
 import pandas as pd
 from lib_gather_data import get_country_name_dicts
 
-# TODO: switch to continuous use of ISO3 for better consistency
-
 
 # TODO: Note: compute_recovery_duration does not use the adjusted vulnerability. However, adjusted vulnerability is
 #  hazard specific, so it cannot be used for computing recovery duration.
@@ -351,6 +349,7 @@ if __name__ == '__main__':
     parser.add_argument('--poor_categories', type=str, default="q1", help='Poor categories, separated'
                                                                           'by \'+\'.')
     parser.add_argument('--optimize_recovery', action='store_true', help='Compute recovery duration')
+    parser.add_argument('--test_run', action='store_true', help='If true, only runs with country USA')
     args = parser.parse_args()
 
     # use_flopros_protection = args.use_flopros_protection
@@ -371,6 +370,7 @@ if __name__ == '__main__':
     update_exposure_with_constant_fa = args.update_exposure_with_constant_fa
     poor_categories = args.poor_categories.split("+")
     optimize_recovery = args.optimize_recovery
+    test_run = args.test_run
 
     econ_scope = args.econ_scope
     event_level = [econ_scope, "hazard", "rp"]  # levels of index at which one event happens
@@ -389,14 +389,24 @@ if __name__ == '__main__':
     wb_data_macro = load_input_data(root_dir, "WB_socio_economic_data/wb_data_macro.csv").set_index(econ_scope)
     wb_data_cat_info = load_input_data(root_dir, "WB_socio_economic_data/wb_data_cat_info.csv").set_index(
         [econ_scope, 'income_cat'])
+    # TODO: remove later
+    if test_run:
+        wb_data_macro = wb_data_macro.loc[['USA']]
+        wb_data_cat_info = wb_data_cat_info.loc[['USA']]
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
     # read HFA data
     hfa_data = load_hfa_data()
+    # TODO: remove later
+    if test_run:
+        hfa_data = hfa_data.loc[['USA']]
 
     # read credit ratings
     credit_ratings = load_credit_ratings()
+    # TODO: remove later
+    if test_run:
+        credit_ratings = credit_ratings.loc[['USA']]
 
     # compute country borrowing ability
     borrowing_ability = compute_borrowing_ability(credit_ratings, hfa_data.finance_pre,
@@ -411,6 +421,9 @@ if __name__ == '__main__':
     # load total hazard losses per return period (on the country level)
     hazard_loss_tot = load_gir_hazard_losses(root_dir,
                                              "GIR_hazard_loss_data/export_all_metrics.csv.zip", default_rp)
+    # TODO: remove later
+    if test_run:
+        hazard_loss_tot = hazard_loss_tot.loc[['USA']]
 
     # compute exposure and adjust vulnerability (per income category) for excess exposure
     exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(
@@ -461,6 +474,9 @@ if __name__ == '__main__':
     #  cat_info
     if optimize_recovery:
         recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate, force_recompute=False)
+        # TODO: remove later
+        if test_run:
+            recovery = recovery.loc[['USA']]
     else:
         macro['T_rebuild_K'] = 3.0
 
@@ -470,6 +486,9 @@ if __name__ == '__main__':
         macro['protection'] = 1.0
     else:
         protection = load_protection(exposure_fa_with_peb.index, protection_data="FLOPROS", min_rp=1)
+        # TODO: remove later
+        if test_run:
+            protection = protection.loc[['USA']]
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)
