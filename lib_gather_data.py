@@ -47,13 +47,14 @@ def social_to_tx_and_gsp(economy, cat_info):
     # paper equation 4: \tau = (\Sigma_i t_i) / (\Sigma_i \mu k_i)
     # --> tax is the sum of all transfers paid over the sum of all income (excluding transfers ?!)
     # TODO: doesn't the calculation below include transfers in income?!
-    tx_tax = cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum() / \
-             cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+    tx_tax = (cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+              / cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
     tx_tax.name = 'tau_tax'
 
+    # income from social protection PER PERSON as fraction of PER CAPITA social protection
     # paper equation 5: \gamma_i = t_i / (\Sigma_i \mu \tau k_i)
-    gsp = cat_info[["social", "c"]].prod(axis=1, skipna=False) / \
-          cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+    gsp = (cat_info[["social", "c"]].prod(axis=1, skipna=False)
+           / cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
     gsp.name = 'gamma_SP'
 
     return tx_tax, gsp
@@ -530,8 +531,10 @@ def interpolate_rps(hazard_ratios, protection_list, default_rp):
         hazard_ratios_ = hazard_ratios_.unstack("rp")
         flag_stack = True
 
-    if type(protection_list_) in [pd.Series, pd.DataFrame]:
-        protection_list_ = protection_list_.squeeze().unique().tolist()
+    if type(protection_list_) is pd.DataFrame:
+        protection_list_ = protection_list_.squeeze()
+    if type(protection_list_) is pd.Series:
+        protection_list_ = protection_list_.unique().tolist()
 
     # in case of a Multicolumn dataframe, perform this function on each one of the higher level columns
     if type(hazard_ratios_.columns) is pd.MultiIndex:
@@ -592,7 +595,9 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
 
     # from the Paper: "We assume that the fraction of income that is diversified increases by 10% for people who have
     # bank accounts
-    cat_info_["social"] += axfin_impact_ * cat_info_["axfin"]
+    cat_info_['social'] = cat_info_.social + cat_info_.axfin * axfin_impact_
+    # TODO: new variable 'diversified_share' instead of changing 'social' --> need to adjust in the remeinder of the model
+    # cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
 
     # TODO: here, tau_tax and gamma_SP are (re)computed from social transfers *including* the markup for financial
     #  inclusion. Check whether this is correct!
