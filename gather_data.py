@@ -349,7 +349,7 @@ if __name__ == '__main__':
     parser.add_argument('--poor_categories', type=str, default="q1", help='Poor categories, separated'
                                                                           'by \'+\'.')
     parser.add_argument('--optimize_recovery', action='store_true', help='Compute recovery duration')
-    parser.add_argument('--test_run', action='store_true', help='If true, only runs with country MEX')
+    parser.add_argument('--test_run', action='store_true', help='If true, only runs with country USA')
     args = parser.parse_args()
 
     # use_flopros_protection = args.use_flopros_protection
@@ -391,8 +391,9 @@ if __name__ == '__main__':
         [econ_scope, 'income_cat'])
     # TODO: remove later
     if test_run:
-        wb_data_macro = wb_data_macro.loc[['MEX']]
-        wb_data_cat_info = wb_data_cat_info.loc[['MEX']]
+        wb_data_macro_full = wb_data_macro
+        wb_data_macro = wb_data_macro.loc[['USA']]
+        wb_data_cat_info = wb_data_cat_info.loc[['USA']]
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
@@ -400,13 +401,13 @@ if __name__ == '__main__':
     hfa_data = load_hfa_data()
     # TODO: remove later
     if test_run:
-        hfa_data = hfa_data.loc[['MEX']]
+        hfa_data = hfa_data.loc[['USA']]
 
     # read credit ratings
     credit_ratings = load_credit_ratings()
     # TODO: remove later
     if test_run:
-        credit_ratings = credit_ratings.loc[['MEX']]
+        credit_ratings = credit_ratings.loc[['USA']]
 
     # compute country borrowing ability
     borrowing_ability = compute_borrowing_ability(credit_ratings, hfa_data.finance_pre,
@@ -423,7 +424,7 @@ if __name__ == '__main__':
                                              "GIR_hazard_loss_data/export_all_metrics.csv.zip", default_rp)
     # TODO: remove later
     if test_run:
-        hazard_loss_tot = hazard_loss_tot.loc[['MEX']]
+        hazard_loss_tot = hazard_loss_tot.loc[['USA']]
 
     # compute exposure and adjust vulnerability (per income category) for excess exposure
     exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(
@@ -432,7 +433,7 @@ if __name__ == '__main__':
 
     # apply poverty exposure bias
     exposure_fa_with_peb = apply_poverty_exposure_bias(exposure_fa, use_avg_pe, n_quantiles, poor_categories,
-                                                       wb_data_macro['pop'])
+                                                       wb_data_macro['pop'] if not test_run else wb_data_macro_full['pop'])
     # TODO: figure out what these data are and if to keep them
     # TODO: constant_fa does not come in five income categories; ignoring for now
     # if update_exposure_with_constant_fa:
@@ -476,7 +477,7 @@ if __name__ == '__main__':
         recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate, force_recompute=False)
         # TODO: remove later
         if test_run:
-            recovery = recovery.loc[['MEX']]
+            recovery = recovery.loc[['USA']]
     else:
         macro['T_rebuild_K'] = 3.0
 
@@ -488,7 +489,7 @@ if __name__ == '__main__':
         protection = load_protection(exposure_fa_with_peb.index, protection_data="FLOPROS", min_rp=1)
         # TODO: remove later
         if test_run:
-            protection = protection.loc[['MEX']]
+            protection = protection.loc[['USA']]
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)
