@@ -45,16 +45,15 @@ def social_to_tx_and_gsp(economy, cat_info):
     """(tx_tax, gamma_SP) from cat_info[["social","c","n"]] """
 
     # paper equation 4: \tau = (\Sigma_i t_i) / (\Sigma_i \mu k_i)
-    # --> tax is the sum of all transfers paid over the sum of all income (excluding transfers ?!)
-    # TODO: doesn't the calculation below include transfers in income?!
-    tx_tax = (cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+    # --> tax is the sum of all transfers paid over the sum of all income
+    tx_tax = (cat_info[["diversified_share", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
               / cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
     tx_tax.name = 'tau_tax'
 
     # income from social protection PER PERSON as fraction of PER CAPITA social protection
     # paper equation 5: \gamma_i = t_i / (\Sigma_i \mu \tau k_i)
-    gsp = (cat_info[["social", "c"]].prod(axis=1, skipna=False)
-           / cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
+    gsp = (cat_info[["diversified_share", "c"]].prod(axis=1, skipna=False)
+           / cat_info[["diversified_share", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
     gsp.name = 'gamma_SP'
 
     return tx_tax, gsp
@@ -497,18 +496,6 @@ def agg_to_economy_level(df, seriesname, economy):
     return (df[seriesname].T * df["n"]).T.groupby(level=economy).sum()
 
 
-def unpack_social(macro, cat_info):
-    """Compute social from gamma_SP, taux tax and k and avg_prod_k"""
-    c = cat_info.c
-    gs = cat_info.gamma_SP
-
-    # gdp*tax should give the total social protection. gs=each one's social protection/(total social protection).
-    # social is defined as t(=social protection)/c_i(=consumption)
-    social = gs * macro.gdp_pc_pp * macro.tau_tax / c
-    # TODO: check that social <= 1 ?! The share of income that is obtained from transfers cannot be larger than 1.
-    return social
-
-
 def interpolate_rps(hazard_ratios, protection_list, default_rp):
     """Extends return periods in hazard_ratios to a finer grid as defined in protection_list, by extrapolating to rp=0.
     hazard_ratios: dataframe with columns of return periods, index with countries and hazards.
@@ -575,7 +562,7 @@ def interpolate_rps(hazard_ratios, protection_list, default_rp):
         res.columns.name = "rp"
 
     if flag_stack:
-        res = res.stack("rp").reset_index().set_index(original_index_names)
+        res = res.stack("rp").reset_index().set_index(original_index_names).sort_index()
     return res
 
 
@@ -584,23 +571,16 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
     cat_info_ = cat_info_.copy(deep=True)
     hazard_ratios_ = hazard_ratios_.copy(deep=True)
 
+    # TODO: check whether any of the recomputation is still necessary
     # here we assume that gdp = consumption = prod_from_k
     macro_["gdp_pc_pp"] = macro_["avg_prod_k"] * agg_to_economy_level(cat_info_, "k", econ_scope_)
     cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
                       cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
                       * agg_to_economy_level(cat_info_, "k", econ_scope_))
 
-    # add finance to diversification and taxation
-    cat_info_["social"] = unpack_social(macro_, cat_info_)
+    # recompute diversified_share after policy change
+    cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
 
-    # from the Paper: "We assume that the fraction of income that is diversified increases by 10% for people who have
-    # bank accounts
-    cat_info_['social'] = cat_info_.social + cat_info_.axfin * axfin_impact_
-    # TODO: new variable 'diversified_share' instead of changing 'social' --> need to adjust in the remeinder of the model
-    # cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
-
-    # TODO: here, tau_tax and gamma_SP are (re)computed from social transfers *including* the markup for financial
-    #  inclusion. Check whether this is correct!
     macro_["tau_tax"], cat_info_["gamma_SP"] = social_to_tx_and_gsp(econ_scope_, cat_info_)
 
     # Recompute consumption from k and new gamma_SP and tau_tax
@@ -617,8 +597,9 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
     # TODO: need to make macro_multiplier_Gamma income_cat dependent
     macro_["macro_multiplier_Gamma"] = (macro_["avg_prod_k"] + recons_rate) / (macro_["rho"] + recons_rate)
 
-    hazard_ratios_["v"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
-    hazard_ratios_.drop('ew', inplace=True, axis=1)
+    # TODO: update rest of the model to use variable 'v_ew' instead of 'v'
+    hazard_ratios_["v_ew"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
+    hazard_ratios_.drop(['ew', 'v'], inplace=True, axis=1)
 
     # interpolates data to a more granular grid for return periods that includes all protection values that are
     # potentially not the same in hazard_ratios.

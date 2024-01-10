@@ -50,11 +50,11 @@ def get_recovery_duration(avg_prod_k_, vulnerability_, discount_rate_, consump_u
 def get_cat_info_and_tau_tax(wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_):
     cat_info_ = wb_data_cat_info_.copy(deep=True)
 
-    # TODO: social is again recomputed in recompute_after_policy_change()
-    # remove this here, otherwise adds axfin effect twice
-    # social += axfin_impact_ * axfin
-    # TODO: new variable 'diversified_share' instead of changing 'social' --> need to adjust in the remeinder of the model
-    # cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
+    # TODO: diversified_share is again recomputed in recompute_after_policy_change()
+    # TODO: new variable 'diversified_share' instead of changing 'social' --> need to adjust in the rest of the model
+    # from the Paper: "We assume that the fraction of income that is diversified increases by 10% for people who have
+    # bank accounts
+    cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
 
     cat_info_['n'] = 1 / n_quantiles_
     cat_info_['c'] = cat_info_.income_share / cat_info_.n * wb_data_macro_.gdp_pc_pp
@@ -63,7 +63,7 @@ def get_cat_info_and_tau_tax(wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_q
     tau_tax_, cat_info_["gamma_SP"] = social_to_tx_and_gsp(econ_scope, cat_info_)
 
     # compute capital per income category
-    cat_info_["k"] = (1 - cat_info_.social) * cat_info_.c / ((1 - tau_tax_) * avg_prod_k_)
+    cat_info_["k"] = (1 - cat_info_.diversified_share) * cat_info_.c / ((1 - tau_tax_) * avg_prod_k_)
 
     cat_info_ = cat_info_.loc[cat_info_.drop('n', axis=1).dropna(how='all').index]
     return cat_info_, tau_tax_
@@ -527,6 +527,10 @@ if __name__ == '__main__':
             pi_=reduction_vul,
             default_rp_=default_rp,
         )
+
+        # clean data
+        # TODO: can be removed after compute_resilience_and_risk.py is updated to use variable 'diversified_share'
+        scenario_cat_info_rec.drop('social', axis=1, inplace=True)
 
         # Save all data
         print(scenario_macro_rec.shape[0], 'countries in analysis')
