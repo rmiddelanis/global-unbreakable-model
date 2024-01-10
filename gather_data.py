@@ -56,7 +56,8 @@ def get_cat_info_and_tau_tax(wb_data_, poverty_head_, avg_prod_k_, axfin_impact_
     social.index.names = ['iso3', 'income_cat']
 
     # TODO: this is again recomputed in recompute_after_policy_change()
-    social += axfin_impact_ * axfin
+    # remove this here, otherwise adds axfin effect twice
+    # social += axfin_impact_ * axfin
 
     cat_info_ = pd.concat([axfin, social], axis=1)
 
