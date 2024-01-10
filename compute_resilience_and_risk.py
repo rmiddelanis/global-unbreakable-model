@@ -34,6 +34,7 @@ for pol_str in ['']:
     default_rp = "default_rp"  # return period to use when no rp is provided (mind that this works with protection)
     affected_cats = pd.Index(["a", "na"], name="affected_cat")  # categories for social protection
     helped_cats = pd.Index(["helped", "not_helped"], name="helped_cat")
+    poor_cats = ['q1']
 
     # read data
 
@@ -73,7 +74,8 @@ for pol_str in ['']:
     macro_event, cat_info_event_iah = calculate_response(
         macro_event=macro_event, 
         cat_info_event_ia=cat_info_event_ia,
-        event_level=event_level, 
+        event_level=event_level,
+        poor_cats=poor_cats,
         helped_cats=helped_cats,
         option_fee=option_fee, 
         option_t=option_t, 

@@ -1,147 +1,156 @@
 # Downloads wb data
-# %load_ext autoreload
-# %autoreload
-# %matplotlib inline
 import os
-
-import pandas as pd
-from pandas import isnull
-
 from lib_gather_data import get_country_name_dicts, df_to_iso3
 from pandas_helper import load_input_data
 from wb_api_wrapper import *
 
 include_remitances = True
 use_guessed_social = True  # else keeps nans
+drop_incomplete = True  # drop countries with missing data
 
 root_dir = os.getcwd()  # get current directory
 any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
+
+def clean_merge_update(df_, series_other_, how='outer'):
+    if df_.index.names is None:
+        raise ValueError('df_ index names are None')
+    if series_other_.index.names != df_.index.names:
+        series_other_.index.names = df_.index.names
+    if type(series_other_) is not pd.Series:
+        raise ValueError('series_other_ is not a series')
+    if series_other_.name is None:
+        raise ValueError('series_other_ has no name')
+
+    df_other_ = series_other_.reset_index()
+    df_other_.country = df_other_.country.apply(lambda x: str.lower(x)).replace(any_to_wb)
+    series_other_clean = df_other_.set_index(['country', 'income_cat'])[series_other_.name]
+
+    res = pd.merge(df_, series_other_clean, on=series_other_.index.names, how=how)
+    res[series_other_clean.name] = res[series_other_clean.name + '_x'].fillna(res[series_other_clean.name + '_y'])
+    res.drop([series_other_clean.name + '_x', series_other_clean.name + '_y'], axis=1, inplace=True)
+    return res
+
+
+def get_most_recent_value(df):
+    if type(df) is not pd.Series:
+        raise ValueError('df is not a series')
+    res = df.unstack('income_cat').dropna().stack().reset_index()
+    idxmax = res.groupby(['country', 'income_cat'])['year'].idxmax().values
+    res = res.loc[idxmax].set_index(['country', 'income_cat']).drop('year', axis=1).squeeze()
+    res.name = df.name
+    return res
+
+
+def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value=True, upper_bound=None,
+                      lower_bound=None):
+    data_q1 = get_wb_series(id_q1, 'q1')
+    data_q2 = get_wb_series(id_q2, 'q2')
+    data_q3 = get_wb_series(id_q3, 'q3')
+    data_q4 = get_wb_series(id_q4, 'q4')
+    data_q5 = get_wb_series(id_q5, 'q5')
+    data = pd.concat([data_q1, data_q2, data_q3, data_q4, data_q5], axis=1).dropna().stack().rename(name)
+    data.index.names = ['country', 'year', 'income_cat']
+    # note: setting upper and lower bounds to nan s.th. the more recent available value is used
+    if upper_bound is not None:
+        data[data > upper_bound] = np.nan
+    if lower_bound is not None:
+        data[data < lower_bound] = np.nan
+    if most_recent_value:
+        data = get_most_recent_value(data)
+    return data
+
+
 # World Development Indicators
 gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp
 pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population
-# ppp_over_mer = get_wb_mrv('PA.NUS.PPPC.RF',"ppp_over_mer")#conversion factor PPP over MER
-# gdp_pc_cd = get_wb_mrv('ny.gdp.pcap.cd', "gdp_pc_cd")  # gdp per capita mer
-# gap2     =get_wb_mrv('1.0.PGap.2.5usd'  ,"gap2")#poverty gap at 2$
-# head2    =get_wb_mrv('SI.POV.2DAY'      ,"head2")# povety count at 2$
-
-share1 = get_wb_mrv('SI.DST.FRST.20', "share1") / 100  # share of income bottom 20%
-share2 = get_wb_mrv('SI.DST.02nd.20', "share2") / 100  # share of income second
-share3 = get_wb_mrv('SI.DST.03rd.20', "share3") / 100  # share of income 3rd
-share4 = get_wb_mrv('SI.DST.04th.20', "share4") / 100  # share of income 4th
-share5 = get_wb_mrv('SI.DST.05th.20', "share5") / 100  # share of income 5th
-
-search_wb("coverage.*poor.*all.*ass.*").query("name=='Coverage in poorest quintile (%) - All Social Assistance '")
-
-# Aspire
-
-# Averages
-rem1 = get_wb_series('per_pr_allpr.avt_q1_tot', 'rem1')  # Average per capita transfer held by poorest quintile - Private Transfers
-rem2 = get_wb_series('per_pr_allpr.avt_q2_tot', 'rem2')  # - Private Transfers
-rem3 = get_wb_series('per_pr_allpr.avt_q3_tot', 'rem3')  # - Private Transfers
-rem4 = get_wb_series('per_pr_allpr.avt_q4_tot', 'rem4')  # - Private Transfers
-rem5 = get_wb_series('per_pr_allpr.avt_q5_tot', 'rem5')  # - Private Transfers
-
-tra1_ = get_wb_series('per_allsp.avt_q1_tot', 'tra1')  # Average per capita transfer held by poorest quintile -All  dolars PPP per day
-tra2_ = get_wb_series('per_allsp.avt_q2_tot', 'tra2')  # Average per capita transfer held by -All
-tra3_ = get_wb_series('per_allsp.avt_q3_tot', 'tra3')  # Average per capita transfer held by  -All
-tra4_ = get_wb_series('per_allsp.avt_q4_tot', 'tra4')  # Average per capita transfer held by  -All
-tra5_ = get_wb_series('per_allsp.avt_q5_tot', 'tra5')  # Average per capita transfer held by  -All
-
-# Adequacies
-ade1_remit = get_wb_series('per_pr_allpr.adq_q1_tot', 'ade1_remit') / 100  # Adequacy of benefits for Q1, Remittances
-ade2_remit = get_wb_series('per_pr_allpr.adq_q2_tot', 'ade2_remit') / 100  # Adequacy of benefits for Q2, Remittances
-ade3_remit = get_wb_series('per_pr_allpr.adq_q3_tot', 'ade3_remit') / 100  # Adequacy of benefits for Q3, Remittances
-ade4_remit = get_wb_series('per_pr_allpr.adq_q4_tot', 'ade4_remit') / 100  # Adequacy of benefits for Q4, Remittances
-ade5_remit = get_wb_series('per_pr_allpr.adq_q5_tot', 'ade5_remit') / 100  # Adequacy of benefits for Q5, Remittances
-
-ade1_allspl = get_wb_series('per_allsp.adq_q1_tot','ade1_allspl') / 100  # Adequacy of benefits for Q1, All Social Protection and Labor
-ade2_allspl = get_wb_series('per_allsp.adq_q2_tot','ade2_allspl') / 100  # Adequacy of benefits for Q2, All Social Protection and Labor
-ade3_allspl = get_wb_series('per_allsp.adq_q3_tot','ade3_allspl') / 100  # Adequacy of benefits for Q3, All Social Protection and Labor
-ade4_allspl = get_wb_series('per_allsp.adq_q4_tot','ade4_allspl') / 100  # Adequacy of benefits for Q4, All Social Protection and Labor
-ade5_allspl = get_wb_series('per_allsp.adq_q5_tot','ade5_allspl') / 100  # Adequacy of benefits for Q5, All Social Protection and Labor
-
-# Coverage
-cov1_remit = get_wb_series('per_pr_allpr.cov_q1_tot', 'cov1_remit') / 100  # Coverage for Q1, Remittances
-cov2_remit = get_wb_series('per_pr_allpr.cov_q2_tot', 'cov2_remit') / 100  # Coverage for Q2, Remittances
-cov3_remit = get_wb_series('per_pr_allpr.cov_q3_tot', 'cov3_remit') / 100  # Coverage for Q3, Remittances
-cov4_remit = get_wb_series('per_pr_allpr.cov_q4_tot', 'cov4_remit') / 100  # Coverage for Q4, Remittances
-cov5_remit = get_wb_series('per_pr_allpr.cov_q5_tot', 'cov5_remit') / 100  # Coverage for Q5, Remittances
-
-cov1_allspl = get_wb_series('per_allsp.cov_q1_tot','cov1') / 100  # Coverage in poorest quintile (%) -All Social Protection and Labor
-cov2_allspl = get_wb_series('per_allsp.cov_q2_tot','cov2') / 100  # Coverage in 2nd quintile (%) -All Social Protection and Labor
-cov3_allspl = get_wb_series('per_allsp.cov_q3_tot','cov3') / 100  # Coverage in 3rd quintile (%) -All Social Protection and Labor
-cov4_allspl = get_wb_series('per_allsp.cov_q4_tot','cov4') / 100  # Coverage in 4th quintile (%) -All Social Protection and Labor
-cov5_allspl = get_wb_series('per_allsp.cov_q5_tot','cov5') / 100  # Coverage in 5th quintile (%) -All Social Protection and Labor
-
-if include_remitances:
-    t_1 = mrv(rem1 + tra1_)
-    t_2 = mrv(rem2 + tra2_)
-    t_3 = mrv(rem3 + tra3_)
-    t_4 = mrv(rem4 + tra4_)
-    t_5 = mrv(rem5 + tra5_)
-
-    la_1 = mrv((cov1_allspl * ade1_allspl + cov1_remit * ade1_remit))
-    la_2 = mrv((cov2_allspl * ade2_allspl + cov2_remit * ade2_remit))
-    la_3 = mrv((cov3_allspl * ade3_allspl + cov3_remit * ade3_remit))
-    la_4 = mrv((cov4_allspl * ade4_allspl + cov4_remit * ade4_remit))
-    la_5 = mrv((cov5_allspl * ade5_allspl + cov5_remit * ade5_remit))
-
-else:
-    t_1 = mrv(tra1_)
-    t_2 = mrv(tra2_)
-    t_3 = mrv(tra3_)
-    t_4 = mrv(tra4_)
-    t_5 = mrv(tra5_)
-
-    la_1 = mrv((cov1_allspl * ade1_allspl))
-    la_2 = mrv((cov2_allspl * ade2_allspl))
-    la_3 = mrv((cov3_allspl * ade3_allspl))
-    la_4 = mrv((cov4_allspl * ade4_allspl))
-    la_5 = mrv((cov5_allspl * ade5_allspl))
-
-y_1 = mrv(rem1 + tra1_) / la_1
-y_2 = mrv(rem2 + tra2_) / la_2
-y_3 = mrv(rem3 + tra3_) / la_3
-y_4 = mrv(rem4 + tra4_) / la_4
-y_5 = mrv(rem5 + tra5_) / la_5
-
-
-# Findex wave two
-# RM: TODO: THESE DATASETS ARE NOT AVAILABLE IN THE WB API --> using id's below
-# loan40 = get_wb_mrv('WP14924_8.8', "loan40") / 100
-# loan60 = get_wb_mrv('WP14924_8.9', "loan60") / 100
-# saved40 = get_wb_mrv('WP_time_04.8', "saved40") / 100  # Saved at a financial institution in the past year, bottom 40%
-# saved60 = get_wb_mrv('WP_time_04.9', "saved60") / 100  # Saved this year, income, top 60% (% age 15+)
-saved40 = get_wb_mrv("fin17a.t.d.7", "saved40") / 100  # Saved at a financial institution in the past year, bottom 40%
-saved60 = get_wb_mrv('fin17a.t.d.8', "saved60") / 100  # Saved at a financial institution in the past year, richest 60%
-
 urbanization_rate = get_wb_mrv("SP.URB.TOTL.IN.ZS", "urbanization_rate") / 100
 
-# df = pd.concat([gdp_pc_pp, pop, share1, urbanization_rate, gdp_pc_cd], axis=1)
-df = pd.concat([gdp_pc_pp, pop, share1, urbanization_rate], axis=1)
-df.index.names = ['country']
+# create output data frames
+macro_df = pd.concat([gdp_pc_pp, pop, urbanization_rate], axis=1).reset_index()
+macro_df.country = macro_df.country.replace(any_to_wb)
+macro_df = macro_df.dropna(subset='country').set_index('country')
 
-# We take only savings as an insurance against destitution
-df["axfin_p"] = saved40
-df["axfin_r"] = saved60
+cat_info_df = pd.DataFrame(index=pd.MultiIndex.from_product((macro_df.index, ['q1', 'q2', 'q3', 'q4', 'q5'])),
+                           columns=['income_share', 'axfin', 'social'])
+cat_info_df.index.names = ['country', 'income_cat']
 
-# Comptues share of income from transfers
-df["social_p"] = la_1
-df["social_r"] = (t_2 + t_3 + t_4 + t_5) / (y_2 + y_3 + y_4 + y_5)
+# income shares
+income_shares = download_cat_info(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
+                                  id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
+                                  most_recent_value=True, upper_bound=100, lower_bound=0) / 100
+cat_info_df = clean_merge_update(cat_info_df, income_shares)
+
+
+# ASPIRE
+
+# Adequacies
+# Total transfer amount received by all beneficiaries in a population group as a share of the total welfare of
+# beneficiaries in that group
+adequacy_remittances = download_cat_info(name='adequacy_remittances', id_q1='per_pr_allpr.adq_q1_tot',
+                                         id_q2='per_pr_allpr.adq_q2_tot', id_q3='per_pr_allpr.adq_q3_tot',
+                                         id_q4='per_pr_allpr.adq_q4_tot', id_q5='per_pr_allpr.adq_q5_tot',
+                                         most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+
+# Total transfer amount received by all beneficiaries in a population group as a share of the total welfare of
+# beneficiaries in that group
+adequacy_all_prot_lab = download_cat_info(name='adequacy_all_prot_lab', id_q1='per_allsp.adq_q1_tot',
+                                          id_q2='per_allsp.adq_q2_tot', id_q3='per_allsp.adq_q3_tot',
+                                          id_q4='per_allsp.adq_q4_tot', id_q5='per_allsp.adq_q5_tot',
+                                          most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+
+# Coverage
+coverage_remittances = download_cat_info(name='coverage_remittances', id_q1='per_pr_allpr.cov_q1_tot',
+                                         id_q2='per_pr_allpr.cov_q2_tot', id_q3='per_pr_allpr.cov_q3_tot',
+                                         id_q4='per_pr_allpr.cov_q4_tot', id_q5='per_pr_allpr.cov_q5_tot',
+                                         most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+
+coverage_all_prot_lab = download_cat_info(name='coverage_all_prot_lab', id_q1='per_allsp.cov_q1_tot',
+                                          id_q2='per_allsp.cov_q2_tot', id_q3='per_allsp.cov_q3_tot',
+                                          id_q4='per_allsp.cov_q4_tot', id_q5='per_allsp.cov_q5_tot',
+                                          most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+
+if include_remitances:
+    # fraction of income that is from transfers
+    social = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab +
+                                   coverage_remittances * adequacy_remittances).rename('social')
+else:
+    # fraction of income that is from transfers
+    social = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab).rename('social')
+cat_info_df = clean_merge_update(cat_info_df, social)
+
+# financial inclusion
+axfin = download_cat_info(name='axfin', id_q1='fin17a.t.d.7', id_q2='fin17a.t.d.7', id_q3='fin17a.t.d.8',
+                          id_q4='fin17a.t.d.8', id_q5='fin17a.t.d.8', most_recent_value=True, upper_bound=100,
+                          lower_bound=0) / 100
+cat_info_df = clean_merge_update(cat_info_df, axfin)
 
 
 # FROM HERE: FILL MISSING VALUES IN ASPIRE DATA
 
 # GDP per capita from google (GDP per capita plays no role in the indicator. only usefull to plot the data)
-# TODO: what about these two countries?!
-df.loc["Argentina", "gdp_pc_pp"] = 18600 / 10700 * 10405.
-df.loc["Syrian Arab Republic", "gdp_pc_pp"] = 5100 / 10700 * 10405.
+# TODO: what about Syria?!
+macro_df.loc["Syrian Arab Republic", "gdp_pc_pp"] = 5100 / 10700 * 10405.
 
 # for SIDS, manual addition from online research
+# TODO: these data are not fit for five income categories yet; generally, using *_p for q1 and social_r for q2-5
 manual_additions_sids = load_input_data(root_dir=root_dir, filename='sids_missing_data_manual_input.csv',
                                         index_col='country')
-df = df.fillna(manual_additions_sids)
+manual_additions_sids_axfin = pd.concat([
+    manual_additions_sids.axfin_p.rename('q1'), manual_additions_sids.axfin_r.rename('q2'),
+    manual_additions_sids.axfin_r.rename('q3'), manual_additions_sids.axfin_r.rename('q4'),
+    manual_additions_sids.axfin_r.rename('q5'),], axis=1).stack().rename('axfin')
+cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_axfin)
+
+# for SIDS countries, use share1 for q1, and (1-share1)/4 for q2-5
+manual_additions_sids_shares = pd.DataFrame(index=manual_additions_sids.index[~manual_additions_sids.share1.isna()],
+                                            columns=['q1', 'q2', 'q3', 'q4', 'q5'])
+manual_additions_sids_shares.loc[:, 'q1'].fillna(manual_additions_sids.share1, inplace=True)
+manual_additions_sids_shares = manual_additions_sids_shares.assign(
+    **{c: ((1 - manual_additions_sids_shares.q1) / 4).values for c in ['q2', 'q3', 'q4', 'q5']}
+).stack().rename('income_share')
+cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_shares)
+
 
 # Social transfer Data from EUsilc (European Union Survey of Income and Living Conditions) and other countries.
 # TODO: update SILC data? keep it at all?
@@ -152,26 +161,46 @@ silc_file = load_input_data(root_dir, "social_ratios.csv")
 # change EL to GR, and change UK to GB. The second one is to change iso2 to iso3, and the third one is to change iso3
 # to the wb
 silc_file = silc_file.set_index(silc_file.cc.replace({"EL": "GR", "UK": "GB"}).replace(iso2_iso3).replace(iso3_to_wb))
+silc_social = pd.concat([silc_file.social_p.rename('q1'), silc_file.social_r.rename('q2'),
+                         silc_file.social_r.rename('q3'), silc_file.social_r.rename('q4'),
+                         silc_file.social_r.rename('q5')], axis=1).stack().rename('social')
+cat_info_df = clean_merge_update(cat_info_df, silc_social)
 
-# TODO: Czech Republic not in silc; ignore for now
-df.loc[np.intersect1d(df.index, silc_file.index), ["social_p", "social_r"]] = silc_file[["social_p", "social_r"]].loc[
-    np.intersect1d(df.index, silc_file.index)]  # Update social transfer from EUsilc.
 
-# shows the country where social_p and social_r are not both NaN.
-where = (isnull(df.social_r) & ~isnull(df.social_p)) | (isnull(df.social_p) & ~isnull(df.social_r))
-print("social_p and social_r are not both NaN for " + "; ".join(df.loc[where].index))
-df.loc[isnull(df.social_r), ['social_p', 'social_r']] = np.nan
-df.loc[isnull(df.social_p), ['social_p', 'social_r']] = np.nan
+# shows the country where social_p and social_r are not all NaN.
+where = cat_info_df.social.unstack('income_cat').dropna(how='all').isna().sum(axis=1).apply(
+    lambda x: np.nan if x == 0 else x
+).dropna().index.values
+cat_info_df.loc[where, 'social'] = np.nan
 
 # Guess social transfer
 # TODO: @Bramka this appears to be the econometric model data mentioned in paper p. 16/17. Is this model still
 #   available? Should we use it? @Stephane
-guessed_social = load_input_data(root_dir, "df_social_transfers_statistics.csv", index_col=0)[["social_p_est", "social_r_est"]]
-guessed_social.columns = ["social_p", "social_r"]
 if use_guessed_social:
-    df = df.fillna(guessed_social.clip(lower=0, upper=1))  # replace the NaN with guessed social transfer.
+    guessed_social = load_input_data(root_dir, "df_social_transfers_statistics.csv", index_col=0)
+    guessed_social = guessed_social[["social_p_est", "social_r_est"]].clip(lower=0, upper=1)
+    guessed_social = pd.concat([guessed_social.social_p_est.rename('q1'), guessed_social.social_r_est.rename('q2'),
+                                guessed_social.social_r_est.rename('q3'), guessed_social.social_r_est.rename('q4'),
+                                guessed_social.social_r_est.rename('q5')], axis=1).stack().rename('social')
+    cat_info_df.social.fillna(guessed_social, inplace=True)  # replace the NaN with guessed social transfer.
 
-df = df_to_iso3(df.reset_index(), 'country', any_to_wb)
-df = df[~df.iso3.isna()].set_index('iso3').drop('country', axis=1)
-df.dropna(how="all", inplace=True)
-df.to_csv("inputs/WB_socio_economic_data/wb_data.csv", encoding="utf8")
+macro_df = df_to_iso3(macro_df.reset_index(), 'country', any_to_wb)
+macro_df = macro_df[~macro_df.iso3.isna()].set_index('iso3').drop('country', axis=1)
+macro_df.dropna(how="all", inplace=True)
+
+cat_info_df = df_to_iso3(cat_info_df.reset_index(), 'country', any_to_wb)
+cat_info_df = cat_info_df[~cat_info_df.iso3.isna()].set_index(['iso3', 'income_cat']).drop('country', axis=1)
+cat_info_df.dropna(how="all", inplace=True)
+
+complete_countries = np.intersect1d(macro_df.dropna().index.get_level_values('iso3').unique(),
+                                    cat_info_df.dropna().index.get_level_values('iso3').unique())
+print(f"Full data for {len(complete_countries)} countries.")
+if drop_incomplete:
+    dropped = list(set(list(macro_df.index.get_level_values('iso3').unique()) +
+                       list(cat_info_df.index.get_level_values('iso3').unique())) - set(complete_countries))
+    print(f"Dropped {len(dropped)} countries with missing data: {dropped}")
+    macro_df = macro_df.loc[complete_countries]
+    cat_info_df = cat_info_df.loc[complete_countries]
+
+macro_df.to_csv("inputs/WB_socio_economic_data/wb_data_macro.csv")
+cat_info_df.to_csv("inputs/WB_socio_economic_data/wb_data_cat_info.csv")

@@ -47,13 +47,14 @@ def social_to_tx_and_gsp(economy, cat_info):
     # paper equation 4: \tau = (\Sigma_i t_i) / (\Sigma_i \mu k_i)
     # --> tax is the sum of all transfers paid over the sum of all income (excluding transfers ?!)
     # TODO: doesn't the calculation below include transfers in income?!
-    tx_tax = cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum() / \
-             cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+    tx_tax = (cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+              / cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
     tx_tax.name = 'tau_tax'
 
+    # income from social protection PER PERSON as fraction of PER CAPITA social protection
     # paper equation 5: \gamma_i = t_i / (\Sigma_i \mu \tau k_i)
-    gsp = cat_info[["social", "c"]].prod(axis=1, skipna=False) / \
-          cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
+    gsp = (cat_info[["social", "c"]].prod(axis=1, skipna=False)
+           / cat_info[["social", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
     gsp.name = 'gamma_SP'
 
     return tx_tax, gsp
@@ -258,11 +259,6 @@ def get_country_name_dicts(root_dir):
     any_to_wb = load_input_data(root_dir, "any_name_to_wb_name.csv", index_col="any")  # Names to WB names
     any_to_wb = any_to_wb[~any_to_wb.index.duplicated(keep='first')]  # drop duplicates
 
-    for _c in any_to_wb.index:
-        __c = _c.replace(' ', '')
-        if __c != _c:
-            any_to_wb.loc[__c] = any_to_wb.loc[_c, 'wb_name']
-
     any_to_wb = any_to_wb.squeeze()
 
     # iso3 to wb country name table
@@ -287,6 +283,17 @@ def get_country_name_dicts(root_dir):
     any_to_wb.loc["North Macedonia"] = "Macedonia, FYR"
     any_to_wb.loc["Eswatini"] = "Swaziland"
     any_to_wb.loc['U.R. of Tanzania: Mainland'] = 'Tanzania'
+    any_to_wb.loc['Taiwan, China'] = 'Taiwan'
+    any_to_wb.loc['Czechia'] = 'Czech Republic'
+
+    for _c in any_to_wb.index:
+        _c_nospace = _c.replace(' ', '')
+        _c_lower = str.lower(_c)
+        _c_lower_nospace = str.lower(_c_nospace)
+        for __c in [_c_nospace, _c_lower, _c_lower_nospace]:
+            if __c != _c:
+                any_to_wb.loc[__c] = any_to_wb.loc[_c]
+
     return any_to_wb, iso3_to_wb, iso2_iso3
 
 
@@ -524,8 +531,10 @@ def interpolate_rps(hazard_ratios, protection_list, default_rp):
         hazard_ratios_ = hazard_ratios_.unstack("rp")
         flag_stack = True
 
-    if type(protection_list_) in [pd.Series, pd.DataFrame]:
-        protection_list_ = protection_list_.squeeze().unique().tolist()
+    if type(protection_list_) is pd.DataFrame:
+        protection_list_ = protection_list_.squeeze()
+    if type(protection_list_) is pd.Series:
+        protection_list_ = protection_list_.unique().tolist()
 
     # in case of a Multicolumn dataframe, perform this function on each one of the higher level columns
     if type(hazard_ratios_.columns) is pd.MultiIndex:
@@ -586,7 +595,9 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
 
     # from the Paper: "We assume that the fraction of income that is diversified increases by 10% for people who have
     # bank accounts
-    cat_info_["social"] += axfin_impact_ * cat_info_["axfin"]
+    cat_info_['social'] = cat_info_.social + cat_info_.axfin * axfin_impact_
+    # TODO: new variable 'diversified_share' instead of changing 'social' --> need to adjust in the remeinder of the model
+    # cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
 
     # TODO: here, tau_tax and gamma_SP are (re)computed from social transfers *including* the markup for financial
     #  inclusion. Check whether this is correct!
@@ -603,6 +614,7 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
 
     # Calculation of macroeconomic resilience (Gamma in the technical paper)
     # \Gamma = (\mu + 3/N) / (\rho + 3/N)
+    # TODO: need to make macro_multiplier_Gamma income_cat dependent
     macro_["macro_multiplier_Gamma"] = (macro_["avg_prod_k"] + recons_rate) / (macro_["rho"] + recons_rate)
 
     hazard_ratios_["v"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
