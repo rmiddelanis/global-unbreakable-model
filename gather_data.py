@@ -73,11 +73,14 @@ def get_cat_info_and_tau_tax(wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_q
 # compare to gather_data_old.py: before, protection was simply set to rp=1, since no_protection==True
 def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="Flood+Storm surge",
                     flopros_protection_file="protection_national_from_flopros.csv",
-                    protection_level_assumptions_file="protection_level_assumptions.csv",
-                    income_groups_file="income_groups.csv"):
+                    protection_level_assumptions_file="WB_country_classification/protection_level_assumptions.csv",
+                    income_groups_file="WB_country_classification/country_classification.xlsx",
+                    income_groups_file_historical="WB_country_classification/country_classification_historical.xlsx"):
     # TODO: is this applied to all hazards or just floods?
     # TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
-    prot = pd.Series(index=index_, name="protection", data=float(min_rp)).reset_index()
+    if 'rp' in index_.names:
+        index_ = index_.droplevel('rp')
+    prot = pd.Series(index=index_, name="protection", data=0.)
     if protection_data is not None:
         if protection_data == 'FLOPROS':
             prot_data = load_input_data(root_dir, flopros_protection_file)
@@ -90,16 +93,29 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
             # note: "protection_level_assumptions.csv" can be found in orig_inputs.
             prot_assumptions = load_input_data(root_dir, protection_level_assumptions_file,
                                                index_col="Income group").squeeze()
-            prot_data = load_input_data(root_dir, income_groups_file, header=4, index_col=3)["Income group"].dropna()
+            # prot_data = load_input_data(root_dir, income_groups_file, header=4, index_col=3)["Income group"].dropna()
+            prot_data = load_input_data(root_dir, income_groups_file, header=0)[["Code", "Income group"]]
+            prot_data = prot_data.dropna(how='all').rename({'Code': 'iso3', 'Income group': 'protection'}, axis=1)
+            prot_data = prot_data.set_index('iso3').squeeze()
             prot_data.replace(prot_assumptions, inplace=True)
-            prot_data = prot_data[~prot_data.iso3.isna()]
+
+            # use historical data for countries that are not in the income_groups_file
+            prot_data_hist = load_input_data(root_dir, income_groups_file_historical,
+                                             sheet_name='Country Analytical History', header=5)
+            prot_data_hist = prot_data_hist.rename({prot_data_hist.columns[0]: 'iso3'}, axis=1).dropna(subset='iso3')
+            prot_data_hist.set_index('iso3', inplace=True)
+            prot_data_hist.drop(prot_data_hist.columns[0], axis=1, inplace=True)
+            prot_data_hist = prot_data_hist.stack().rename('protection').replace(prot_assumptions)
+            prot_data_hist.index.names = ['iso3', 'year']
+            prot_data_hist = prot_data_hist.reset_index()
+            prot_data_hist = prot_data_hist.loc[prot_data_hist.groupby('iso3')['year'].idxmax()]
+            prot_data_hist = prot_data_hist.set_index('iso3')['protection']
+
+            prot_data = prot_data.fillna(prot_data_hist).dropna()
         else:
             raise ValueError("Unknown protection_data: {}".format(protection_data))
-        flood_protection = prot[prot.hazard.isin(hazard_types.split('+'))].iso3.apply(
-            lambda x: max(min_rp, prot_data.loc[x] if x in prot_data.index else 0)
-        )
-        prot.loc[flood_protection.index, 'protection'] = flood_protection
-    prot.set_index(index_.names, inplace=True)
+        prot_data = prot_data.loc[np.intersect1d(prot_data.index, prot.index.get_level_values('iso3').unique())]
+        prot.loc[pd.IndexSlice[:, hazard_types.split('+'), :]] += prot_data
     return prot
 
 
