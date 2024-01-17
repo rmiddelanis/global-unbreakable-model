@@ -122,9 +122,10 @@ else:
 cat_info_df = clean_merge_update(cat_info_df, social)
 
 # financial inclusion
-axfin = download_cat_info(name='axfin', id_q1='fin17a.t.d.7', id_q2='fin17a.t.d.7', id_q3='fin17a.t.d.8',
-                          id_q4='fin17a.t.d.8', id_q5='fin17a.t.d.8', most_recent_value=True, upper_bound=100,
-                          lower_bound=0) / 100
+# axfin = download_cat_info(name='axfin', id_q1='fin17a.t.d.7', id_q2='fin17a.t.d.7', id_q3='fin17a.t.d.8',
+#                           id_q4='fin17a.t.d.8', id_q5='fin17a.t.d.8', most_recent_value=True, upper_bound=100,
+#                           lower_bound=0) / 100
+axfin = load_input_data(root_dir, "FINDEX/findex_axfin.csv", index_col=[0, 1, 2]).squeeze()
 cat_info_df = clean_merge_update(cat_info_df, axfin)
 
 
