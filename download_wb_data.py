@@ -126,6 +126,7 @@ cat_info_df = clean_merge_update(cat_info_df, social)
 #                           id_q4='fin17a.t.d.8', id_q5='fin17a.t.d.8', most_recent_value=True, upper_bound=100,
 #                           lower_bound=0) / 100
 axfin = load_input_data(root_dir, "FINDEX/findex_axfin.csv", index_col=[0, 1, 2]).squeeze()
+axfin = get_most_recent_value(axfin)
 cat_info_df = clean_merge_update(cat_info_df, axfin)
 
 

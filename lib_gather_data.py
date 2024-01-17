@@ -284,6 +284,7 @@ def get_country_name_dicts(root_dir):
     any_to_wb.loc['U.R. of Tanzania: Mainland'] = 'Tanzania'
     any_to_wb.loc['Taiwan, China'] = 'Taiwan'
     any_to_wb.loc['Czechia'] = 'Czech Republic'
+    any_to_wb.loc['Turkiye'] = 'Turkey'
 
     for _c in any_to_wb.index:
         _c_nospace = _c.replace(' ', '')
@@ -292,6 +293,13 @@ def get_country_name_dicts(root_dir):
         for __c in [_c_nospace, _c_lower, _c_lower_nospace]:
             if __c != _c:
                 any_to_wb.loc[__c] = any_to_wb.loc[_c]
+
+    # add values to iso3_to_wb
+    iso3_to_wb['KSV'] = 'Kosovo'
+    iso3_to_wb['XKX'] = 'Kosovo'
+    iso3_to_wb['ROM'] = 'Romania'
+    iso3_to_wb['ZAR'] = 'Congo, Dem. Rep.'
+    iso3_to_wb['WBG'] = 'West Bank and Gaza'
 
     return any_to_wb, iso3_to_wb, iso2_iso3
 

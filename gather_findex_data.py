@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 
+from lib_gather_data import get_country_name_dicts
 
-def gather_findex_data(findex_data_paths: dict, axfin_outpath=None):
+
+def gather_findex_data(findex_data_paths: dict, root_dir: str, axfin_outpath=None):
     """
     This function gathers and processes data from the FINDEX datasets.
 
@@ -19,6 +21,8 @@ def gather_findex_data(findex_data_paths: dict, axfin_outpath=None):
     Returns:
     None
     """
+    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
+
     findex_datasets = []
     for year, findex_data_path in findex_data_paths.items():
         # Load the data from the provided path, selecting only the necessary columns
@@ -38,12 +42,15 @@ def gather_findex_data(findex_data_paths: dict, axfin_outpath=None):
         if 'year' not in findex_data.columns:
             findex_data['year'] = year
 
-        findex_data.rename({'economy': 'country', 'inc_q': 'income_cat', varname: 'axfin'},
+        findex_data.rename({'economycode': 'iso3', 'inc_q': 'income_cat', varname: 'axfin'},
                            axis=1, inplace=True)
+        findex_data = findex_data[['iso3', 'income_cat', 'axfin', 'wgt', 'year']].dropna()
 
-        # findex_data = findex_data[['country', 'income_cat', 'axfin', 'wgt', 'year']].dropna()
-        findex_data = findex_data[['country', 'income_cat', 'axfin', 'wgt', 'year']].fillna(0)
-        findex_data = findex_data.astype({'country': 'str', 'income_cat': 'str', 'axfin': 'float',
+        # some country names have changed between FINDEX rounds; therefore, first use iso3, then convert to WB name
+        findex_data['country'] = findex_data.iso3.replace(iso3_to_wb)
+        findex_data.drop('iso3', axis=1, inplace=True)
+
+        findex_data = findex_data.astype({'country': 'str', 'income_cat': 'int', 'axfin': 'float',
                                           'wgt': 'float', 'year': 'int'})
         findex_data.income_cat = findex_data.income_cat.apply(lambda x: 'q{}'.format(x))
 
@@ -69,3 +76,5 @@ def gather_findex_data(findex_data_paths: dict, axfin_outpath=None):
     # If an output path is provided, save the result to a CSV file at that path
     if axfin_outpath is not None:
         findex_data.to_csv(axfin_outpath)
+
+    return findex_data
