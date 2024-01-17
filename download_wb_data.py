@@ -5,7 +5,7 @@ from pandas_helper import load_input_data
 from wb_api_wrapper import *
 
 include_remitances = True
-use_guessed_social = True  # else keeps nans
+use_additional_data = True
 drop_incomplete = True  # drop countries with missing data
 
 root_dir = os.getcwd()  # get current directory
@@ -129,56 +129,55 @@ cat_info_df = clean_merge_update(cat_info_df, axfin)
 
 
 # FROM HERE: FILL MISSING VALUES IN ASPIRE DATA
+if use_additional_data:
+    # GDP per capita from google (GDP per capita plays no role in the indicator. only usefull to plot the data)
+    # TODO: what about Syria?!
+    # macro_df.loc["Syrian Arab Republic", "gdp_pc_pp"] = 5100 / 10700 * 10405.
 
-# GDP per capita from google (GDP per capita plays no role in the indicator. only usefull to plot the data)
-# TODO: what about Syria?!
-macro_df.loc["Syrian Arab Republic", "gdp_pc_pp"] = 5100 / 10700 * 10405.
+    # for SIDS, manual addition from online research
+    # TODO: these data are not fit for five income categories yet; generally, using *_p for q1 and social_r for q2-5
+    manual_additions_sids = load_input_data(root_dir=root_dir, filename='sids_missing_data_manual_input.csv',
+                                            index_col='country')
+    manual_additions_sids_axfin = pd.concat([
+        manual_additions_sids.axfin_p.rename('q1'), manual_additions_sids.axfin_r.rename('q2'),
+        manual_additions_sids.axfin_r.rename('q3'), manual_additions_sids.axfin_r.rename('q4'),
+        manual_additions_sids.axfin_r.rename('q5'),], axis=1).stack().rename('axfin')
+    cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_axfin)
 
-# for SIDS, manual addition from online research
-# TODO: these data are not fit for five income categories yet; generally, using *_p for q1 and social_r for q2-5
-manual_additions_sids = load_input_data(root_dir=root_dir, filename='sids_missing_data_manual_input.csv',
-                                        index_col='country')
-manual_additions_sids_axfin = pd.concat([
-    manual_additions_sids.axfin_p.rename('q1'), manual_additions_sids.axfin_r.rename('q2'),
-    manual_additions_sids.axfin_r.rename('q3'), manual_additions_sids.axfin_r.rename('q4'),
-    manual_additions_sids.axfin_r.rename('q5'),], axis=1).stack().rename('axfin')
-cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_axfin)
-
-# for SIDS countries, use share1 for q1, and (1-share1)/4 for q2-5
-manual_additions_sids_shares = pd.DataFrame(index=manual_additions_sids.index[~manual_additions_sids.share1.isna()],
-                                            columns=['q1', 'q2', 'q3', 'q4', 'q5'])
-manual_additions_sids_shares.loc[:, 'q1'].fillna(manual_additions_sids.share1, inplace=True)
-manual_additions_sids_shares = manual_additions_sids_shares.assign(
-    **{c: ((1 - manual_additions_sids_shares.q1) / 4).values for c in ['q2', 'q3', 'q4', 'q5']}
-).stack().rename('income_share')
-cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_shares)
-
-
-# Social transfer Data from EUsilc (European Union Survey of Income and Living Conditions) and other countries.
-# TODO: update SILC data? keep it at all?
-# XXX: there is data from ASPIRE in social_ratios. Use fillna instead to update df.
-silc_file = load_input_data(root_dir, "social_ratios.csv")
-
-# Change indexes with wold bank names. UK and greece have differnt codes in Europe than ISO2. The first replace is to
-# change EL to GR, and change UK to GB. The second one is to change iso2 to iso3, and the third one is to change iso3
-# to the wb
-silc_file = silc_file.set_index(silc_file.cc.replace({"EL": "GR", "UK": "GB"}).replace(iso2_iso3).replace(iso3_to_wb))
-silc_social = pd.concat([silc_file.social_p.rename('q1'), silc_file.social_r.rename('q2'),
-                         silc_file.social_r.rename('q3'), silc_file.social_r.rename('q4'),
-                         silc_file.social_r.rename('q5')], axis=1).stack().rename('social')
-cat_info_df = clean_merge_update(cat_info_df, silc_social)
+    # for SIDS countries, use share1 for q1, and (1-share1)/4 for q2-5
+    manual_additions_sids_shares = pd.DataFrame(index=manual_additions_sids.index[~manual_additions_sids.share1.isna()],
+                                                columns=['q1', 'q2', 'q3', 'q4', 'q5'])
+    manual_additions_sids_shares.loc[:, 'q1'].fillna(manual_additions_sids.share1, inplace=True)
+    manual_additions_sids_shares = manual_additions_sids_shares.assign(
+        **{c: ((1 - manual_additions_sids_shares.q1) / 4).values for c in ['q2', 'q3', 'q4', 'q5']}
+    ).stack().rename('income_share')
+    cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_shares)
 
 
-# shows the country where social_p and social_r are not all NaN.
-where = cat_info_df.social.unstack('income_cat').dropna(how='all').isna().sum(axis=1).apply(
-    lambda x: np.nan if x == 0 else x
-).dropna().index.values
-cat_info_df.loc[where, 'social'] = np.nan
+    # Social transfer Data from EUsilc (European Union Survey of Income and Living Conditions) and other countries.
+    # TODO: update SILC data? keep it at all?
+    # XXX: there is data from ASPIRE in social_ratios. Use fillna instead to update df.
+    silc_file = load_input_data(root_dir, "social_ratios.csv")
 
-# Guess social transfer
-# TODO: @Bramka this appears to be the econometric model data mentioned in paper p. 16/17. Is this model still
-#   available? Should we use it? @Stephane
-if use_guessed_social:
+    # Change indexes with wold bank names. UK and greece have differnt codes in Europe than ISO2. The first replace is to
+    # change EL to GR, and change UK to GB. The second one is to change iso2 to iso3, and the third one is to change iso3
+    # to the wb
+    silc_file = silc_file.set_index(silc_file.cc.replace({"EL": "GR", "UK": "GB"}).replace(iso2_iso3).replace(iso3_to_wb))
+    silc_social = pd.concat([silc_file.social_p.rename('q1'), silc_file.social_r.rename('q2'),
+                             silc_file.social_r.rename('q3'), silc_file.social_r.rename('q4'),
+                             silc_file.social_r.rename('q5')], axis=1).stack().rename('social')
+    cat_info_df = clean_merge_update(cat_info_df, silc_social)
+
+
+    # shows the country where social_p and social_r are not all NaN.
+    where = cat_info_df.social.unstack('income_cat').dropna(how='all').isna().sum(axis=1).apply(
+        lambda x: np.nan if x == 0 else x
+    ).dropna().index.values
+    cat_info_df.loc[where, 'social'] = np.nan
+
+    # Guess social transfer
+    # TODO: @Bramka this appears to be the econometric model data mentioned in paper p. 16/17. Is this model still
+    #   available? Should we use it? @Stephane
     guessed_social = load_input_data(root_dir, "df_social_transfers_statistics.csv", index_col=0)
     guessed_social = guessed_social[["social_p_est", "social_r_est"]].clip(lower=0, upper=1)
     guessed_social = pd.concat([guessed_social.social_p_est.rename('q1'), guessed_social.social_r_est.rename('q2'),
