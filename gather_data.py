@@ -79,16 +79,17 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
     # TODO: is this applied to all hazards or just floods?
     # TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
     if 'rp' in index_.names:
-        index_ = index_.droplevel('rp')
+        index_ = index_.droplevel('rp').drop_duplicates()
     prot = pd.Series(index=index_, name="protection", data=0.)
     if protection_data is not None:
         if protection_data == 'FLOPROS':
-            prot_data = load_input_data(root_dir, flopros_protection_file)
-            prot_data = df_to_iso3(prot_data, 'country', any_to_wb)
-            prot_data = prot_data[~prot_data.iso3.isna()]
+            prot_data = load_input_data(root_dir, flopros_protection_file, index_col=0)
+            # prot_data = df_to_iso3(prot_data, 'country', any_to_wb)
+            # prot_data = prot_data[~prot_data.iso3.isna()]
             # set ISO3 country codes and average over duplicates (for West Bank and Gaza Strip, which are both assigned to
             # ISO3 code PSE)
-            prot_data = prot_data.drop('country', axis=1).groupby('iso3').mean().iloc[:, 0]
+            prot_data = prot_data.drop('country', axis=1).set_index('iso3')
+            prot_data.rename({'MerL_Riv': 'Flood', 'MerL_Co': 'Storm surge'}, axis=1, inplace=True)
         elif protection_data == 'country_income':  # assumed a function of the country's income group
             # note: "protection_level_assumptions.csv" can be found in orig_inputs.
             prot_assumptions = load_input_data(root_dir, protection_level_assumptions_file,
@@ -110,12 +111,23 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
             prot_data_hist = prot_data_hist.reset_index()
             prot_data_hist = prot_data_hist.loc[prot_data_hist.groupby('iso3')['year'].idxmax()]
             prot_data_hist = prot_data_hist.set_index('iso3')['protection']
-
             prot_data = prot_data.fillna(prot_data_hist).dropna()
+
+            hazards = hazard_types.split('+')
+            prot_data = pd.concat([prot_data] * len(hazards), axis=1)
+            prot_data.columns = hazards
         else:
             raise ValueError("Unknown protection_data: {}".format(protection_data))
-        prot_data = prot_data.loc[np.intersect1d(prot_data.index, prot.index.get_level_values('iso3').unique())]
-        prot.loc[pd.IndexSlice[:, hazard_types.split('+'), :]] += prot_data
+
+        prot_data = prot_data.stack()
+        prot_data.index.names = ['iso3', 'hazard']
+        prot_data = pd.concat([prot_data] * 5, keys=[f"q{q}" for q in range(1, 6)], names=['income_cat'])
+        prot_data = prot_data.reset_index().set_index(['iso3', 'hazard', 'income_cat']).squeeze().sort_index()
+        prot_data.name = 'protection'
+        prot.loc[np.intersect1d(prot_data.index, prot.index)] = prot_data
+
+        if min_rp is not None:
+            prot.loc[prot < min_rp] = min_rp
     return prot
 
 
