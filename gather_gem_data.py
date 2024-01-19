@@ -1,12 +1,7 @@
 import os
-import numpy as np
-import pandas as pd
-from functools import partial
-from itertools import product
-import geopandas as gpd
-import matplotlib.pyplot as plt
-
 import tqdm
+import pandas as pd
+import numpy as np
 
 # possible materials (level 1) for GEM taxonomy; from GEM Building Taxonomy Version 2.0
 GEM_LAT_LOAD_MAT_NAMES = {'MAT99': 'Unknown material', 'C99': 'Concrete, unknown reinforcement',
@@ -282,6 +277,23 @@ def assign_vulnerability(material, resistance_system, height, mapping):
 
 def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_class_output=None,
                     weight_by='replacement_cost'):
+    """
+        This function gathers GEM (Global Exposure Model) data from the GEM repository directory, decodes the taxonomy
+        strings, assigns vulnerabilities based on the decoded taxonomy, and optionally outputs the distribution of
+        vulnerabilities per country.
+
+        Parameters:
+        gem_repo_root_dir (str): The root directory of the GEM repository.
+        hazus_gem_mapping_path (str): The path to the CSV file containing the mapping between HAZUS and GEM taxonomies.
+        vulnerability_class_output (str, optional): The path to the output CSV file containing the distribution of
+                                                    vulnerabilities per country. If None, no output is generated.
+        weight_by (str, optional): The column to use for weighting when computing the distribution of vulnerabilities.
+                                   Default is 'replacement_cost'.
+
+        Returns:
+        pandas.DataFrame: A DataFrame containing the GEM data with decoded taxonomy and assigned vulnerabilities.
+        """
+
     # Initialize an empty DataFrame
     gem_data = pd.DataFrame()
 
@@ -353,40 +365,16 @@ def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_cla
     # if taxonomy starts with 'UNK', assume this is the material code and set material to 'UNK'
     res.lat_load_mat[(res.lat_load_mat.isna()) & (res.taxonomy.apply(lambda x: x.startswith('UNK')))] = 'UNK'
 
-    res['vulnerability'] = res.apply(lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height,
-                                                                    VULNERABILITY_MAPPING), axis=1)
+    res['vulnerability_class'] = res.apply(lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height,
+                                                                          VULNERABILITY_MAPPING), axis=1)
 
+    vuln_class_shares = res.groupby(['iso3', 'country', 'vulnerability_class'])[weight_by].sum()
+    vuln_class_shares = vuln_class_shares / res.groupby('iso3')[weight_by].sum()
+    vuln_class_shares = vuln_class_shares.unstack()
+    vuln_class_shares.fillna(0, inplace=True)
     if vulnerability_class_output:
-        vulnerability = res.groupby(['iso3', 'country', 'vulnerability'])[weight_by].sum()
-        vulnerability = vulnerability / res.groupby('iso3')[weight_by].sum()
-        vulnerability = vulnerability.unstack()
-        vulnerability.fillna(0, inplace=True)
-        vulnerability.to_csv(vulnerability_class_output)
-    return res
-
-
-def get_material_from_taxonomy(taxonomy, keep_subcategories=False):
-    # HAZUS taxonomy
-    if '-' in taxonomy and '/' not in taxonomy:
-        return taxonomy
-
-    # GEM taxonomy
-    # see also GEM taxonomy tool at https://platform.openquake.org/taxtweb/
-    elif '/' in taxonomy:
-        attributes = taxonomy.split('/')
-        if len(attributes) > 0:
-            if 'DX' in attributes[0] and len(attributes) > 1:
-                material_string = attributes[1]
-            else:
-                material_string = attributes[0]
-            if not keep_subcategories:
-                material_string = material_string.split('+')[0] if 'MIX' not in material_string else material_string
-            if sum([m == material_string.split('+')[0] for m in GEM_LAT_LOAD_MAT_NAMES]) != 1:
-                print(f"Warning: Unknown material {material_string} for taxonomy {taxonomy}.")
-        else:
-            print(f"Warning: no attributes found in taxonomy {taxonomy}.")
-            material_string = ''
-        return material_string
+        vuln_class_shares.to_csv(vulnerability_class_output)
+    return res, vuln_class_shares
 
 
 def decode_taxonomy(taxonomy, keep_unknown=False, verbose=True, compute_vulnerability=False):
@@ -438,178 +426,3 @@ def identify_gem_attribute_type(attribute, verbose=True):
         print(f"Warning: Multiple types {types} for attribute {attribute}.")
     return types
 
-
-
-def compute_taxonomy_correspondences(gem_data):
-    """
-    This function computes the correspondence between macro taxonomy and derived material.
-
-    Parameters:
-    gem_data (DataFrame): The DataFrame containing the GEM data.
-
-    Returns:
-    DataFrame: A DataFrame containing the correspondence between macro taxonomy and derived material.
-    """
-
-    # Filter out the rows where 'iso3' is not in HAZUS_COUNTRIES and
-    # keep only 'macro_taxonomy', 'taxonomy', 'n_buildings' columns
-    matching = gem_data[~gem_data['iso3'].isin(HAZUS_COUNTRIES)][['macro_taxonomy', 'taxonomy', 'n_buildings']]
-
-    # Apply the function 'get_material_from_taxonomy' to the 'taxonomy' column and store the result in a new column
-    # 'derived_material'
-    matching['derived_material'] = matching.taxonomy.apply(partial(get_material_from_taxonomy, keep_subcategories=True))
-
-    # Create result DataFrame with unique 'macro_taxonomy' as index and unique 'derived_material' as columns
-    res = pd.DataFrame(index=gem_data.macro_taxonomy.unique(), columns=matching.derived_material.unique())
-    res.index.name = 'macro_taxonomy'
-    res.columns.name = 'derived_material'
-
-    # For each 'macro_taxonomy', compute the sum of 'n_buildings' grouped by 'derived_material' and normalize it
-    for macro_taxo in res.index:
-        n_buildings = matching[matching.macro_taxonomy == macro_taxo].groupby('derived_material').n_buildings.sum()
-        n_buildings = n_buildings / n_buildings.sum()
-        res.loc[macro_taxo, n_buildings.index] = n_buildings.values
-
-    # shape the result DataFrame
-    res = res.stack().reset_index().sort_values(by=['macro_taxonomy', 0], ascending=False).reset_index(drop=True)
-
-    # Rename
-    res.rename({0: 'share'}, axis=1, inplace=True)
-
-    # Create a new column 'derived_material_l1' by splitting 'derived_material' on '+' and keeping the first level
-    res['derived_material_l1'] = res.derived_material.apply(lambda s: s.split('+')[0] if '(' not in s else s)
-
-    # Set 'macro_taxonomy', 'derived_material_l1', 'derived_material' as the index of the DataFrame
-    res.set_index(['macro_taxonomy', 'derived_material_l1', 'derived_material'], inplace=True)
-
-    return res
-
-
-def get_taxonomy_mappings(outfile=None, pager_cat_mapping_path='./pager_vulnerability_mapping.csv',
-                          pager_gem_mapping_path='./pager-gem_mapping.csv',
-                          hazus_gem_mapping_path='./hazus-gem_mapping.csv'):
-    # PAGER id to category mapping
-    pager_category_mapping = pd.read_csv(pager_cat_mapping_path, index_col=0).astype(str)
-    # note: PAGER id pairs of (C2, C2L, C2M, C2H) and (S4, S4L, S4M, S4H) are mapped to the same taxonomy string as
-    # per the GEM taxonomy documentation appendix, table D-1; however, the pager-vulnerability mapping assigns all of
-    # them, except C2L, to the same vulnerability 'robust'. Therefore, the vulnerability of C2L is likely wrong, and is
-    # set to 'robust' as well.
-    pager_category_mapping.loc['C2L'] = 'robust'
-
-    # PAGER to GEM
-    pager_gem_mapping = pd.read_csv(pager_gem_mapping_path, index_col=0).astype(str)
-    pager_gem_mapping.rename({'gem_str': 'taxonomy'}, axis=1, inplace=True)
-
-    # HAZUS to GEM
-    hazus_gem_mapping = pd.read_csv(hazus_gem_mapping_path, index_col=0).astype(str)
-    hazus_gem_mapping.rename({'gem_str': 'taxonomy'}, axis=1, inplace=True)
-
-    decoded_gem_strings = pd.concat([decode_taxonomy(t, keep_unknown=False, verbose=False) for t in pager_gem_mapping.taxonomy])
-
-    gem_to_vulnerability_mapping = pager_gem_mapping.reset_index().set_index('taxonomy').join(decoded_gem_strings)
-    gem_to_vulnerability_mapping['building_category'] = gem_to_vulnerability_mapping.pager_id.apply(lambda x: pager_category_mapping.loc[x, 'aggregate_category'])
-    gem_to_vulnerability_mapping.reset_index(inplace=True)
-    gem_to_vulnerability_mapping.drop(['pager_id', 'taxonomy', 'pager_description'], axis=1, inplace=True)
-    gem_to_vulnerability_mapping.drop_duplicates(inplace=True)
-    gem_to_vulnerability_mapping.set_index(['lat_load_mat', 'lat_load_sys', 'height'], inplace=True)
-    if gem_to_vulnerability_mapping.index.duplicated().any():
-        duplicated_index = gem_to_vulnerability_mapping.index[gem_to_vulnerability_mapping.index.duplicated()]
-        duplicated_index = duplicated_index.values[0]
-        print("Warning: duplicated index in gem_to_vulnerability_mapping for index {}.".format(duplicated_index))
-        print("Duplicated index yields vulnerability classes {}.".format(gem_to_vulnerability_mapping.loc[duplicated_index, 'building_category'].values))
-
-    # add all possible heights
-    for i in gem_to_vulnerability_mapping.index:
-        if 'HBET:' in i[2]:
-            h_max, h_min = [int(h) for h in i[2].split('HBET:')[1].split('+')[0].split(',')]
-            building_cat = gem_to_vulnerability_mapping.loc[i, 'building_category']
-            for h in range(h_min, h_max + 1):
-                i_new = (i[0], i[1], i[2].replace(f"HBET:{h_max},{h_min}", f"H:{h}"))
-                gem_to_vulnerability_mapping.loc[i_new] = building_cat
-
-    # add variants with 99 IDs removed
-    for i in gem_to_vulnerability_mapping.index:
-        if np.any(['99' in a for a in i]):
-            index_permutations = [[]] * len(i)
-            for level_idx, level_value in enumerate(i):
-                if '99' in i[level_idx]:
-                    level_permutations = []
-                    attributes = i[level_idx].split('+')
-                    if len(attributes) > 1:
-                        for attribute in attributes:
-                            if '99' in attribute:
-                                level_permutations = level_permutations + [[attribute, '']]
-                            else:
-                                level_permutations.append([attribute])
-                        # level_permutations = [p if '' not in p else list(set(p) - {''}) for p in level_permutations]
-                        level_permutations = list(product(*level_permutations))
-                        level_permutations = ['+'.join(p) if len(p) > 1 else p for p in level_permutations]
-                        level_permutations = [p.replace('++', '+') for p in level_permutations]
-                        level_permutations = [p if len(p) > 0 else 'None' for p in level_permutations]
-                        level_permutations = [p[1 if p[0] == '+' else 0:-1 if p[-1] == '+' else len(p)] for p in level_permutations]
-                    else:
-                        level_permutations = [attributes[0], 'None']
-                    index_permutations[level_idx] = level_permutations
-                else:
-                    index_permutations[level_idx] = [level_value]
-            for index_permutation in product(*index_permutations):
-                if index_permutation not in gem_to_vulnerability_mapping.index:
-                    gem_to_vulnerability_mapping.loc[index_permutation] = gem_to_vulnerability_mapping.loc[i]
-    if outfile is None:
-        return gem_to_vulnerability_mapping
-    gem_to_vulnerability_mapping.to_csv(outfile)
-
-
-def get_vulnerability_for_taxonomy(material, system, height, gem_to_vulnerability_mapping):
-    """
-    This function returns the vulnerability class for a given material, system and height.
-
-    Parameters:
-    material (str): The material.
-    system (str): The system.
-    height (str): The height.
-    gem_to_vulnerability_mapping (DataFrame): The DataFrame containing the mapping between GEM and PAGER.
-
-    Returns:
-    str: The vulnerability class.
-    """
-    if (material, system, height) in gem_to_vulnerability_mapping.index:
-        return gem_to_vulnerability_mapping.loc[(material, system, height), 'building_category']
-    else:
-        print("Warning: no direct vulnerability mapping found for material {}, system {} and height {}. Looking for "
-              "closest vulnerability".format(material, system, height))
-        value_counts = gem_to_vulnerability_mapping['building_category'].value_counts()
-        if material in gem_to_vulnerability_mapping:
-            value_counts = gem_to_vulnerability_mapping.loc[material, 'building_category'].value_counts()
-            if len(value_counts) > 1:
-                if system in gem_to_vulnerability_mapping.loc[material]:
-                    value_counts = gem_to_vulnerability_mapping.loc[(material, system), 'building_category'].value_counts()
-                    if len(value_counts) > 1:
-                        print("Warning: could not approximate vulnerability for material {}, system {} and height {}."
-                              "Using most frequent vulnerability class.".format(material, system, height))
-        return value_counts[value_counts == value_counts.max()].index.item()
-
-
-# TODO
-def plot_average_vulnerability(gem_data, gadm_path, v_fragile=.7, v_median=.3, v_robust=.1, weight_by='n_buildings'):
-    vulnerability = gem_data.groupby(['iso3', 'country', 'vulnerability'])[weight_by].sum()
-    vulnerability = vulnerability / gem_data.groupby('iso3')[weight_by].sum()
-    vulnerability = vulnerability.unstack()
-    vulnerability.fillna(0, inplace=True)
-    vulnerability['fragile'] = vulnerability['fragile'] * v_fragile
-    vulnerability['median'] = vulnerability['median'] * v_median
-    vulnerability['robust'] = vulnerability['robust'] * v_robust
-    vulnerability = vulnerability.sum(axis=1)
-
-    return vulnerability
-
-    # # Load GADM shapefile data
-    # world = gpd.read_file(gadm_path)
-    #
-    # # Merge GADM data with gem_data
-    # merged = world.set_index('iso3').join(vulnerability)
-    #
-    # # Plot the merged DataFrame
-    # fig, ax = plt.subplots(1, 1)
-    # merged.plot(column='vulnerability', ax=ax, legend=True, cmap='coolwarm')
-    # plt.show()
