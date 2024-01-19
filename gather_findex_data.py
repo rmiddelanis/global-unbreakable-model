@@ -44,6 +44,7 @@ def gather_findex_data(findex_data_paths: dict, root_dir: str, axfin_outpath=Non
 
         findex_data.rename({'economycode': 'iso3', 'inc_q': 'income_cat', varname: 'axfin'},
                            axis=1, inplace=True)
+        findex_data.axfin = findex_data.axfin.fillna(0)
         findex_data = findex_data[['iso3', 'income_cat', 'axfin', 'wgt', 'year']].dropna()
 
         # some country names have changed between FINDEX rounds; therefore, first use iso3, then convert to WB name
@@ -60,7 +61,7 @@ def gather_findex_data(findex_data_paths: dict, root_dir: str, axfin_outpath=Non
         # Replace the values in the 'axfin' column based on the FINDEX 2021 codebook:
         # 1 if the respondent saved or set aside any money (value=1)
         # 0 if no (=2), don’t know (=3), or refused to answer (=4)
-        findex_data.axfin.replace({1: 1, 2: 0, 3: 0, 4: 0}, inplace=True)
+        findex_data.axfin = findex_data.axfin.replace({1: 1, 2: 0, 3: 0, 4: 0})
 
         findex_datasets.append(findex_data)
 
