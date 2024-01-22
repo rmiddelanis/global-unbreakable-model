@@ -587,7 +587,7 @@ if __name__ == '__main__':
         )
 
         # save exposure, vulnerability, and access to early warning by country, hazard, return period, income category
-        scenario_hazard_ratios.to_csv(
+        scenario_hazard_ratios_rec.to_csv(
             os.path.join(intermediate_dir + "/scenario__hazard_ratios" + outstring + ".csv"),
             encoding="utf-8",
             header=True
