@@ -78,12 +78,12 @@ VULNERABILITY_MAPPING = {
     'MUR+STRUB+MOC': 'fragile',  # Masonry, unreinforced + Rubble (field stone) or semi-dressed stone + cement mortar
     'MUR+STDRE': 'fragile',  # Masonry, unreinforced + Dressed stone masonry + mortar unknown
     'MUR+STDRE+MOM': 'fragile',  # Masonry, unreinforced + Dressed stone masonry + mud mortar
-    'MUR+STDRE+MOL': 'median',  # Masonry, unreinforced + Dressed stone masonry + lime mortar
+    'MUR+STDRE+MOL': 'fragile',  # Masonry, unreinforced + Dressed stone masonry + lime mortar
     'MUR+STDRE+MOC': 'median',  # Masonry, unreinforced + Dressed stone masonry + cement mortar
     'MUR+CL': 'fragile',  # Masonry, unreinforced + Fired clay unit, unknown type (+ mortar unknown)
     'MUR+CLBRS': 'fragile',  # Masonry, unreinforced + Fired clay solid bricks (+ mortar unknown)
     'MUR+CLBRS+MOM': 'fragile',  # Masonry, unreinforced + Fired clay solid bricks + mud mortar
-    'MUR+CLBRS+MOL': 'median',  # Masonry, unreinforced + Fired clay solid bricks + lime mortar
+    'MUR+CLBRS+MOL': 'fragile',  # Masonry, unreinforced + Fired clay solid bricks + lime mortar
     'MUR+CLBRS+MOC': 'median',  # Masonry, unreinforced + Fired clay solid bricks + cement mortar
     'MUR+CLBRH': 'fragile',  # Masonry, unreinforced + Fired clay hollow bricks (+ mortar unknown)
     'MUR+CB99+MOC': 'median',  # Masonry, unreinforced + Concrete block + cement mortar ==> PAGER UCB
@@ -91,7 +91,7 @@ VULNERABILITY_MAPPING = {
     # here, assume as observed with previous mappings, that mud mortar is fragile, lime and cement mortar are median
     'MUR+ST': 'fragile',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + mortar unknown
     'MUR+ST+MOM': 'fragile',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + mud mortar
-    'MUR+ST+MOL': 'median',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + lime mortar
+    'MUR+ST+MOL': 'fragile',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + lime mortar
     'MUR+ST+MOC': 'median',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + cement mortar
 
     'MUR+CLBLH': 'fragile',  # Masonry, unreinforced + Fired clay hollow blocks (+ mortar unknown)
@@ -103,25 +103,25 @@ VULNERABILITY_MAPPING = {
     'E+ETO': 'fragile',  # Earth, unknown reinforcement + Earth technology other (E not in spec, assume E99) # TODO fragile or median?
     'EU': 'fragile',  # Earth, unreinforced TODO fragile or median?
     'EU+ETC': 'fragile',  # Earth, unreinforced + cob or wet construction ==> PAGER M1
-    'EU+ETR': 'median',  # Earth, unreinforced + rammed earth
-    'ER+ETR': 'median',  # Earth, reinforced + rammed earth
+    'EU+ETR': 'fragile',  # Earth, unreinforced + rammed earth
+    'ER+ETR': 'fragile',  # Earth, reinforced + rammed earth
 
-    'MCF': 'robust',  # Masonry, confined
+    'MCF': 'median',  # Masonry, confined
     'MCF+CB': 'robust',  # Masonry, confined + Concrete block, unknown type (assuming CB99)
-    'MCF+CBH': 'robust',  # Masonry, confined + Concrete block, hollow
+    'MCF+CBH': 'median',  # Masonry, confined + Concrete block, hollow
     'MCF+CBS': 'robust',  # Masonry, confined + Concrete block, solid
-    'MCF+CBR': 'robust',  # Masonry, confined + (CBR not in spec, some type of concrete block)
+    'MCF+CBR': 'median',  # Masonry, confined + (CBR not in spec, some type of concrete block)
     'MCF+CL': 'robust',  # Masonry, confined + Fired clay unit, unknown type (assuming CL99)
-    'MCF+CF': 'robust',  # Masonry, confined + (CF not in spec)
+    'MCF+CF': 'median',  # Masonry, confined + (CF not in spec)
     'MCF+CLBRS': 'robust',  # Masonry, confined + Fired clay solid bricks
     'MCF+CLBRH': 'robust',  # Masonry, confined + Fired clay hollow bricks
     'MCF+CLBLH': 'robust',  # Masonry, confined + Fired clay hollow blocks or tiles
     'MCF+S': 'robust',  # Masonry, confined + Steel
 
-    'MR': 'robust',  # Masonry, reinforced
-    'MR+CB': 'robust',  # Masonry, reinforced + Concrete block, unknown type (assuming CB99)
-    'MR+CBR': 'robust',  # Masonry, reinforced + (CBR not in spec, some type of concrete block)
-    'MR+CBH': 'robust',  # Masonry, reinforced + Concrete block, hollow
+    'MR': 'median',  # Masonry, reinforced
+    'MR+CB': 'median',  # Masonry, reinforced + Concrete block, unknown type (assuming CB99)
+    'MR+CBR': 'median',  # Masonry, reinforced + (CBR not in spec, some type of concrete block)
+    'MR+CBH': 'median',  # Masonry, reinforced + Concrete block, hollow
     'MR+CL': 'robust',  # Masonry, reinforced + Fired clay unit, unknown type (assuming CL99)
     'MR+STRUB+RCB+MOC': 'median',  # Masonry, reinforced + Rubble (field stone) or semi-dressed stone +
                                    # reinforced concrete block + cement mortar
@@ -177,7 +177,7 @@ VULNERABILITY_MAPPING = {
     'W+WWD': 'fragile',  # Wood + Wattle and daub
     'W+WBB': 'fragile',  # Wood + Bamboo
     'W+WO': 'fragile',  # Wood + Wood other
-    'W+WS': 'fragile',  # Wood + Solid Wood ==> PAGER W4
+    'W+WS': 'median',  # Wood + Solid Wood ==> PAGER W4
     'W+WLI': {
         'LPB': 'fragile',  # Wood + Light wood members + Post and beam
         'LWAL': 'median',  # Wood + Light wood members + Wall; PAGER MH (mobile homes) maps to W+WLI/LWAL/HBET:1,2; but it does not seem useful to distinguish here
@@ -185,11 +185,7 @@ VULNERABILITY_MAPPING = {
         'LFM': 'fragile',  # Wood + Light wood members + Moment frame; according to the documentation, this is not a valid system for 'Wood'; TODO discuss vulnerability
         'default': 'fragile',  # TODO discuss
     },
-    'W+WHE': {
-        'LPB': 'median',  # Wood + Heavy wood + Post and beam; defined as PAGER 'W2'
-        'LWAL': 'fragile',  # Wood + Heavy wood + Wall; defined as PAGER 'W6'
-        'default': 'fragile',  # TODO discuss
-    },
+    'W+WHE': 'fragile',  # Wood + Heavy wood
     'ME': 'fragile',  # Metal (except steel) TODO: should metal always be fragile?
     'ME+MEO': 'fragile',  # Metal (except steel) + other metal TODO: discuss
     'ME+MEIR': 'fragile',  # Metal (except steel) + iron TODO: discuss
