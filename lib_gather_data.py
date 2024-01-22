@@ -574,7 +574,8 @@ def interpolate_rps(hazard_ratios, protection_list, default_rp):
     return res
 
 
-def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_, axfin_impact_, pi_, default_rp_):
+def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, protection_, econ_scope_, axfin_impact_, pi_,
+                                  default_rp_):
     macro_ = macro_.copy(deep=True)
     cat_info_ = cat_info_.copy(deep=True)
     hazard_ratios_ = hazard_ratios_.copy(deep=True)
@@ -611,7 +612,6 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
 
     # interpolates data to a more granular grid for return periods that includes all protection values that are
     # potentially not the same in hazard_ratios.
-    # TODO: later, need to account for protection per hazard and country!
-    hazard_ratios_ = interpolate_rps(hazard_ratios_, macro_.protection, default_rp=default_rp_)
+    hazard_ratios_ = interpolate_rps(hazard_ratios_, protection_, default_rp=default_rp_)
 
     return macro_, cat_info_, hazard_ratios_

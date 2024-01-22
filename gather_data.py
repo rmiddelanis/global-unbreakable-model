@@ -72,7 +72,7 @@ def get_cat_info_and_tau_tax(wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_q
 # TODO: discuss protection approach with Bramka
 # compare to gather_data_old.py: before, protection was simply set to rp=1, since no_protection==True
 def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="Flood+Storm surge",
-                    flopros_protection_file="protection_national_from_flopros.csv",
+                    flopros_protection_file="FLOPROS/FLOPROS_protection_processed/flopros_protection_processed.csv",
                     protection_level_assumptions_file="WB_country_classification/protection_level_assumptions.csv",
                     income_groups_file="WB_country_classification/country_classification.xlsx",
                     income_groups_file_historical="WB_country_classification/country_classification_historical.xlsx"):
@@ -81,7 +81,7 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
     if 'rp' in index_.names:
         index_ = index_.droplevel('rp').drop_duplicates()
     prot = pd.Series(index=index_, name="protection", data=0.)
-    if protection_data is not None:
+    if protection_data in ['FLOPROS', 'country_income']:
         if protection_data == 'FLOPROS':
             prot_data = load_input_data(root_dir, flopros_protection_file, index_col=0)
             # prot_data = df_to_iso3(prot_data, 'country', any_to_wb)
@@ -116,18 +116,18 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
             hazards = hazard_types.split('+')
             prot_data = pd.concat([prot_data] * len(hazards), axis=1)
             prot_data.columns = hazards
-        else:
-            raise ValueError("Unknown protection_data: {}".format(protection_data))
-
         prot_data = prot_data.stack()
         prot_data.index.names = ['iso3', 'hazard']
         prot_data = pd.concat([prot_data] * 5, keys=[f"q{q}" for q in range(1, 6)], names=['income_cat'])
         prot_data = prot_data.reset_index().set_index(['iso3', 'hazard', 'income_cat']).squeeze().sort_index()
         prot_data.name = 'protection'
         prot.loc[np.intersect1d(prot_data.index, prot.index)] = prot_data
-
-        if min_rp is not None:
-            prot.loc[prot < min_rp] = min_rp
+    elif protection_data == 'None':
+        print("No protection data applied.")
+    else:
+        raise ValueError(f"Unknown value for protection_data: {protection_data}")
+    if min_rp is not None:
+        prot.loc[prot < min_rp] = min_rp
     return prot
 
 
@@ -380,7 +380,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_run', action='store_true', help='If true, only runs with country USA')
     args = parser.parse_args()
 
-    # use_flopros_protection = args.use_flopros_protection
+    use_flopros_protection = args.use_flopros_protection
     no_protection = args.no_protection
     use_avg_pe = args.use_avg_pe
     # use_newest_wdi_findex_aspire = args.use_newest_wdi_findex_aspire
@@ -475,8 +475,6 @@ if __name__ == '__main__':
     early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, hfa_data.ew)
 
     # concatenate exposure, vulnerability and early warning into one dataframe
-    # TODO: In the original code, a 'protection' column was added if no_protection was set to False. However, this
-    #  variable was set to True, therefore this option is not implemented here. Refer to gather_data_old.py.
     hazard_ratios = pd.concat((exposure_fa_with_peb, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
                               axis=1).dropna()
 
@@ -509,15 +507,16 @@ if __name__ == '__main__':
     else:
         macro['T_rebuild_K'] = 3.0
 
-    # TODO: originally, protection is set per country; should be per country and hazard, therefore later move to
-    #  hazard_ratios
     if no_protection:
-        macro['protection'] = 1.0
+        protection = load_protection(exposure_fa_with_peb.index, protection_data="None", min_rp=0)
     else:
-        protection = load_protection(exposure_fa_with_peb.index, protection_data="FLOPROS", min_rp=1)
-        # TODO: remove later
-        if test_run:
-            protection = protection.loc[['USA']]
+        if use_flopros_protection:
+            protection = load_protection(exposure_fa_with_peb.index, protection_data="FLOPROS", min_rp=1)
+        else:
+            protection = load_protection(exposure_fa_with_peb.index, protection_data="country_income", min_rp=1)
+    # TODO: remove later
+    if test_run:
+        protection = protection.loc[['USA']]
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)
@@ -550,6 +549,7 @@ if __name__ == '__main__':
             macro_=scenario_macro,
             cat_info_=scenario_cat_info,
             hazard_ratios_=scenario_hazard_ratios,
+            protection_=protection,
             econ_scope_=econ_scope,
             axfin_impact_=axfin_impact,
             pi_=reduction_vul,
