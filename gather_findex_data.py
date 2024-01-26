@@ -28,16 +28,32 @@ def gather_findex_data(findex_data_paths: dict, root_dir: str, axfin_outpath=Non
         # Load the data from the provided path, selecting only the necessary columns
         findex_data = pd.read_csv(findex_data_path, encoding='latin1')
 
-        # Rename the columns for better readability
+        # Select the correct question for each FINDEX year
         if year in [2017, 2021]:
+            # fin17a (2021): "Saved using an account at a financial institution"
+            # fin17a (2017): "In the PAST 12 MONTHS, have you, personally, saved or set aside any money by using an
+            #                   account at a bank or another type of formal financial institution (This can include
+            #                   using another person’s account)?"
             varname = 'fin17a'
         elif year == 2014:
+            # q18a (2014): "In the PAST 12 MONTHS, have you, personally, saved or set aside any money by using an
+            #               account at a bank or another type of formal financial institution?"
             varname = 'q18a'
         elif year == 2011:
+            # q13a (2011): "In the past 12 months, have you saved or set aside money by Using an account at a bank,
+            #               credit union (or another financial institution, where applicable – for example, cooperatives
+            #               in Latin America), or microfinance institution"
             varname = 'q13a'
             findex_data.rename({'ecnmycode': 'economycode'}, axis=1, inplace=True)
         else:
             raise ValueError('Unknown FINDEX year: {}'.format(np.unique(findex_data.year).item()))
+
+        # TODO: for the years 2017 and 2021, the variable 'fin17a' can be used to exactly reproduce the World Bank
+        #  indicators fin17a.t.d.7 and fin17a.t.d.8 ('The percentage of respondents who report saving or setting aside
+        #  any money at a bank or another type of financial institution in the past year, richest 60% (% ages 15+)').
+        #  However, these indicators include additional data for the years 2014 and 2011, which do not exactly match
+        #  the FINDEX data for questions q18a and q13a, respectively. Yet, the differences are small for those countries
+        #  without data for 2017 and 2021. Check later!
 
         if 'year' not in findex_data.columns:
             findex_data['year'] = year
