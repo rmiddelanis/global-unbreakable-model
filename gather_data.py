@@ -263,9 +263,9 @@ def load_vulnerability_data(income_shares_, n_quantiles=5,
     return vulnerability_
 
 
-def compute_borrowing_ability(credit_ratings_, finance_preparedness_, cat_ddo_filepath="contingent_finance_countries.csv"):
+def compute_borrowing_ability(credit_ratings_, finance_preparedness_, cat_ddo_filepath="CatDDO/catddo.xlsx"):
     borrowing_ability_ = credit_ratings_.add(finance_preparedness_, fill_value=0) / 2
-    contingent_countries = df_to_iso3(load_input_data(root_dir, cat_ddo_filepath), 'country').iso3.values
+    contingent_countries = df_to_iso3(load_input_data(root_dir, cat_ddo_filepath), 'Country').iso3.values
     borrowing_ability_.loc[np.intersect1d(contingent_countries, credit_ratings_.index)] = 1
     borrowing_ability_.name = 'borrowing_ability'
     return borrowing_ability_
@@ -555,6 +555,9 @@ if __name__ == '__main__':
             pi_=reduction_vul,
             default_rp_=default_rp,
         )
+
+        # TODO: check that scenario_hazard_ratios_rec (return periods extrapolated to protection rp's) has the same AAL
+        #  as scenario_hazard_ratios (which does not include protection return periods)
 
         # clean data
         # TODO: can be removed after compute_resilience_and_risk.py is updated to use variable 'diversified_share'
