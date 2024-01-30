@@ -49,6 +49,9 @@ for pol_str in ['']:
     hazard_ratios = pd.read_csv(os.path.join(intermediate_dir, 'scenario__hazard_ratios' + pol_str + ".csv"),
                                 index_col=event_level + ["income_cat"])
 
+    hazard_protection = pd.read_csv(os.path.join(intermediate_dir, 'scenario__hazard_protection' + pol_str + ".csv"),
+                                    index_col= [econ_scope, "hazard"])
+
     # compute
     # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
     macro_event, cat_info_event = reshape_input(
@@ -56,7 +59,6 @@ for pol_str in ['']:
         cat_info=cat_info,
         hazard_ratios=hazard_ratios,
         event_level=event_level,
-        default_rp=default_rp,
     )
 
     # calculate the potential damage to capital, and consumption
@@ -101,6 +103,7 @@ for pol_str in ['']:
         macro_event=macro_event,
         cat_info_event_iah=cat_info_event_iah,
         event_level=event_level,
+        hazard_protection_=hazard_protection,
         econ_scope=econ_scope,
         default_rp=default_rp,
         is_local_welfare=True,

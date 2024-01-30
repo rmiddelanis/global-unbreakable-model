@@ -324,7 +324,7 @@ def average_over_rp(df, default_rp, protection=None):
 
     # removes events below the protection level
     if protection is not None:
-        protection_index = protection.index[protection.reset_index().protection >= protection.reset_index().rp]
+        protection_index = pd.merge(probabilities, protection, left_index=True, right_index=True, how='left').protection.values >= probabilities.reset_index('rp').rp.values
         probabilities.loc[protection_index] = 0
 
     # average weighted by probability
@@ -574,8 +574,7 @@ def interpolate_rps(hazard_ratios, protection_list, default_rp):
     return res
 
 
-def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, protection_, econ_scope_, axfin_impact_, pi_,
-                                  default_rp_):
+def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_, axfin_impact_, pi_):
     macro_ = macro_.copy(deep=True)
     cat_info_ = cat_info_.copy(deep=True)
     hazard_ratios_ = hazard_ratios_.copy(deep=True)
@@ -610,8 +609,9 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, protection_
     hazard_ratios_["v_ew"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
     hazard_ratios_.drop(['ew', 'v'], inplace=True, axis=1)
 
+    # TODO: no longer interpolate return periods, but consider any rp below the maximum protection level as protected
     # interpolates data to a more granular grid for return periods that includes all protection values that are
     # potentially not the same in hazard_ratios.
-    hazard_ratios_ = interpolate_rps(hazard_ratios_, protection_, default_rp=default_rp_)
+    # hazard_ratios_ = interpolate_rps(hazard_ratios_, protection_, default_rp=default_rp_)
 
     return macro_, cat_info_, hazard_ratios_

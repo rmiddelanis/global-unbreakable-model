@@ -2,7 +2,6 @@
 # The script was developed by Adrien Vogt-Schilb and improved by Jinqiang Chen and Robin Middelanis.
 import argparse
 
-import numpy as np
 import tqdm
 from scipy.interpolate import NearestNDInterpolator
 
@@ -80,6 +79,8 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
     # TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
     if 'rp' in index_.names:
         index_ = index_.droplevel('rp').drop_duplicates()
+    if 'income_cat' in index_.names:
+        index_ = index_.droplevel('income_cat').drop_duplicates()
     prot = pd.Series(index=index_, name="protection", data=0.)
     if protection_data in ['FLOPROS', 'country_income']:
         if protection_data == 'FLOPROS':
@@ -118,8 +119,8 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
             prot_data.columns = hazards
         prot_data = prot_data.stack()
         prot_data.index.names = ['iso3', 'hazard']
-        prot_data = pd.concat([prot_data] * 5, keys=[f"q{q}" for q in range(1, 6)], names=['income_cat'])
-        prot_data = prot_data.reset_index().set_index(['iso3', 'hazard', 'income_cat']).squeeze().sort_index()
+        # prot_data = pd.concat([prot_data] * 5, keys=[f"q{q}" for q in range(1, 6)], names=['income_cat'])
+        # prot_data = prot_data.reset_index().set_index(['iso3', 'hazard', 'income_cat']).squeeze().sort_index()
         prot_data.name = 'protection'
         prot.loc[np.intersect1d(prot_data.index, prot.index)] = prot_data
     elif protection_data == 'None':
@@ -128,6 +129,9 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
         raise ValueError(f"Unknown value for protection_data: {protection_data}")
     if min_rp is not None:
         prot.loc[prot < min_rp] = min_rp
+    # res = pd.merge(hazard_ratios_, prot, left_index=True, right_index=True, how='left').reset_index('rp')
+    # res.protection = res.protection > res.rp
+    # res = res.set_index('rp', append=True).swaplevel(2, 3).sort_index()
     return prot
 
 
@@ -140,6 +144,7 @@ def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthqu
     return ew_per_hazard_
 
 
+# TODO: update with new PEB data
 def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, n_quantiles_, poor_categories_, population_data_=None,
                                 peb_povmaps_filepath_="PEB_flood_povmaps.xlsx",
                                 peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"):
@@ -449,7 +454,8 @@ if __name__ == '__main__':
 
     # load total hazard losses per return period (on the country level)
     hazard_loss_tot = load_gir_hazard_losses(root_dir,
-                                             "GIR_hazard_loss_data/export_all_metrics.csv.zip", default_rp)
+                                             "GIR_hazard_loss_data/export_all_metrics.csv.zip", default_rp,
+                                             extrapolate_rp=False)
     # TODO: remove later
     if test_run:
         hazard_loss_tot = hazard_loss_tot.loc[['USA']]
@@ -508,24 +514,23 @@ if __name__ == '__main__':
         macro['T_rebuild_K'] = 3.0
 
     if no_protection:
-        protection = load_protection(exposure_fa_with_peb.index, protection_data="None", min_rp=0)
+        hazard_protection = load_protection(hazard_ratios.index, protection_data="None", min_rp=0)
     else:
         if use_flopros_protection:
-            protection = load_protection(exposure_fa_with_peb.index, protection_data="FLOPROS", min_rp=1)
+            hazard_protection = load_protection(hazard_ratios.index, protection_data="FLOPROS", min_rp=1)
         else:
-            protection = load_protection(exposure_fa_with_peb.index, protection_data="country_income", min_rp=1)
-    # TODO: remove later
-    if test_run:
-        protection = protection.loc[['USA']]
+            hazard_protection = load_protection(hazard_ratios.index, protection_data="country_income", min_rp=1)
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)
     cat_info.dropna(inplace=True)
     hazard_ratios.dropna(inplace=True)
-    common_regions = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index]
+    hazard_protection.dropna(inplace=True)
+    common_regions = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index and c in hazard_protection.index]
     macro = macro.loc[common_regions]
     cat_info = cat_info.loc[common_regions]
     hazard_ratios = hazard_ratios.loc[common_regions]
+    hazard_protection = hazard_protection.loc[common_regions]
 
     # TODO: check that different policies still work
     # for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
@@ -549,11 +554,9 @@ if __name__ == '__main__':
             macro_=scenario_macro,
             cat_info_=scenario_cat_info,
             hazard_ratios_=scenario_hazard_ratios,
-            protection_=protection,
             econ_scope_=econ_scope,
             axfin_impact_=axfin_impact,
             pi_=reduction_vul,
-            default_rp_=default_rp,
         )
 
         # TODO: check that scenario_hazard_ratios_rec (return periods extrapolated to protection rp's) has the same AAL
@@ -571,6 +574,13 @@ if __name__ == '__main__':
         # save vulnerability (total, poor, rich) by country
         vulnerability.to_csv(
             os.path.join(intermediate_dir + "/scenario__vulnerability_unadjusted" + outstring + ".csv"),
+            encoding="utf-8",
+            header=True
+        )
+
+        # save protection by country and hazard
+        hazard_protection.to_csv(
+            os.path.join(intermediate_dir + "/scenario__hazard_protection" + outstring + ".csv"),
             encoding="utf-8",
             header=True
         )

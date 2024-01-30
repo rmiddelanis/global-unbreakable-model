@@ -8,7 +8,7 @@ from lib_gather_data import average_over_rp
 pd.set_option('display.width', 220)
 
 
-def reshape_input(macro, cat_info, hazard_ratios, event_level, default_rp):
+def reshape_input(macro, cat_info, hazard_ratios, event_level):
     # FORMATING
     # gets the event level index
     # index composed on countries, hazards and rps.^
@@ -18,9 +18,10 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level, default_rp):
     macro_event = broadcast_simple(macro, event_level_index)
 
     # Broadcast categories to event level
+    # TODO: broadcast_simple creates many NaN entries; fix this
     cat_info_event = broadcast_simple(cat_info, event_level_index).reset_index().set_index(event_level + ["income_cat"])
-    cat_info_event[['fa', 'v']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v']]
-    print("pulling ['fa', 'v'] into cat_info_event from hazard_ratios")
+    cat_info_event[['fa', 'v_ew']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew']]
+    print("pulling ['fa', 'v_ew'] into cat_info_event from hazard_ratios")
 
     return macro_event, cat_info_event
 
@@ -42,7 +43,7 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     # cat_info_event_ia["v_ew"] = cat_info_event_ia["v"] * (1 - macro_event_["pi"] * cat_info_event_ia["ew"])
 
     # capital losses and total capital losses
-    cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v"]].prod(axis=1, skipna=False)  # capital potentially be damaged
+    cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
 
     # TODO: keep multi-index with affected and income categories
     cat_info_event_ia.loc[pd.IndexSlice[:, :, :, :, 'na'], "dk"] = 0
@@ -336,8 +337,8 @@ def compute_dW(macro_event, cat_info_event_iah_):
     return cat_info_event_iah_
 
 
-def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_level, default_rp, is_local_welfare=True,
-                   return_stats=True):
+def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_level, hazard_protection_, default_rp,
+                   is_local_welfare=True, return_stats=True):
     # generate output df
     out = pd.DataFrame(index=macro_event.index)
 
@@ -360,8 +361,7 @@ def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_lev
 
     # aggregate losses
     # Averages over return periods to get dk_{hazard} and dW_{hazard}
-    # TODO: will move protection level to another location to allow for country- and hazard-specific protection levels
-    out = average_over_rp(out, default_rp, macro_event["protection"])
+    out = average_over_rp(out, default_rp, hazard_protection_)
 
     # Sums over hazard dk, dW (gets one line per economy)
     out = out.groupby(level=econ_scope).aggregate(
