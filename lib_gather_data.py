@@ -422,6 +422,7 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
             'congo, dem. rep.': 'COD',
             'democratic republic of the congo': 'COD',
             'congo, rep.': 'COG',
+            'congo brazzaville': 'COG',
             'cape verde': 'CPV',
             'hong kong sar, china': 'HKG',
             'china, hong kong special administrative region': 'HKG',
@@ -437,6 +438,7 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
             'faeroe islands': 'FRO',
             'iran (islamic republic of)': 'IRN',
             'iran, islamic rep.': 'IRN',
+            'iran': 'IRN',
             'micronesia (federated states of)': 'FSM',
             'micronesia, fed. sts': 'FSM',
             'micronesia, fed. sts.': 'FSM',
@@ -462,6 +464,7 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
             'yemen, rep.': 'YEM',
             'kosovo': 'XKX',
             'tanzania, united rep.': 'TZA',
+            'bosnia herzegovina': 'BIH',
         }
         if str.lower(name) in hard_coded:
             return hard_coded[str.lower(name)]

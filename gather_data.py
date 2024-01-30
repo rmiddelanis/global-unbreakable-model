@@ -135,7 +135,9 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
     return prot
 
 
-def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthquake"):
+def get_early_warning_per_hazard(index_, early_warning_path="WRP/early_warning.csv", no_ew_hazards="Earthquake"):
+    ew_per_country_ = load_input_data(root_dir, early_warning_path)
+    ew_per_country_ = df_to_iso3(ew_per_country_, 'Country', any_to_wb).set_index('iso3').ew
     ew_per_hazard_ = pd.Series(index=index_, data=0.0, name='ew')
     common_countries = np.intersect1d(index_.get_level_values('iso3').unique(), ew_per_country_.index)
     ew_per_hazard_.loc[common_countries] += ew_per_country_.loc[common_countries]
@@ -478,7 +480,7 @@ if __name__ == '__main__':
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake)
-    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, hfa_data.ew)
+    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index)
 
     # concatenate exposure, vulnerability and early warning into one dataframe
     hazard_ratios = pd.concat((exposure_fa_with_peb, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
