@@ -97,3 +97,5 @@ def process_peb_data(exposure_data_path, wb_macro_path, outfile=None):
     # store exposure bias per quintile
     if outfile is not None:
         exp_bias_q.to_csv(outfile)
+
+    return exp_bias_q
