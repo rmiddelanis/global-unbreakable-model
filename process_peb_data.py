@@ -11,14 +11,20 @@ def process_peb_data(exposure_data_path, wb_macro_path, outfile=None):
     # load exposure data
     exposure = pd.read_stata(exposure_data_path)
     exposure.rename({'exp': 'hazard', 'code': 'iso3', 'line': 'pov_line', 'nvul': 'pop_a'}, axis=1, inplace=True)
-    exposure.hazard = exposure.hazard.apply(lambda x: x.replace('exp_', ''))
+    exposure.hazard = exposure.hazard.apply(lambda x: str.capitalize(x.replace('exp_', '')))
     exposure = exposure[['iso3', 'hazard', 'pop_a', 'pov_line']]
     exposure.pop_a *= 1e6
     exposure.pov_line = exposure.pov_line.fillna(np.inf)
     exposure = exposure.set_index(['iso3', 'hazard', 'pov_line']).squeeze()
     exposure = exposure.unstack('pov_line')
     exposure[0.] = 0
-    exposure = exposure.stack().rename('pop_a').reset_index()
+
+    # split cyclone into storm surge and wind
+    exposure = exposure.stack().unstack('hazard')
+    exposure['Storm surge'] = exposure.Cyclone
+    exposure['Wind'] = exposure.Cyclone
+    exposure.drop('Cyclone', axis=1, inplace=True)
+    exposure = exposure.stack('hazard').rename('pop_a').reset_index()
 
     # load wb headcount data
     pov_head_215 = get_wb_series('SI.POV.DDAY', 215.0).dropna() / 100

@@ -2,6 +2,7 @@
 # The script was developed by Adrien Vogt-Schilb and improved by Jinqiang Chen and Robin Middelanis.
 import argparse
 
+import numpy as np
 import tqdm
 from scipy.interpolate import NearestNDInterpolator
 
@@ -148,52 +149,61 @@ def get_early_warning_per_hazard(index_, early_warning_path="WRP/early_warning.c
 
 # TODO: update with new PEB data
 def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, n_quantiles_, poor_categories_, population_data_=None,
-                                peb_povmaps_filepath_="PEB_flood_povmaps.xlsx",
-                                peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"):
-    # Exposure bias from WB povmaps study
-    exposure_bias_wb = load_input_data(root_dir, peb_povmaps_filepath_)[["iso", "peb"]].dropna()
-    exposure_bias_wb = exposure_bias_wb.rename({'iso': 'iso3'}, axis=1).set_index('iso3').peb - 1
+                                peb_data_path="PEB/exposure_bias_processed.csv",
+                                # peb_povmaps_filepath_="PEB_flood_povmaps.xlsx",
+                                # peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"
+                                ):
+    # # Exposure bias from WB povmaps study
+    # exposure_bias_wb = load_input_data(root_dir, peb_povmaps_filepath_)[["iso", "peb"]].dropna()
+    # exposure_bias_wb = exposure_bias_wb.rename({'iso': 'iso3'}, axis=1).set_index('iso3').peb - 1
+    #
+    # # Exposure bias from older WB DELTARES study
+    # exposure_bias_deltares = load_input_data(root_dir, peb_deltares_filepath_, skiprows=[0, 1, 2],
+    #                                          usecols=["Country", "Nation-wide"])
+    # exposure_bias_deltares = df_to_iso3(exposure_bias_deltares, 'Country', any_to_wb)
+    # exposure_bias_deltares = exposure_bias_deltares.set_index('iso3').drop('Country', axis=1)
+    # exposure_bias_deltares.rename({'Nation-wide': 'peb'}, axis=1, inplace=True)
+    # exposure_bias_deltares.dropna(inplace=True)
+    #
+    # # Completes with bias from previous study when pov maps not available.
+    # peb = pd.merge(exposure_bias_wb, exposure_bias_deltares, how='outer', left_index=True, right_index=True)
+    # peb['peb_x'].fillna(peb['peb_y'], inplace=True)
+    # peb.drop('peb_y', axis=1, inplace=True)
+    # peb.rename({'peb_x': 'peb'}, axis=1, inplace=True)
+    # peb = peb.peb
 
-    # Exposure bias from older WB DELTARES study
-    exposure_bias_deltares = load_input_data(root_dir, peb_deltares_filepath_, skiprows=[0, 1, 2],
-                                             usecols=["Country", "Nation-wide"])
-    exposure_bias_deltares = df_to_iso3(exposure_bias_deltares, 'Country', any_to_wb)
-    exposure_bias_deltares = exposure_bias_deltares.set_index('iso3').drop('Country', axis=1)
-    exposure_bias_deltares.rename({'Nation-wide': 'peb'}, axis=1, inplace=True)
-    exposure_bias_deltares.dropna(inplace=True)
-
-    # Completes with bias from previous study when pov maps not available.
-    peb = pd.merge(exposure_bias_wb, exposure_bias_deltares, how='outer', left_index=True, right_index=True)
-    peb['peb_x'].fillna(peb['peb_y'], inplace=True)
-    peb.drop('peb_y', axis=1, inplace=True)
-    peb.rename({'peb_x': 'peb'}, axis=1, inplace=True)
-    peb = peb.peb
-
-    missing_countries = np.setdiff1d(exposure_fa_.index.get_level_values('iso3').unique(), peb.index)
-    peb = pd.concat((peb, pd.Series(index=missing_countries, data=np.nan)), axis=0).rename('peb')
-    peb.index.name = 'iso3'
+    bias = load_input_data(root_dir, peb_data_path, index_col=[0, 1, 2]).squeeze()
+    missing_index = pd.MultiIndex.from_tuples(
+        np.setdiff1d(exposure_fa_.index.droplevel('rp').unique(), bias.index.unique()), names=bias.index.names)
+    bias = pd.concat((bias, pd.Series(index=missing_index, data=np.nan)), axis=0).rename(bias.name).sort_index()
+    bias = bias.loc[np.intersect1d(bias.index, exposure_fa_.index.droplevel('rp').unique())]
 
     # if use_avg_pe, use averaged pe from global data for countries that don't have PE. Otherwise use 0.
     if use_avg_pe_:
         if population_data_ is not None:
-            peb.fillna(wavg(peb, population_data_), inplace=True)
+            bias_pop = pd.merge(bias.dropna(), population_data_, left_index=True, right_index=True, how='left')
+            bias_wavg = (bias_pop.product(axis=1).groupby(['hazard', 'income_cat']).sum()
+                         / bias_pop['pop'].groupby(['hazard', 'income_cat']).sum()).rename('exposure_bias')
+            bias = pd.merge(bias, bias_wavg, left_index=True, right_index=True, how='left')
+            bias.exposure_bias_x.fillna(bias.exposure_bias_y, inplace=True)
+            bias.drop('exposure_bias_y', axis=1, inplace=True)
+            bias = bias.rename({'exposure_bias_x': 'exposure_bias'}, axis=1).squeeze()
+            bias = bias.swaplevel('income_cat', 'iso3').swaplevel('hazard', 'iso3').sort_index()
         else:
             raise Exception("Population data not available. Cannot use average PE.")
-    else:
-        peb.fillna(0, inplace=True)
+    bias.fillna(1, inplace=True)
+
+    exposure_fa_with_peb_ = (exposure_fa_ * bias).swaplevel('rp', 'income_cat').sort_index()
 
     # selects just flood and surge
-    # TODO: include also other hazards?
-    peb_hazards_ = peb_hazards_.split("+")
+    # peb_hazards_ = peb_hazards_.split("+")
 
-    fa_with_peb = exposure_fa_.copy(deep=True)
-
-    fa_with_peb.loc[:, peb_hazards_, :, poor_categories_] *= (1 + peb)
-    nonpoor_categories = fa_with_peb.index.get_level_values('income_cat').unique().drop(poor_categories_)
-    # (1 / n_quantiles_) = poverty_headcount
-    fa_with_peb.loc[:, peb_hazards_, :, nonpoor_categories] *= ((1 - (1 / n_quantiles_) * (1 + peb))
-                                                                / (1 - (1 / n_quantiles_)))
-    return fa_with_peb
+    # exposure_fa_with_peb_.loc[:, peb_hazards_, :, poor_categories_] *= (1 + peb)
+    # nonpoor_categories = exposure_fa_with_peb_.index.get_level_values('income_cat').unique().drop(poor_categories_)
+    # # (1 / n_quantiles_) = poverty_headcount
+    # exposure_fa_with_peb_.loc[:, peb_hazards_, :, nonpoor_categories] *= ((1 - (1 / n_quantiles_) * (1 + peb))
+    #                                                             / (1 - (1 / n_quantiles_)))
+    return exposure_fa_with_peb_
 
 
 def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, fa_threshold_, event_level_):
