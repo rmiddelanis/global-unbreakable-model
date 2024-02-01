@@ -244,12 +244,12 @@ def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, 
 
 def load_vulnerability_data(income_shares_, n_quantiles=5,
                             gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
-                            aggregate_category_to_vulnerability_filepath_="aggregate_category_to_vulnerability.csv"):
+                            building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv"):
     house_cats = load_input_data(root_dir, gem_vulnerability_classes_filepath_,
                                      index_col="iso3").drop('country', axis=1)
 
     # matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
-    hous_cat_vulnerability = load_input_data(root_dir, aggregate_category_to_vulnerability_filepath_, sep=";",
+    hous_cat_vulnerability = load_input_data(root_dir, building_class_vuln_path, sep=";",
                                              index_col="aggregate_category").squeeze()
 
     # TODO here, simply assuming that the poorest quantiles occupy the most vulnerable housing. A better approach might

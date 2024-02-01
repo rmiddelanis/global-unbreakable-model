@@ -255,15 +255,15 @@ def replace_with_warning(series_in, dico, ignore_case=True, joiner=", "):
 
 def get_country_name_dicts(root_dir):
     # Country dictionaries
-    any_to_wb = load_input_data(root_dir, "any_name_to_wb_name.csv", index_col="any")  # Names to WB names
+    any_to_wb = load_input_data(root_dir, "country_name_mappings/any_name_to_wb_name.csv", index_col="any")
     any_to_wb = any_to_wb[~any_to_wb.index.duplicated(keep='first')]  # drop duplicates
 
     any_to_wb = any_to_wb.squeeze()
 
     # iso3 to wb country name table
-    iso3_to_wb = load_input_data(root_dir, "iso3_to_wb_name.csv").set_index("iso3").squeeze()
+    iso3_to_wb = load_input_data(root_dir, "country_name_mappings/iso3_to_wb_name.csv").set_index("iso3").squeeze()
     # iso2 to iso3 table
-    iso2_iso3 = load_input_data(root_dir, "names_to_iso.csv",
+    iso2_iso3 = load_input_data(root_dir, "country_name_mappings/names_to_iso.csv",
                                 usecols=["iso2", "iso3"]).drop_duplicates().set_index("iso2").squeeze()
 
     # TODO: do we want to aggregate these regions into FRA / GBR or keep them individually?
