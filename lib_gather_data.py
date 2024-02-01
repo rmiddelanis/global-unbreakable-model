@@ -336,8 +336,6 @@ def average_over_rp(df, default_rp, protection=None):
 
 
 def gather_capital_data(root_dir_):
-    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir_)
-
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
     # pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
     pwt_data = load_input_data(root_dir_, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
