@@ -127,6 +127,10 @@ def load_input_data(root_dir, filename, version='infer', **kwargs):
         load_func = partial(pd.read_csv, **kwargs)
     elif filename.endswith('.xlsx'):
         load_func = partial(pd.read_excel, **kwargs)
+    elif filename.endswith('.txt'):
+        def load_txt(x):
+            return open(x, 'r').read().strip().split('\n')
+        load_func = load_txt
     else:
         raise ValueError('Unknown file type for file {}'.format(filename))
     if os.path.exists(os.path.join(root_dir, 'inputs', filename)) and version in ['new', 'infer']:

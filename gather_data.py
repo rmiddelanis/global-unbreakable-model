@@ -2,7 +2,6 @@
 # The script was developed by Adrien Vogt-Schilb and improved by Jinqiang Chen and Robin Middelanis.
 import argparse
 
-import numpy as np
 import tqdm
 from scipy.interpolate import NearestNDInterpolator
 
@@ -189,6 +188,8 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, n_quantiles_, poor_ca
             bias.drop('exposure_bias_y', axis=1, inplace=True)
             bias = bias.rename({'exposure_bias_x': 'exposure_bias'}, axis=1).squeeze()
             bias = bias.swaplevel('income_cat', 'iso3').swaplevel('hazard', 'iso3').sort_index()
+            # TODO: averages show exposure bias towards hig-income quintiles. Check when PEB data gets updated with
+            #  more poverty lines and harmonized poverty headcount / population data.
         else:
             raise Exception("Population data not available. Cannot use average PE.")
     bias.fillna(1, inplace=True)
@@ -324,46 +325,70 @@ def load_hfa_data():
     return hfa_data
 
 
-def load_credit_ratings(credit_ratings_file="credit_ratings_scrapy.csv"):
-    print("Warning. Check that credit_ratings_scrapy.csv is up to date. If not, download it from "
+def load_credit_ratings(tradingecon_ratings_path="credit_ratings/2023-12-13_tradingeconomics_ratings.csv",
+                        cia_ratings_raw_path="credit_ratings/2024-01-30_cia_ratings_raw.txt",
+                        ratings_scale_path="credit_ratings/credit_ratings_scale.csv"):
+
+    # Trading Economics ratings
+    print("Warning. Check that [date]_tradingeconomics_ratings.csv is up to date. If not, download it from "
           "http://www.tradingeconomics.com/country-list/rating")
-
     # TODO: Fitch no longer on tradingeconomics.com. Find a different source? Also, here DBRS is not used. Why?
-    # drop rows where only all columns are NaN.
-    ratings_raw = load_input_data(root_dir, credit_ratings_file, dtype="str", encoding="utf8", na_values=['NR']).dropna(
-        how="all")
-
-    # Rename "Unnamed: 0" to "country_in_ratings" and pick only columns with country_in_ratings, S&P, Moody's and Fitch.
-    ratings_raw = ratings_raw.rename(columns={"Unnamed: 0": "country_in_ratings"})
-    ratings_raw = ratings_raw[["country_in_ratings", "S&P", "Moody's", "Fitch"]]
-
-    # The credit rating sources calls DR Congo just Congo. Here str.strip() is needed to remove any space in the raw data.
-    # In the raw data, Congo has some spaces after "o". If not used str.strip(), nothing is replaced.
-    ratings_raw.country_in_ratings = ratings_raw.country_in_ratings.str.strip().replace(["Congo"], ["Congo, Dem. Rep."])
+    te_ratings = load_input_data(root_dir, tradingecon_ratings_path, dtype="str", encoding="utf8", na_values=['NR'])
+    te_ratings = te_ratings.dropna(how='all')
+    te_ratings = te_ratings[["country", "S&P", "Moody's"]]  # TODO: why not DBRS / TE?
 
     # drop EU
-    ratings_raw = ratings_raw[ratings_raw.country_in_ratings != 'EuropeanUnion']
+    te_ratings = te_ratings[te_ratings.country != 'European Union']
 
     # change country name to iso3
-    ratings_raw = df_to_iso3(ratings_raw, "country_in_ratings", any_to_wb)
-
-    ratings_raw = ratings_raw.set_index("iso3").drop("country_in_ratings", axis=1)
+    te_ratings = df_to_iso3(te_ratings, "country", any_to_wb)
+    te_ratings = te_ratings.set_index("iso3").drop("country", axis=1)
 
     # mystriper is a function in lib_gather_data. To lower case and strips blanks.
-    ratings_raw = ratings_raw.map(mystriper)
+    te_ratings = te_ratings.map(lambda x: str.strip(x).lower() if type(x) is str else x)
+
+    # CIA ratings
+    print("Warning. Check that [date]_cia_ratings_raw.csv is up to date. If not, copy the text from "
+            "https://www.cia.gov/the-world-factbook/field/credit-ratings/ into [date]_cia_ratings_raw.csv")
+    cia_ratings_raw = load_input_data(root_dir, cia_ratings_raw_path)
+    cia_ratings = pd.DataFrame(columns=['country', 'agency', 'rating']).set_index(['country', 'agency'])
+    current_country = None
+    for line in cia_ratings_raw:
+        if "rating:" in line:
+            agency, rating_year = line.split(" rating: ")
+            rating = rating_year.strip().split(" (")[0]
+            cia_ratings.loc[(current_country, agency), 'rating'] = rating.strip().lower()
+        elif "note:" not in line and len(line) > 0:
+            current_country = line
+    cia_ratings.reset_index(inplace=True)
+    cia_ratings.replace({"Standard & Poors": "S&P", 'n/a': np.nan, 'nr': np.nan}, inplace=True)
+
+    # drop EU
+    cia_ratings = cia_ratings[cia_ratings.country != 'European Union']
+
+    # change country name to iso3
+    cia_ratings = df_to_iso3(cia_ratings, "country", any_to_wb)
+    cia_ratings = cia_ratings.set_index(["iso3", "agency"]).drop("country", axis=1).squeeze().unstack('agency')
+
+    # merge ratings
+    ratings = pd.merge(te_ratings, cia_ratings, left_index=True, right_index=True, how='outer')
+    for agency in np.intersect1d(te_ratings.columns, cia_ratings.columns):
+        ratings[agency] = ratings[agency + "_x"].fillna(ratings[agency + "_y"])
+        ratings.drop([agency + "_x", agency + "_y"], axis=1, inplace=True)
 
     # Transforms ratings letters into 1-100 numbers
-    rat_disc = load_input_data(root_dir, "cred_rat_dict.csv")
-    ratings = ratings_raw
-    ratings["S&P"].replace(rat_disc["s&p"].values, rat_disc["s&p_score"].values, inplace=True)
-    ratings["Moody's"].replace(rat_disc["moodys"].values, rat_disc["moodys_score"].values, inplace=True)
-    ratings["Fitch"].replace(rat_disc["fitch"].values, rat_disc["fitch_score"].values, inplace=True)
+    rating_scale = load_input_data(root_dir, ratings_scale_path)
+    ratings["S&P"].replace(rating_scale["s&p"].values, rating_scale["score"].values, inplace=True)
+    ratings["Moody's"].replace(rating_scale["moodys"].values, rating_scale["score"].values, inplace=True)
+    ratings["Fitch"].replace(rating_scale["fitch"].values, rating_scale["score"].values, inplace=True)
 
     # average rating over all agencies
     ratings["rating"] = ratings.mean(axis=1) / 100
 
-    print("No rating available for regions:", "; ".join(ratings[ratings.rating.isna()].index), ". Setting rating to 0.")
-    ratings.rating.fillna(0, inplace=True)
+    # set ratings to 0 for countries with no rating
+    if ratings.rating.isna().any():
+        print("No rating available for regions:", "; ".join(ratings[ratings.rating.isna()].index), ". Setting rating to 0.")
+        ratings.rating.fillna(0, inplace=True)
 
     return ratings.rating
 
