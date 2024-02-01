@@ -135,9 +135,7 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
     return prot
 
 
-def get_early_warning_per_hazard(index_, early_warning_path="WRP/early_warning.csv", no_ew_hazards="Earthquake"):
-    ew_per_country_ = load_input_data(root_dir, early_warning_path)
-    ew_per_country_ = df_to_iso3(ew_per_country_, 'Country', any_to_wb).set_index('iso3').ew
+def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthquake"):
     ew_per_hazard_ = pd.Series(index=index_, data=0.0, name='ew')
     common_countries = np.intersect1d(index_.get_level_values('iso3').unique(), ew_per_country_.index)
     ew_per_hazard_.loc[common_countries] += ew_per_country_.loc[common_countries]
@@ -281,8 +279,11 @@ def load_vulnerability_data(income_shares_, n_quantiles=5,
     return vulnerability_
 
 
-def compute_borrowing_ability(credit_ratings_, finance_preparedness_, cat_ddo_filepath="CatDDO/catddo.xlsx"):
-    borrowing_ability_ = credit_ratings_.add(finance_preparedness_, fill_value=0) / 2
+def compute_borrowing_ability(credit_ratings_, finance_preparedness_=None, cat_ddo_filepath="CatDDO/catddo.xlsx"):
+    if finance_preparedness_ is None:
+        borrowing_ability_ = credit_ratings_
+    else:
+        borrowing_ability_ = credit_ratings_.add(finance_preparedness_, fill_value=0) / 2
     contingent_countries = df_to_iso3(load_input_data(root_dir, cat_ddo_filepath), 'Country').iso3.values
     borrowing_ability_.loc[np.intersect1d(contingent_countries, credit_ratings_.index)] = 1
     borrowing_ability_.name = 'borrowing_ability'
@@ -325,6 +326,73 @@ def load_hfa_data():
     return hfa_data
 
 
+def load_wrp_data(wrp_data_path_="WRP/lrf_wrp_2021_full_data.csv.zip", root_dir_='.', outfile=None):
+    # disaster preparedness related questions (see lrf_wrp_2021_full_data_dictionary.xlsx):
+    # Q16A	    Well Prepared to Deal With a Disaster: The National Government
+    # Q16B	    Well Prepared to Deal With a Disaster: Hospitals
+    # (Q16C)	Well Prepared to Deal With a Disaster: You and Your Family
+    # Q16D	    Well Prepared to Deal With a Disaster: Local Government
+    # TODO: these questions are different from the previously used HFA indicators:
+    # P4C2: Do social safety nets exist to increase the resilience of risk prone households and communities?
+    # P5C2: Disaster preparedness plans and contingency plans are in place at all administrative levels, and regular
+    #       training drills and rehearsals are held to test and develop disaster response programs.
+    # P4C5: Disaster risk reduction measures are integrated into post‐disaster recovery and rehabilitation processes.
+    cat_preparedness_cols = ['Q16A', 'Q16B', 'Q16D']
+
+    # early warning related questions (see lrf_wrp_2021_full_data_dictionary.xlsx):
+    # Q19A	Received Warning About Disaster From Internet/Social Media
+    # Q19B	Received Warning About Disaster From Local Government or Police
+    # Q19C	Received Warning About Disaster From Radio, TV, or Newspapers
+    # Q19D	Received Warning About Disaster From Local Community Organization
+    early_warning_cols = ['Q19A', 'Q19B', 'Q19C', 'Q19D']
+
+    all_cols = cat_preparedness_cols + early_warning_cols
+
+    # read data
+    wrp_data_ = load_input_data(root_dir_, wrp_data_path_, dtype=object)[['Country', 'WGT', 'Year'] + all_cols]
+    wrp_data_ = wrp_data_.replace(' ', np.nan)
+    wrp_data_[all_cols + ['WGT']] = wrp_data_[all_cols + ['WGT']].astype(float)
+    wrp_data_[['Country', 'Year']] = wrp_data_[['Country', 'Year']].astype(str)
+    wrp_data_.set_index(['Country', 'Year'], inplace=True)
+
+    # drop rows with no data
+    wrp_data_ = wrp_data_.dropna(how='all', subset=all_cols)
+
+    # 97 = Does Not Apply
+    # 98 = Don't Know
+    # 99 = Refused
+    # consider all of the above as 'no'
+    # 1 = Yes
+    # 2 = No (set to 0)
+    # 3 = It depends (only for Q16A-D, set to 0.5)
+    wrp_data_[all_cols] = wrp_data_[all_cols].replace({97: 0, 98: 0, 99: 0, 2: 0, 3: 0.5})
+
+    # consider early warning available, if at least one of the early warning questions was answered with 'yes'
+    wrp_data_['ew'] = wrp_data_[early_warning_cols].sum(axis=1, skipna=False)
+    wrp_data_.loc[~wrp_data_.ew.isna(), 'ew'] = (wrp_data_.loc[~wrp_data_.ew.isna(), 'ew'] > 0).astype(float)
+    early_warning_cols = ['ew']
+
+    indicators = []
+    for indicator, cols in [('prepare_scaleup', cat_preparedness_cols), ('early_warning', early_warning_cols)]:
+        data_ = wrp_data_[cols + ['WGT']].dropna(how='all', subset=cols)
+
+        # calculate weighted mean of each sub-indicator. Then take the mean of the sub-indicators to get the indicator
+        data_ = data_[cols].mul(data_.WGT, axis=0).groupby(['Country', 'Year']).sum().div(
+            data_.WGT.groupby(['Country', 'Year']).sum(), axis=0).mean(axis=1).rename(indicator)
+        data_ = data_.to_frame().reset_index()
+        data_ = data_.loc[data_.groupby('Country').Year.idxmax()].drop('Year', axis=1).set_index('Country')
+        indicators.append(data_)
+    indicators = pd.concat(indicators, axis=1)
+
+    indicators = df_to_iso3(indicators.reset_index(), 'Country', any_to_wb)
+    indicators = indicators.set_index('iso3').drop('Country', axis=1)
+
+    if outfile is not None:
+        indicators.to_csv(outfile)
+
+    return indicators
+
+
 def load_credit_ratings(tradingecon_ratings_path="credit_ratings/2023-12-13_tradingeconomics_ratings.csv",
                         cia_ratings_raw_path="credit_ratings/2024-01-30_cia_ratings_raw.txt",
                         ratings_scale_path="credit_ratings/credit_ratings_scale.csv"):
@@ -340,11 +408,14 @@ def load_credit_ratings(tradingecon_ratings_path="credit_ratings/2023-12-13_trad
     # drop EU
     te_ratings = te_ratings[te_ratings.country != 'European Union']
 
+    # rename Congo to Congo, Dem. Rep.
+    te_ratings.replace({'Congo': 'Congo, Dem. Rep.'}, inplace=True)
+
     # change country name to iso3
     te_ratings = df_to_iso3(te_ratings, "country", any_to_wb)
     te_ratings = te_ratings.set_index("iso3").drop("country", axis=1)
 
-    # mystriper is a function in lib_gather_data. To lower case and strips blanks.
+    # make lower case and strip
     te_ratings = te_ratings.map(lambda x: str.strip(x).lower() if type(x) is str else x)
 
     # CIA ratings
@@ -467,11 +538,13 @@ if __name__ == '__main__':
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
-    # read HFA data
-    hfa_data = load_hfa_data()
-    # TODO: remove later
-    if test_run:
-        hfa_data = hfa_data.loc[['USA']]
+    # # read HFA data
+    # hfa_data = load_hfa_data()
+    # # TODO: remove later
+    # if test_run:
+    #     hfa_data = hfa_data.loc[['USA']]
+    # TODO: WRP data contains about 30 countries less than HFA data
+    wrp_data = load_wrp_data("WRP/lrf_wrp_2021_full_data.csv.zip", root_dir)
 
     # read credit ratings
     credit_ratings = load_credit_ratings()
@@ -480,7 +553,8 @@ if __name__ == '__main__':
         credit_ratings = credit_ratings.loc[['USA']]
 
     # compute country borrowing ability
-    borrowing_ability = compute_borrowing_ability(credit_ratings, hfa_data.finance_pre)
+    # borrowing_ability = compute_borrowing_ability(credit_ratings, hfa_data.finance_pre)
+    borrowing_ability = compute_borrowing_ability(credit_ratings)  # TODO: for now, compute without HFA data
 
     # load average productivity of capital
     avg_prod_k = gather_capital_data(root_dir).avg_prod_k
@@ -515,7 +589,8 @@ if __name__ == '__main__':
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake)
-    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index)
+    # early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index)
+    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, wrp_data.early_warning)
 
     # concatenate exposure, vulnerability and early warning into one dataframe
     hazard_ratios = pd.concat((exposure_fa_with_peb, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
@@ -530,7 +605,8 @@ if __name__ == '__main__':
     # TODO: before, also included pov_head, pi (vulnerability reduction with early warning), income_elast, rho,
     #  shareable, max_increased_spending, protection; check if this is necessary
     macro = wb_data_macro
-    macro = macro.join(hfa_data['prepare_scaleup'], how='left')
+    # macro = macro.join(hfa_data['prepare_scaleup'], how='left')
+    macro = macro.join(wrp_data['prepare_scaleup'], how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
@@ -587,6 +663,12 @@ if __name__ == '__main__':
         # TODO: ideally, all variables that are computed in gather_data.py should be computed in
         #  recomputed_after_policy_change(); before, only input data should be loaded to avoid double computation and
         #  recomputation errors.
+
+        # TODO: check that scenario_hazard_ratios_rec (return periods extrapolated to protection rp's) has the same AAL
+        #  as scenario_hazard_ratios (which does not include protection return periods)
+
+        # clean data
+        # TODO: can be removed after compute_resilience_and_risk.py is updated to use variable 'diversified_share'
         scenario_macro_rec, scenario_cat_info_rec, scenario_hazard_ratios_rec = recompute_after_policy_change(
             macro_=scenario_macro,
             cat_info_=scenario_cat_info,
@@ -595,12 +677,6 @@ if __name__ == '__main__':
             axfin_impact_=axfin_impact,
             pi_=reduction_vul,
         )
-
-        # TODO: check that scenario_hazard_ratios_rec (return periods extrapolated to protection rp's) has the same AAL
-        #  as scenario_hazard_ratios (which does not include protection return periods)
-
-        # clean data
-        # TODO: can be removed after compute_resilience_and_risk.py is updated to use variable 'diversified_share'
         scenario_cat_info_rec.drop('social', axis=1, inplace=True)
 
         # Save all data
