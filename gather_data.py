@@ -192,7 +192,7 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, n_quantiles_, poor_ca
             raise Exception("Population data not available. Cannot use average PE.")
     bias.fillna(1, inplace=True)
 
-    exposure_fa_with_peb_ = (exposure_fa_ * bias).swaplevel('rp', 'income_cat').sort_index()
+    exposure_fa_with_peb_ = (exposure_fa_ * bias).swaplevel('rp', 'income_cat').sort_index().rename(exposure_fa.name)
 
     # selects just flood and surge
     # peb_hazards_ = peb_hazards_.split("+")
@@ -280,13 +280,14 @@ def load_vulnerability_data(income_shares_, n_quantiles=5,
 
 
 def compute_borrowing_ability(credit_ratings_, finance_preparedness_=None, cat_ddo_filepath="CatDDO/catddo.xlsx"):
-    if finance_preparedness_ is None:
-        borrowing_ability_ = credit_ratings_
-    else:
-        borrowing_ability_ = credit_ratings_.add(finance_preparedness_, fill_value=0) / 2
-    contingent_countries = df_to_iso3(load_input_data(root_dir, cat_ddo_filepath), 'Country').iso3.values
-    borrowing_ability_.loc[np.intersect1d(contingent_countries, credit_ratings_.index)] = 1
-    borrowing_ability_.name = 'borrowing_ability'
+    borrowing_ability_ = copy.deepcopy(credit_ratings_).rename('borrowing_ability')
+    if finance_preparedness_ is not None:
+        borrowing_ability_ = pd.concat((borrowing_ability_, finance_preparedness_), axis=1).mean(axis=1).rename('borrowing_ability')
+    catddo_countries = pd.concat(load_input_data(root_dir, cat_ddo_filepath, sheet_name=[0, 1, 2], header=0), axis=0)
+    catddo_countries = df_to_iso3(catddo_countries, 'Country').iso3.unique()
+    catddo_countries = pd.Series(index=catddo_countries, data=1, name='contingent_countries')
+    borrowing_ability_ = pd.concat((borrowing_ability_, catddo_countries), axis=1)
+    borrowing_ability_ = borrowing_ability_.borrowing_ability.fillna(borrowing_ability_.contingent_countries)
     return borrowing_ability_
 
 
@@ -327,17 +328,19 @@ def load_hfa_data():
 
 
 def load_wrp_data(wrp_data_path_="WRP/lrf_wrp_2021_full_data.csv.zip", root_dir_='.', outfile=None):
-    # disaster preparedness related questions (see lrf_wrp_2021_full_data_dictionary.xlsx):
-    # Q16A	    Well Prepared to Deal With a Disaster: The National Government
-    # Q16B	    Well Prepared to Deal With a Disaster: Hospitals
-    # (Q16C)	Well Prepared to Deal With a Disaster: You and Your Family
-    # Q16D	    Well Prepared to Deal With a Disaster: Local Government
-    # TODO: these questions are different from the previously used HFA indicators:
+    # previously used HFA indicators:
     # P4C2: Do social safety nets exist to increase the resilience of risk prone households and communities?
     # P5C2: Disaster preparedness plans and contingency plans are in place at all administrative levels, and regular
     #       training drills and rehearsals are held to test and develop disaster response programs.
     # P4C5: Disaster risk reduction measures are integrated into post‐disaster recovery and rehabilitation processes.
-    cat_preparedness_cols = ['Q16A', 'Q16B', 'Q16D']
+    # disaster preparedness related questions (see lrf_wrp_2021_full_data_dictionary.xlsx):
+
+    # WRP indicators for disaster preparedness
+    # Q16A	    Well Prepared to Deal With a Disaster: The National Government
+    # Q16B	    Well Prepared to Deal With a Disaster: Hospitals
+    # (Q16C)	Well Prepared to Deal With a Disaster: You and Your Family
+    # Q16D	    Well Prepared to Deal With a Disaster: Local Government
+    cat_preparedness_cols = ['Q16A', 'Q16D']
 
     # early warning related questions (see lrf_wrp_2021_full_data_dictionary.xlsx):
     # Q19A	Received Warning About Disaster From Internet/Social Media
@@ -373,7 +376,7 @@ def load_wrp_data(wrp_data_path_="WRP/lrf_wrp_2021_full_data.csv.zip", root_dir_
     early_warning_cols = ['ew']
 
     indicators = []
-    for indicator, cols in [('prepare_scaleup', cat_preparedness_cols), ('early_warning', early_warning_cols)]:
+    for indicator, cols in [('prepare_scaleup', cat_preparedness_cols), ('ew', early_warning_cols)]:
         data_ = wrp_data_[cols + ['WGT']].dropna(how='all', subset=cols)
 
         # calculate weighted mean of each sub-indicator. Then take the mean of the sub-indicators to get the indicator
@@ -538,13 +541,18 @@ if __name__ == '__main__':
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
-    # # read HFA data
-    # hfa_data = load_hfa_data()
+    # read HFA data
+    hfa_data = load_hfa_data()
     # # TODO: remove later
     # if test_run:
     #     hfa_data = hfa_data.loc[['USA']]
     # TODO: WRP data contains about 30 countries less than HFA data
     wrp_data = load_wrp_data("WRP/lrf_wrp_2021_full_data.csv.zip", root_dir)
+
+    # merge HFA and WRP data: take the mean of the two data sets where both are available (i.e., ew + prepare_scaleup)
+    disaster_preparedness = hfa_data[['finance_pre']].copy()
+    disaster_preparedness['ew'] = pd.concat((hfa_data['ew'], wrp_data['ew']), axis=1).mean(axis=1)
+    disaster_preparedness['prepare_scaleup'] = pd.concat((hfa_data['prepare_scaleup'], wrp_data['prepare_scaleup']), axis=1).mean(axis=1)
 
     # read credit ratings
     credit_ratings = load_credit_ratings()
@@ -553,8 +561,8 @@ if __name__ == '__main__':
         credit_ratings = credit_ratings.loc[['USA']]
 
     # compute country borrowing ability
-    # borrowing_ability = compute_borrowing_ability(credit_ratings, hfa_data.finance_pre)
-    borrowing_ability = compute_borrowing_ability(credit_ratings)  # TODO: for now, compute without HFA data
+    borrowing_ability = compute_borrowing_ability(credit_ratings, disaster_preparedness.finance_pre)
+    # borrowing_ability = compute_borrowing_ability(credit_ratings)
 
     # load average productivity of capital
     avg_prod_k = gather_capital_data(root_dir).avg_prod_k
@@ -590,7 +598,7 @@ if __name__ == '__main__':
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake)
     # early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index)
-    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, wrp_data.early_warning)
+    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, disaster_preparedness.ew)
 
     # concatenate exposure, vulnerability and early warning into one dataframe
     hazard_ratios = pd.concat((exposure_fa_with_peb, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
@@ -605,8 +613,7 @@ if __name__ == '__main__':
     # TODO: before, also included pov_head, pi (vulnerability reduction with early warning), income_elast, rho,
     #  shareable, max_increased_spending, protection; check if this is necessary
     macro = wb_data_macro
-    # macro = macro.join(hfa_data['prepare_scaleup'], how='left')
-    macro = macro.join(wrp_data['prepare_scaleup'], how='left')
+    macro = macro.join(disaster_preparedness['prepare_scaleup'], how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
