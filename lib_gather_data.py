@@ -335,38 +335,41 @@ def average_over_rp(df, default_rp, protection=None):
     return res
 
 
-def gather_capital_data(root_dir_):
+def gather_capital_data(root_dir_, include_legacy_sids=False):
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
     # pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
-    pwt_data = load_input_data(root_dir_, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
-    pwt_data = pwt_data.rename({'countrycode': 'iso3'}, axis=1)
+    capital_data = load_input_data(root_dir_, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
+    capital_data = capital_data.rename({'countrycode': 'iso3'}, axis=1)
 
     # !! NOTE: PWT variable for capital stock has been renamed from 'ck' to 'cn' in the 10.0.0 version
-    pwt_data = pwt_data[['iso3', 'cgdpo', 'cn', 'year']].dropna()
+    capital_data = capital_data[['iso3', 'cgdpo', 'cn', 'year']].dropna()
 
     # retain only the most recent year
-    pwt_data = pwt_data.groupby("iso3").apply(lambda x: x.loc[(x['year']) == np.nanmax(x['year']), :])
-    pwt_data = pwt_data.reset_index(drop=True).set_index('iso3')
+    capital_data = capital_data.groupby("iso3").apply(lambda x: x.loc[(x['year']) == np.nanmax(x['year']), :])
+    capital_data = capital_data.reset_index(drop=True).set_index('iso3')
 
     # get capital data for SIDS from GAR
-    sids_list = load_input_data(root_dir_, "gar_name_sids.csv")
-    sids_list = df_to_iso3(sids_list, 'country')
-    sids_list = sids_list[sids_list.isaSID == "SIDS"].dropna().reset_index().iso3
-    sids_capital_gar = load_input_data(root_dir_, "GAR_capital.csv")[['country', 'GDP', 'K']]
-    sids_capital_gar = df_to_iso3(sids_capital_gar, 'country').drop('country', axis=1)
-    sids_capital_gar.dropna(inplace=True)
-    sids_capital_gar = sids_capital_gar.set_index("iso3")
-    sids_capital_gar = sids_capital_gar.loc[np.intersect1d(sids_list.values, sids_capital_gar.index.values), :]
-    sids_capital_gar = sids_capital_gar.replace(0, np.nan).dropna()
-    sids_capital_gar.rename({'K': 'cn', 'GDP': 'cgdpo'}, axis=1, inplace=True)
+    if include_legacy_sids:
+        sids_list = load_input_data(root_dir_, "gar_name_sids.csv")
+        sids_list = df_to_iso3(sids_list, 'country')
+        sids_list = sids_list[sids_list.isaSID == "SIDS"].dropna().reset_index().iso3
+        sids_capital_gar = load_input_data(root_dir_, "GAR_capital.csv")[['country', 'GDP', 'K']]
+        sids_capital_gar = df_to_iso3(sids_capital_gar, 'country').drop('country', axis=1)
+        sids_capital_gar.dropna(inplace=True)
+        sids_capital_gar = sids_capital_gar.set_index("iso3")
+        sids_capital_gar = sids_capital_gar.loc[np.intersect1d(sids_list.values, sids_capital_gar.index.values), :]
+        sids_capital_gar = sids_capital_gar.replace(0, np.nan).dropna()
+        sids_capital_gar.rename({'K': 'cn', 'GDP': 'cgdpo'}, axis=1, inplace=True)
 
-    # merge capital data from PWT and GAR (SIDS)
-    # compute average productivity of capital
-    capital_data = pd.merge(pwt_data, sids_capital_gar, on='iso3', how='outer')
-    capital_data['cgdpo'] = capital_data.cgdpo_x.fillna(capital_data.cgdpo_y)
-    capital_data['ck'] = capital_data.cn_x.fillna(capital_data.cn_y)
-    capital_data.drop(['cgdpo_x', 'cgdpo_y', 'cn_x', 'cn_y', 'year'], axis=1, inplace=True)
-    capital_data["avg_prod_k"] = capital_data.cgdpo / capital_data.ck
+        # merge capital data from PWT and GAR (SIDS)
+        # compute average productivity of capital
+        capital_data = pd.merge(capital_data, sids_capital_gar, on='iso3', how='outer')
+        capital_data['cgdpo'] = capital_data.cgdpo_x.fillna(capital_data.cgdpo_y)
+        capital_data['cn'] = capital_data.cn_x.fillna(capital_data.cn_y)
+        capital_data.drop(['cgdpo_x', 'cgdpo_y', 'cn_x', 'cn_y'], axis=1, inplace=True)
+
+    capital_data.drop('year', axis=1, inplace=True)
+    capital_data["avg_prod_k"] = capital_data.cgdpo / capital_data.cn
     capital_data = capital_data.dropna()
 
     return capital_data
