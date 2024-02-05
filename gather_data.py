@@ -146,7 +146,7 @@ def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthqu
 
 # TODO: update with new PEB data
 def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, n_quantiles_, poor_categories_, population_data_=None,
-                                peb_data_path="PEB/exposure_bias_processed.csv",
+                                peb_data_path="PEB/exposure_bias_per_quintile.csv",
                                 # peb_povmaps_filepath_="PEB_flood_povmaps.xlsx",
                                 # peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"
                                 ):

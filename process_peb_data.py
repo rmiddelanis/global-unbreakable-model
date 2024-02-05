@@ -1,58 +1,76 @@
+import os
+
 import pandas as pd
 import numpy as np
 from wb_api_wrapper import get_wb_series
 from lib_gather_data import df_to_iso3
 
 
-def process_peb_data(exposure_data_path, wb_macro_path, outfile=None):
-    # load wb data
-    wb_macro = pd.read_csv(wb_macro_path, encoding='latin1').set_index('iso3')
+def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias.dta",
+                     poverty_data_path="inputs/PEB/poverty_data/", outfile=None):
+    exposure_data_path = os.path.join(root_dir, exposure_data_path)
+    poverty_data_path = os.path.join(root_dir, poverty_data_path)
 
     # load exposure data
     exposure = pd.read_stata(exposure_data_path)
     exposure.rename({'exp': 'hazard', 'code': 'iso3', 'line': 'pov_line', 'nvul': 'pop_a'}, axis=1, inplace=True)
-    exposure.hazard = exposure.hazard.apply(lambda x: str.capitalize(x.replace('exp_', '')))
     exposure = exposure[['iso3', 'hazard', 'pop_a', 'pov_line']]
+    exposure = exposure.astype({'hazard': str, 'iso3': str, 'pov_line': float, 'pop_a': float})
+    exposure.hazard = exposure.hazard.apply(lambda x: str.capitalize(x.replace('exp_', '')))
     exposure.pop_a *= 1e6
-    exposure.pov_line = exposure.pov_line.fillna(np.inf)
+    exposure.pov_line = exposure.pov_line.fillna(np.inf) / 100  # use np.inf for full population; convert to percentage
     exposure = exposure.set_index(['iso3', 'hazard', 'pov_line']).squeeze()
-    exposure = exposure.unstack('pov_line')
-    exposure[0.] = 0
 
     # split cyclone into storm surge and wind
-    exposure = exposure.stack().unstack('hazard')
+    exposure = exposure.unstack('hazard')
     exposure['Storm surge'] = exposure.Cyclone
     exposure['Wind'] = exposure.Cyclone
     exposure.drop('Cyclone', axis=1, inplace=True)
-    exposure = exposure.stack('hazard').rename('pop_a').reset_index()
+    exposure = exposure.stack('hazard')
 
-    # load wb headcount data
-    pov_head_215 = get_wb_series('SI.POV.DDAY', 215.0).dropna() / 100
-    pov_head_365 = get_wb_series('SI.POV.LMIC', 365.0).dropna() / 100
-    pov_head_685 = get_wb_series('SI.POV.UMIC', 685.0).dropna() / 100
-    pov_head = pd.concat([pov_head_215, pov_head_365, pov_head_685], axis=1)
-    pov_head = pov_head.stack().rename('pov_headcount')
-    pov_head.index.names = ['country', 'year', 'pov_line']
-    pov_head = pov_head.reset_index()
-    pov_head = pov_head.loc[pov_head.groupby(['country', 'pov_line']).year.idxmax()]
-    pov_head = pov_head.set_index(['country', 'pov_line']).pov_headcount.unstack('pov_line')
-    pov_head[0.] = 0
-    pov_head = pov_head.stack().rename('pov_headcount')
-    pov_head = df_to_iso3(pov_head.reset_index(), 'country')
-    pov_head = pov_head.dropna(subset=['iso3']).reset_index(drop=True)
-    pov_head.drop('country', axis=1, inplace=True)
-    pov_head.pov_line = pov_head.pov_line.astype(object)
+    # add poverty line 0
+    exposure = exposure.unstack('pov_line')
+    exposure[0.] = 0
+    exposure = exposure.stack('pov_line').sort_index().rename('pop_a')
 
-    # merge exposure and headcount data
-    exposure = pd.merge(exposure, pov_head, on=['iso3', 'pov_line'], how='outer')
+    # load poverty data
+    pov_files = [f for f in os.listdir(poverty_data_path) if f.endswith('.csv')]
+    pov_data = pd.concat([pd.read_csv(poverty_data_path + f) for f in pov_files], axis=0)
+    pov_data = pov_data[['country_code', 'reporting_year', 'poverty_line', 'reporting_pop', 'headcount']]
+    pov_data = pov_data.rename({'country_code': 'iso3', 'reporting_year': 'year', 'poverty_line': 'pov_line',
+                                'reporting_pop': 'pop', 'headcount': 'pov_headcount'}, axis=1).reset_index(drop=True)
+    pov_data = pov_data.astype({'iso3': str, 'year': int, 'pov_line': float, 'pop': int, 'pov_headcount': float})
+    pov_data = pov_data.loc[pov_data.groupby(['iso3', 'pov_line']).year.idxmax()].reset_index(drop=True)
+    pov_data.drop('year', axis=1, inplace=True)
 
-    # pov_line == np.inf is the total country exposure --> headcount is 1
-    exposure.loc[exposure.pov_line == np.inf, 'pov_headcount'] = 1
+    # keep population data separately
+    pop_data = pov_data[['iso3', 'pop']].drop_duplicates().set_index('iso3').squeeze()
 
-    # for some poverty lines, no headcount data is available. drop these
-    exposure.dropna(subset=['pov_headcount'], inplace=True)
+    # keep poverty headcount data separately
+    pov_head = pov_data.set_index(['iso3', 'pov_line']).pov_headcount.unstack('pov_line')
+
+    # interpolate missing poverty lines
+    missing_pov_lines = np.setdiff1d(exposure.index.get_level_values('pov_line').unique(), pov_head.columns)
+    new_cols = pd.DataFrame(
+        index=pd.Index(missing_pov_lines, name='pov_line'),
+        data={i: np.interp(missing_pov_lines, pov_head.columns, pov_head.loc[i].interpolate().values) for i in pov_head.index.unique()},
+        columns=pd.Index(pov_head.index.unique(), name='iso3')
+    ).transpose()
+
+    # set headcount for poverty lines 0 to 0 and np.inf (full population) to 1
+    new_cols[0] = 0
+    new_cols[np.inf] = 1
+
+    pov_head = pd.concat([pov_head, new_cols], axis=1).stack().sort_index().rename('pov_headcount')
+
+    # compute population per poverty line
+    pov_data = pd.merge((pop_data * pov_head).rename('pop'), pov_head, left_index=True, right_index=True)
+
+    # merge exposure and poverty data
+    exposure = pd.merge(exposure, pov_data, left_index=True, right_index=True, how='left')
 
     # define population slices, i.e. the population between two poverty lines
+    exposure.reset_index(inplace=True)
     exposure['pop_slice'] = exposure.pov_line.replace({p: i for i, p in enumerate(sorted(exposure.pov_line.unique()))})
     exposure = exposure.set_index(['iso3', 'hazard', 'pop_slice']).sort_index()
 
@@ -61,23 +79,23 @@ def process_peb_data(exposure_data_path, wb_macro_path, outfile=None):
     exposure.drop(drop_idx, inplace=True)
 
     # keep only the average exposure for the total country
-    exposure_data_avg = exposure.loc[exposure.pov_line == np.inf].droplevel('pop_slice')
-    exposure_data_avg = exposure_data_avg.pop_a / wb_macro['pop']
-    exposure_data_avg[exposure_data_avg > 1] = 1  # TODO
+    exposure_avg = exposure.loc[exposure.pov_line == np.inf].droplevel('pop_slice')
+    exposure_avg = exposure_avg.pop_a / exposure_avg['pop']
+    exposure_avg[exposure_avg > 1] = 1  # TODO
 
     # calculate row-wise difference to get values per population slice
-    exposure = exposure.groupby(['iso3', 'hazard']).diff().dropna()
+    exposure = exposure.drop('pov_line', axis=1).sort_index().groupby(['iso3', 'hazard']).diff().dropna()
 
     # TODO: some categories have pov_headcount == 0 but pop_a > 0
     # drop data where pov_headcount == 0 (these don't contribute to any income quintile)
-    exposure = exposure[exposure.pov_headcount > 0]
+    exposure = exposure[exposure.pov_headcount > 0].copy()
 
     # compute relative exposure
-    exposure['f_a'] = exposure.pop_a / (wb_macro['pop'] * exposure.pov_headcount)
-    exposure.dropna(subset=['f_a'], inplace=True)
+    exposure['f_a'] = exposure.pop_a / exposure['pop']
+    exposure = exposure[exposure.f_a >= 0].copy()  # some entries have f_a < 0 (only very small headcounts); drop these
 
     # compute exposure bias
-    exposure['exposure_bias'] = exposure.f_a / exposure_data_avg
+    exposure['exposure_bias'] = exposure.f_a / exposure_avg
 
     # compute cumulative headcount (needed for calculation of per-quintile exposure)
     exposure['cum_headcount'] = exposure.groupby(['iso3', 'hazard']).pov_headcount.cumsum()
@@ -103,5 +121,15 @@ def process_peb_data(exposure_data_path, wb_macro_path, outfile=None):
     # store exposure bias per quintile
     if outfile is not None:
         exp_bias_q.to_csv(outfile)
+        print(f"Exposure bias per quintile stored in {outfile}")
 
     return exp_bias_q
+
+
+if __name__ == "__main__":
+    process_peb_data(
+        root_dir=os.getcwd(),
+        exposure_data_path="inputs/PEB/exposure bias.dta",
+        poverty_data_path="inputs/PEB/poverty_data/",
+        outfile="./inputs/PEB/exposure_bias_per_quintile.csv"
+    )
