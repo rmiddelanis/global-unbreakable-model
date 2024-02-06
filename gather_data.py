@@ -16,15 +16,16 @@ from lib_gather_data import get_country_name_dicts
 #  hazard specific, so it cannot be used for computing recovery duration.
 # TODO: discuss standard parameter values
 def get_recovery_duration(avg_prod_k_, vulnerability_, discount_rate_, consump_util_=1.5, force_recompute=True,
-                          lambda_increment_=.001, years_to_recover_=20, max_duration_=10, store_output=False):
+                          lambda_increment_=.001, years_to_recover_=20, max_duration_=10, store_output=True):
     if not force_recompute and os.path.exists(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv')):
         print("Loading recovery rates from file.")
         df = pd.read_csv(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv'), index_col=['iso3', 'income_cat'])
     else:
-        vulnerability__ = vulnerability_.rename({'v_poor': 'poor', 'v_rich': 'nonpoor'}, axis=1)[['poor', 'nonpoor']]
-        vulnerability__ = vulnerability__.stack().reset_index().rename({'level_1': 'income_cat', 0: 'v'}, axis=1)
-        df = pd.merge(vulnerability__, avg_prod_k_, on='iso3', how='inner')
-        df.set_index(['iso3', 'income_cat'], inplace=True)
+        # vulnerability__ = vulnerability_.rename({'v_poor': 'poor', 'v_rich': 'nonpoor'}, axis=1)[['poor', 'nonpoor']]
+        # vulnerability__ = vulnerability__.stack().reset_index().rename({'level_1': 'income_cat', 0: 'v'}, axis=1)
+        # df = pd.merge(vulnerability__, avg_prod_k_, on='iso3', how='inner')
+        # df.set_index(['iso3', 'income_cat'], inplace=True)
+        df = pd.merge(vulnerability_, avg_prod_k_, left_index=True, right_index=True, how='inner')
         for row in tqdm.tqdm(df.itertuples(), total=len(df), desc="Computing recovery duration"):
             df.loc[row.Index, 'recovery_rate'] = integrate_and_find_recovery_rate(
                 v=row.v, consump_util=consump_util_, discount_rate=discount_rate_, average_productivity=row.avg_prod_k,
@@ -41,6 +42,7 @@ def get_recovery_duration(avg_prod_k_, vulnerability_, discount_rate_, consump_u
 
         # recovery years are very high for very low vulnerability, so cap to 20 years for now
         df.loc[df['recovery_time'] > years_to_recover_, 'recovery_time'] = years_to_recover_
+        df['recovery_rate'] = np.log(1 / 0.05) / df['recovery_time']  # adjust rates for capped recovery times
         if store_output:
             df[['recovery_rate', 'recovery_time']].to_csv(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv'))
     return df[['recovery_rate', 'recovery_time']]
@@ -145,7 +147,7 @@ def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthqu
 
 
 # TODO: update with new PEB data
-def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, n_quantiles_, poor_categories_, population_data_=None,
+def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, population_data_=None,  # n_quantiles_, poor_categories_,
                                 peb_data_path="PEB/exposure_bias_per_quintile.csv",
                                 # peb_povmaps_filepath_="PEB_flood_povmaps.xlsx",
                                 # peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"
@@ -472,49 +474,38 @@ if __name__ == '__main__':
     parser.add_argument('--use_flopros_protection', type=bool, default=True, help='Use FLOPROS for protection')
     parser.add_argument('--no_protection', action='store_true', help='No protection')
     parser.add_argument('--use_avg_pe', type=bool, default=True, help='Use average PE')
-    parser.add_argument('--use_newest_wdi_findex_aspire', type=bool, default=False,
-                        help='Use newest WDI, Findex, Aspire')
     parser.add_argument('--drop_unused_data', type=bool, default=True, help='Drop unused data')
-    parser.add_argument('--update_exposure_with_constant_fa', type=bool, default=True,
-                        help='Update exposure data with constant_fa.csv')
     parser.add_argument('--econ_scope', type=str, default='iso3', help='Economic scope')
     parser.add_argument('--default_rp', type=str, default='default_rp', help='Default return period')
-    parser.add_argument('--poverty_head', type=float, default=0.2, help='Poverty headcount')
     parser.add_argument('--reconstruction_time', type=float, default=3.0, help='Reconstruction time')
     parser.add_argument('--reduction_vul', type=float, default=0.2, help='Reduction in vulnerability')
     parser.add_argument('--income_elasticity', type=float, default=1.5, help='Income elasticity')
-    parser.add_argument('--discount_rate', type=float, default=0.06, help='Discount rate')
-    parser.add_argument('--asset_loss_covered', type=float, default=0.8, help='Asset loss covered')
-    parser.add_argument('--max_support', type=float, default=0.05, help='Maximum support')
+    parser.add_argument('--discount_rate_rho', type=float, default=0.06, help='Discount rate')
+    parser.add_argument('--shareable', type=float, default=0.8, help='Asset loss covered')
+    parser.add_argument('--max_increased_spending', type=float, default=0.05, help='Maximum support')
     parser.add_argument('--fa_threshold', type=float, default=0.9, help='FA threshold')
     parser.add_argument('--axfin_impact', type=float, default=0.1, help='Increase of the fraction of diversified '
                                                                         'income through financial inclusion')
     parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
-    parser.add_argument('--poor_categories', type=str, default="q1", help='Poor categories, separated'
-                                                                          'by \'+\'.')
-    parser.add_argument('--optimize_recovery', action='store_true', help='Compute recovery duration')
+    parser.add_argument('--no_optimized_recovery', action='store_true', help='Use fixed recovery duration'
+                                                                             'instead of optimization.')
     parser.add_argument('--test_run', action='store_true', help='If true, only runs with country USA')
     args = parser.parse_args()
 
     use_flopros_protection = args.use_flopros_protection
     no_protection = args.no_protection
     use_avg_pe = args.use_avg_pe
-    # use_newest_wdi_findex_aspire = args.use_newest_wdi_findex_aspire
-    # drop_unused_data = args.drop_unused_data
     default_rp = args.default_rp  # TODO: check if this can be removed
-    poverty_headcount = args.poverty_head
-    # reconstruction_time = args.reconstruction_time
     reduction_vul = args.reduction_vul
     income_elasticity = args.income_elasticity
-    discount_rate = args.discount_rate
-    asset_loss_covered = args.asset_loss_covered
-    max_support = args.max_support
+    discount_rate_rho = args.discount_rate_rho
+    shareable = args.shareable
+    max_increased_spending = args.max_increased_spending
     fa_threshold = args.fa_threshold
     axfin_impact = args.axfin_impact
-    update_exposure_with_constant_fa = args.update_exposure_with_constant_fa
-    poor_categories = args.poor_categories.split("+")
-    optimize_recovery = args.optimize_recovery
+    no_optimized_recovery = args.no_optimized_recovery
     test_run = args.test_run
+    default_reconstruction_time = args.reconstruction_time
 
     econ_scope = args.econ_scope
     event_level = [econ_scope, "hazard", "rp"]  # levels of index at which one event happens
@@ -585,7 +576,7 @@ if __name__ == '__main__':
     )
 
     # apply poverty exposure bias
-    exposure_fa_with_peb = apply_poverty_exposure_bias(exposure_fa, use_avg_pe, n_quantiles, poor_categories,
+    exposure_fa_with_peb = apply_poverty_exposure_bias(exposure_fa, use_avg_pe,
                                                        wb_data_macro['pop'] if not test_run else wb_data_macro_full['pop'])
     # TODO: figure out what these data are and if to keep them
     # TODO: constant_fa does not come in five income categories; ignoring for now
@@ -609,6 +600,21 @@ if __name__ == '__main__':
                                                  avg_prod_k_=avg_prod_k, n_quantiles_=n_quantiles,
                                                  axfin_impact_=axfin_impact)
 
+    if no_optimized_recovery:
+        cat_info['recovery_time'] = default_reconstruction_time
+    else:
+        recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate_rho, force_recompute=False)
+        cat_info = pd.merge(cat_info, recovery, left_index=True, right_index=True)
+        # TODO: remove later
+        if test_run:
+            recovery = recovery.loc[['USA']]
+    if no_protection:
+        hazard_protection = load_protection(hazard_ratios.index, protection_data="None", min_rp=0)
+    else:
+        if use_flopros_protection:
+            hazard_protection = load_protection(hazard_ratios.index, protection_data="FLOPROS", min_rp=1)
+        else:
+            hazard_protection = load_protection(hazard_ratios.index, protection_data="country_income", min_rp=1)
 
     # TODO: before, also included pov_head, pi (vulnerability reduction with early warning), income_elast, rho,
     #  shareable, max_increased_spending, protection; check if this is necessary
@@ -618,28 +624,10 @@ if __name__ == '__main__':
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
     # TODO: these global parameters should eventually be moved elsewhere and not stored in macro!
-    macro['rho'] = discount_rate
-    macro['max_increased_spending'] = max_support
-    macro['shareable'] = asset_loss_covered
+    macro['rho'] = discount_rate_rho
+    macro['max_increased_spending'] = max_increased_spending
+    macro['shareable'] = shareable
     macro['income_elasticity'] = income_elasticity
-
-    # TODO: originally, recovery is set per country; should be per country and income group, therefore later move to
-    #  cat_info
-    if optimize_recovery:
-        recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate, force_recompute=False)
-        # TODO: remove later
-        if test_run:
-            recovery = recovery.loc[['USA']]
-    else:
-        macro['T_rebuild_K'] = 3.0
-
-    if no_protection:
-        hazard_protection = load_protection(hazard_ratios.index, protection_data="None", min_rp=0)
-    else:
-        if use_flopros_protection:
-            hazard_protection = load_protection(hazard_ratios.index, protection_data="FLOPROS", min_rp=1)
-        else:
-            hazard_protection = load_protection(hazard_ratios.index, protection_data="country_income", min_rp=1)
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)

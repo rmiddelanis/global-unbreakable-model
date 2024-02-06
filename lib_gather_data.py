@@ -603,16 +603,11 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
                       cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
                       * agg_to_economy_level(cat_info_, "k", econ_scope_))
 
-    # rebuilding exponentially to 95% of initial stock in reconst_duration
-    three = np.log(1 / 0.05)
-    recons_rate = three / macro_["T_rebuild_K"]
-
     # Calculation of macroeconomic resilience (Gamma in the technical paper)
     # \Gamma = (\mu + 3/N) / (\rho + 3/N)
-    # TODO: need to make macro_multiplier_Gamma income_cat dependent
-    macro_["macro_multiplier_Gamma"] = (macro_["avg_prod_k"] + recons_rate) / (macro_["rho"] + recons_rate)
+    cat_info_["macro_multiplier_Gamma"] = ((macro_["avg_prod_k"] + cat_info_["recovery_rate"]) /
+                                           (macro_["rho"] + cat_info_["recovery_rate"]))
 
-    # TODO: update rest of the model to use variable 'v_ew' instead of 'v'
     hazard_ratios_["v_ew"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
     hazard_ratios_.drop(['ew', 'v'], inplace=True, axis=1)
 

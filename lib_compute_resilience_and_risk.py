@@ -59,7 +59,7 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     )
 
     # NPV consumption losses accounting for reconstruction and productivity of capital (pre-response)
-    cat_info_event_ia["dc_npv_pre"] = cat_info_event_ia["dc"] * macro_event_["macro_multiplier_Gamma"]
+    cat_info_event_ia["dc_npv_pre"] = cat_info_event_ia[["dc", "macro_multiplier_Gamma"]].product(axis=1)
 
     return macro_event_, cat_info_event_ia
 
