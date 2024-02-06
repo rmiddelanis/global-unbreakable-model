@@ -489,6 +489,8 @@ if __name__ == '__main__':
     parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
     parser.add_argument('--no_optimized_recovery', action='store_true', help='Use fixed recovery duration'
                                                                              'instead of optimization.')
+    parser.add_argument('--force_recovery_recompute', action='store_true', help='Force recomputation '
+                                                                                'of recovery duration.')
     parser.add_argument('--test_run', action='store_true', help='If true, only runs with country USA')
     args = parser.parse_args()
 
@@ -506,6 +508,7 @@ if __name__ == '__main__':
     no_optimized_recovery = args.no_optimized_recovery
     test_run = args.test_run
     default_reconstruction_time = args.reconstruction_time
+    force_recovery_recompute = args.force_recovery_recompute
 
     econ_scope = args.econ_scope
     event_level = [econ_scope, "hazard", "rp"]  # levels of index at which one event happens
@@ -603,7 +606,8 @@ if __name__ == '__main__':
     if no_optimized_recovery:
         cat_info['recovery_time'] = default_reconstruction_time
     else:
-        recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate_rho, force_recompute=False)
+        recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate_rho,
+                                         force_recompute=force_recovery_recompute)
         cat_info = pd.merge(cat_info, recovery, left_index=True, right_index=True)
         # TODO: remove later
         if test_run:
