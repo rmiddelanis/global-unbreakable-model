@@ -1,9 +1,6 @@
 import os
-
 import pandas as pd
 import numpy as np
-from wb_api_wrapper import get_wb_series
-from lib_gather_data import df_to_iso3
 
 
 def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias.dta",
@@ -81,7 +78,7 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
     # keep only the average exposure for the total country
     exposure_avg = exposure.loc[exposure.pov_line == np.inf].droplevel('pop_slice')
     exposure_avg = exposure_avg.pop_a / exposure_avg['pop']
-    exposure_avg[exposure_avg > 1] = 1  # TODO
+    exposure_avg[exposure_avg > 1] = 1  # TODO: use more recent population data for some countries w old values
 
     # calculate row-wise difference to get values per population slice
     exposure = exposure.drop('pov_line', axis=1).sort_index().groupby(['iso3', 'hazard']).diff().dropna()
@@ -90,15 +87,16 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
     # drop data where pov_headcount == 0 (these don't contribute to any income quintile)
     exposure = exposure[exposure.pov_headcount > 0].copy()
 
+    # compute cumulative headcount (needed for calculation of per-quintile exposure)
+    exposure['cum_headcount'] = exposure.groupby(['iso3', 'hazard']).pov_headcount.cumsum()
+
     # compute relative exposure
     exposure['f_a'] = exposure.pop_a / exposure['pop']
-    exposure = exposure[exposure.f_a >= 0].copy()  # some entries have f_a < 0 (only very small headcounts); drop these
+    exposure.loc[exposure.f_a < 0, 'f_a'] = np.nan  # some entries have f_a < 0 (only very small headcounts)
+    exposure['f_a'] = exposure['f_a'].fillna(exposure_avg)  # exposure for these entries with country avg
 
     # compute exposure bias
     exposure['exposure_bias'] = exposure.f_a / exposure_avg
-
-    # compute cumulative headcount (needed for calculation of per-quintile exposure)
-    exposure['cum_headcount'] = exposure.groupby(['iso3', 'hazard']).pov_headcount.cumsum()
 
     # calculate exposure bias per quintile
     quintiles = ['q1', 'q2', 'q3', 'q4', 'q5']
