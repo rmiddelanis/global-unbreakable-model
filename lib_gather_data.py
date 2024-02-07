@@ -275,6 +275,7 @@ def get_country_name_dicts(root_dir):
 
     # rename PWT countries to WB names:
     any_to_wb.loc["Côte d'Ivoire"] = "Cote d'Ivoire"
+    any_to_wb.loc["Côte d’Ivoire"] = "Cote d'Ivoire"
     any_to_wb.loc['D.R. of the Congo'] = 'Congo, Dem. Rep.'
     any_to_wb.loc['China, Hong Kong SAR'] = 'Hong Kong SAR, China'
     any_to_wb.loc["Lao People's DR"] = "Lao PDR"
@@ -428,8 +429,10 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
             'cape verde': 'CPV',
             'hong kong sar, china': 'HKG',
             'china, hong kong special administrative region': 'HKG',
+            'hong kong, china': 'HKG',
             'macao sar, china': 'MAC',
             'china, macao special administrative region': 'MAC',
+            'macau, china': 'MAC',
             'korea, rep.': 'KOR',
             'korea, south': 'KOR',
             "korea, dem. people's rep.": 'PRK',
@@ -462,9 +465,11 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
             'lao pdr': 'LAO',
             'turkiye': 'TUR',
             'turkey (turkiye)': 'TUR',
+            'türkiye': 'TUR',
             'west bank and gaza': 'PSE',
             'gaza strip': 'PSE',
             'west bank': 'PSE',
+            'occupied palestinian territory': 'PSE',
             'yemen, rep.': 'YEM',
             'kosovo': 'XKX',
             'tanzania, united rep.': 'TZA',
@@ -605,8 +610,8 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
 
     # Calculation of macroeconomic resilience (Gamma in the technical paper)
     # \Gamma = (\mu + 3/N) / (\rho + 3/N)
-    cat_info_["macro_multiplier_Gamma"] = ((macro_["avg_prod_k"] + cat_info_["recovery_rate"]) /
-                                           (macro_["rho"] + cat_info_["recovery_rate"]))
+    hazard_ratios_["macro_multiplier_Gamma"] = ((macro_["avg_prod_k"] + hazard_ratios_["recovery_rate"]) /
+                                           (macro_["rho"] + hazard_ratios_["recovery_rate"]))
 
     hazard_ratios_["v_ew"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
     hazard_ratios_.drop(['ew', 'v'], inplace=True, axis=1)

@@ -227,6 +227,11 @@ VULNERABILITY_MAPPING['S+SL+SC99'] = VULNERABILITY_MAPPING['S+SL']  # same as S+
 VULNERABILITY_MAPPING['MR+MUN99+MR99+MO99'] = VULNERABILITY_MAPPING['MR']  # same as MR
 VULNERABILITY_MAPPING['MUR+MUN99+MO99'] = VULNERABILITY_MAPPING['MUR']  # same as MUR
 
+VULNERABILITY_MAPPING_WIND = VULNERABILITY_MAPPING.copy()
+VULNERABILITY_MAPPING_FLOOD = VULNERABILITY_MAPPING.copy()
+VULNERABILITY_MAPPING_EARTHQUAKE = VULNERABILITY_MAPPING.copy()
+VULNERABILITY_MAPPING_STORMSURGE = VULNERABILITY_MAPPING.copy()
+VULNERABILITY_MAPPING_TSUNAMI = VULNERABILITY_MAPPING.copy()
 
 def assign_vulnerability(material, resistance_system, height, mapping):
     """
@@ -361,13 +366,29 @@ def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_cla
     # if taxonomy starts with 'UNK', assume this is the material code and set material to 'UNK'
     res.lat_load_mat[(res.lat_load_mat.isna()) & (res.taxonomy.apply(lambda x: x.startswith('UNK')))] = 'UNK'
 
-    res['vulnerability_class'] = res.apply(lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height,
-                                                                          VULNERABILITY_MAPPING), axis=1)
-
-    vuln_class_shares = res.groupby(['iso3', 'country', 'vulnerability_class'])[weight_by].sum()
-    vuln_class_shares = vuln_class_shares / res.groupby('iso3')[weight_by].sum()
-    vuln_class_shares = vuln_class_shares.unstack()
-    vuln_class_shares.fillna(0, inplace=True)
+    vuln_class_shares = []
+    for hazard_class, vulnerability_mapping in zip(
+            ['Earthquake', 'Wind', 'Flood', 'Storm surge', 'Tsunami'],
+            [VULNERABILITY_MAPPING_EARTHQUAKE, VULNERABILITY_MAPPING_WIND, VULNERABILITY_MAPPING_FLOOD,
+             VULNERABILITY_MAPPING_STORMSURGE, VULNERABILITY_MAPPING_TSUNAMI]
+    ):
+        res[f'{hazard_class}_vulnerability'] = res.apply(
+            lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height, vulnerability_mapping), axis=1
+        )
+        vuln_class_shares_ = res.groupby(['iso3', 'country', f'{hazard_class}_vulnerability'])[weight_by].sum()
+        vuln_class_shares_ = vuln_class_shares_ / res.groupby('iso3')[weight_by].sum()
+        vuln_class_shares_ = vuln_class_shares_.unstack()
+        vuln_class_shares_.fillna(0, inplace=True)
+        vuln_class_shares_.columns = pd.MultiIndex.from_product([[hazard_class], vuln_class_shares_.columns])
+        vuln_class_shares.append(vuln_class_shares_)
+    vuln_class_shares = pd.concat(vuln_class_shares, axis=1)
+    # res['vulnerability_class'] = res.apply(lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height,
+    #                                                                       VULNERABILITY_MAPPING), axis=1)
+    #
+    # vuln_class_shares = res.groupby(['iso3', 'country', 'vulnerability_class'])[weight_by].sum()
+    # vuln_class_shares = vuln_class_shares / res.groupby('iso3')[weight_by].sum()
+    # vuln_class_shares = vuln_class_shares.unstack()
+    # vuln_class_shares.fillna(0, inplace=True)
     if vulnerability_class_output:
         vuln_class_shares.to_csv(vulnerability_class_output)
     return res, vuln_class_shares
@@ -422,3 +443,16 @@ def identify_gem_attribute_type(attribute, verbose=True):
         print(f"Warning: Multiple types {types} for attribute {attribute}.")
     return types
 
+
+if __name__ == '__main__':
+    gem_repo_root_dir = '../global_exposure_model/'
+    hazus_gem_mapping_path = './inputs/GEM_vulnerability/hazus-gem_mapping.csv'
+    vulnerability_class_output = './inputs/GEM_vulnerability/country_vulnerability_classes.csv'
+    gem_data, vuln_class_shares = gather_gem_data(
+        gem_repo_root_dir=gem_repo_root_dir,
+        hazus_gem_mapping_path=hazus_gem_mapping_path,
+        vulnerability_class_output=vulnerability_class_output,
+        weight_by='replacement_cost'
+    )
+    print(gem_data)
+    print(vuln_class_shares)

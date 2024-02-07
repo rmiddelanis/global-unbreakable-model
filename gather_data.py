@@ -15,22 +15,28 @@ from lib_gather_data import get_country_name_dicts
 # TODO: Note: compute_recovery_duration does not use the adjusted vulnerability. However, adjusted vulnerability is
 #  hazard specific, so it cannot be used for computing recovery duration.
 # TODO: discuss standard parameter values
-def get_recovery_duration(avg_prod_k_, vulnerability_, discount_rate_, consump_util_=1.5, force_recompute=True,
+def get_recovery_duration(avg_prod_k_=None, vulnerability_=None, discount_rate_=None, consump_util_=1.5, force_recompute=True,
                           lambda_increment_=.001, years_to_recover_=20, max_duration_=10, store_output=True):
     if not force_recompute and os.path.exists(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv')):
         print("Loading recovery rates from file.")
-        df = pd.read_csv(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv'), index_col=['iso3', 'income_cat'])
+        df = pd.read_csv(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv'))
+        df.set_index(['iso3', 'income_cat', 'hazard'], inplace=True)
     else:
+        if avg_prod_k_ is None or vulnerability_ is None or discount_rate_ is None:
+            raise ValueError("avg_prod_k_, vulnerability_, and discount_rate_ must be provided.")
         # vulnerability__ = vulnerability_.rename({'v_poor': 'poor', 'v_rich': 'nonpoor'}, axis=1)[['poor', 'nonpoor']]
         # vulnerability__ = vulnerability__.stack().reset_index().rename({'level_1': 'income_cat', 0: 'v'}, axis=1)
         # df = pd.merge(vulnerability__, avg_prod_k_, on='iso3', how='inner')
         # df.set_index(['iso3', 'income_cat'], inplace=True)
         df = pd.merge(vulnerability_, avg_prod_k_, left_index=True, right_index=True, how='inner')
-        for row in tqdm.tqdm(df.itertuples(), total=len(df), desc="Computing recovery duration"):
-            df.loc[row.Index, 'recovery_rate'] = integrate_and_find_recovery_rate(
-                v=row.v, consump_util=consump_util_, discount_rate=discount_rate_, average_productivity=row.avg_prod_k,
+        unique_v_prod_k_pairs = df.drop_duplicates().values
+        recovery_rates = {}
+        for v, prod_k in tqdm.tqdm(unique_v_prod_k_pairs, total=len(unique_v_prod_k_pairs), desc="Computing recovery duration"):
+            recovery_rates[(v, prod_k)] = integrate_and_find_recovery_rate(
+                v=v, consump_util=consump_util_, discount_rate=discount_rate_, average_productivity=prod_k,
                 lambda_increment=lambda_increment_, years_to_recover=years_to_recover_
             )
+        df['recovery_rate'] = df.apply(lambda x: recovery_rates[(x.v, x.avg_prod_k)], axis=1)
         df_ = df.loc[df['recovery_rate'] < max_duration_]
         interp = NearestNDInterpolator(list(zip(df_.v, df_.avg_prod_k)), df_['recovery_rate'])
         df_error = df.loc[df['recovery_rate'] >= max_duration_]
@@ -207,10 +213,10 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, population_data_=None
     return exposure_fa_with_peb_
 
 
-def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, fa_threshold_, event_level_):
+def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, fa_threshold_):
     exposure_fa_guessed_ = (hazard_loss_tot_ / vulnerability_.loc[(slice(None), 'tot')]).dropna().rename('fa')
 
-    vulnerability_quintiles = vulnerability_.unstack('income_cat').drop('tot', axis=1).stack().rename('v')
+    vulnerability_quintiles = vulnerability_.drop('tot', level='income_cat')
 
     # merge vulnerability with hazard_ratios
     fa_v_merged = pd.merge(exposure_fa_guessed_, vulnerability_quintiles, left_index=True, right_index=True)
@@ -245,39 +251,40 @@ def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, 
 def load_vulnerability_data(income_shares_, n_quantiles=5,
                             gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
                             building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv"):
-    house_cats = load_input_data(root_dir, gem_vulnerability_classes_filepath_,
-                                     index_col="iso3").drop('country', axis=1)
+    house_cats = load_input_data(root_dir, gem_vulnerability_classes_filepath_, index_col=[0, 1], header=[0, 1])
+    house_cats = house_cats.droplevel('country', axis=0)
 
     # matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
-    hous_cat_vulnerability = load_input_data(root_dir, building_class_vuln_path, sep=";",
-                                             index_col="aggregate_category").squeeze()
+    hous_cat_vulnerability = load_input_data(root_dir, building_class_vuln_path, index_col=0)
 
     # TODO here, simply assuming that the poorest quantiles occupy the most vulnerable housing. A better approach might
     #  be desirable, e.g. using GMD data
     quantiles = [f"q{q}" for q in range(1, n_quantiles + 1)]
     q_headcount = 1 / n_quantiles
-    vulnerability_ = pd.Series(
+    vulnerability_ = pd.DataFrame(
         index=pd.MultiIndex.from_product((house_cats.index, quantiles), names=['iso3', 'income_cat']),
-        name="v", dtype=float
+        columns=pd.Index(house_cats.columns.get_level_values(0).unique(), name='hazard'),
+        dtype=float
     )
     for cum_head, quantile in zip(np.linspace(q_headcount, 1, n_quantiles), quantiles):
-        share_q = (
-            # cumulative shares of income categories until the current quantile
-            (house_cats - (house_cats.cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(0) -
-            # cumulative shares of income categories until the category before (i.e., excluding) the current quantile
-            (house_cats - (house_cats.cumsum(axis=1).add(-(cum_head - q_headcount), axis=0)).clip(lower=0)).clip(0)
-        ) / q_headcount
-        vulnerability_q = (share_q * hous_cat_vulnerability).sum(axis=1, skipna=False)
-        vulnerability_.loc[(slice(None), quantile)] = vulnerability_q.values
+        for hazard in vulnerability_.columns:
+            share_h_q = (
+                # cumulative shares of income categories until the current quantile
+                (house_cats[hazard] - (house_cats[hazard].cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(0) -
+                # cumulative shares of income categories until the category before (i.e., excluding) the current quantile
+                (house_cats[hazard] - (house_cats[hazard].cumsum(axis=1).add(-(cum_head - q_headcount), axis=0)).clip(lower=0)).clip(0)
+            ) / q_headcount
+            vulnerability_h_q = (share_h_q * hous_cat_vulnerability.loc[hazard]).sum(axis=1, skipna=False)
+            vulnerability_.loc[(slice(None), quantile), hazard] = vulnerability_h_q.values
 
     # vulnerability weighted with income shares
     # TODO: why weight vulenrability by income shares?
-    vulnerability_tot = (vulnerability_ * income_shares_).unstack('income_cat').dropna().sum(axis=1)
-    vulnerability_tot.rename('tot', inplace=True)
+    vulnerability_tot = vulnerability_.mul(income_shares_, axis=0).dropna().groupby('iso3').sum()
+    vulnerability_tot['income_cat'] = 'tot'
+    vulnerability_tot.set_index('income_cat', append=True, inplace=True)
 
-    vulnerability_ = pd.concat((vulnerability_.unstack('income_cat'), vulnerability_tot), axis=1).dropna().stack()
-    vulnerability_.rename('v', inplace=True)
-    vulnerability_.index.names = ['iso3', 'income_cat']
+    vulnerability_ = pd.concat([vulnerability_, vulnerability_tot], axis=0).sort_index().dropna().stack()
+    vulnerability_.name = 'v'
     return vulnerability_
 
 
@@ -575,7 +582,7 @@ if __name__ == '__main__':
 
     # compute exposure and adjust vulnerability (per income category) for excess exposure
     exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(
-        hazard_loss_tot, vulnerability, fa_threshold, event_level
+        hazard_loss_tot, vulnerability, fa_threshold
     )
 
     # apply poverty exposure bias
@@ -604,14 +611,18 @@ if __name__ == '__main__':
                                                  axfin_impact_=axfin_impact)
 
     if no_optimized_recovery:
-        cat_info['recovery_time'] = default_reconstruction_time
+        hazard_ratios['recovery_time'] = default_reconstruction_time
+        hazard_ratios['recovery_rate'] = np.log(1 / 0.05) / hazard_ratios['recovery_time']
     else:
+        # TODO: potentially use vulnerability_per_income_cat_adjusted instead of vulnerability here
         recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate_rho,
                                          force_recompute=force_recovery_recompute)
-        cat_info = pd.merge(cat_info, recovery, left_index=True, right_index=True)
+        # TODO: now, recovery also requires hazard!
+        hazard_ratios = pd.merge(hazard_ratios, recovery, left_index=True, right_index=True)
         # TODO: remove later
         if test_run:
             recovery = recovery.loc[['USA']]
+
     if no_protection:
         hazard_protection = load_protection(hazard_ratios.index, protection_data="None", min_rp=0)
     else:

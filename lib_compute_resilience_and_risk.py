@@ -17,11 +17,12 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level):
     # Broadcast macro to event level
     macro_event = broadcast_simple(macro, event_level_index)
 
-    # Broadcast categories to event level
+    # cat_info_event = pd.merge(cat_info, hazard_ratios[['fa', 'v_ew', 'macro_multiplier_Gamma']], left_index=True,
+    #                           right_index=True)
     # TODO: broadcast_simple creates many NaN entries; fix this
     cat_info_event = broadcast_simple(cat_info, event_level_index).reset_index().set_index(event_level + ["income_cat"])
-    cat_info_event[['fa', 'v_ew']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew']]
-    print("pulling ['fa', 'v_ew'] into cat_info_event from hazard_ratios")
+    cat_info_event[['fa', 'v_ew', 'macro_multiplier_Gamma']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew', 'macro_multiplier_Gamma']]
+    print("pulling ['fa', 'v_ew', 'macro_multiplier_Gamma'] into cat_info_event from hazard_ratios")
 
     return macro_event, cat_info_event
 
@@ -68,7 +69,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
                        option_pds="unif_poor", option_b="data", loss_measure="dk", fraction_inside=1,
                        share_insured=.25):
     cat_info_event_iah = concat_categories(cat_info_event_ia, cat_info_event_ia, index=helped_cats)
-    cat_info_event_iah = cat_info_event_iah.reset_index(['income_cat', 'affected_cat', 'helped_cat']).sort_index()
+    # cat_info_event_iah = cat_info_event_iah.reset_index(['income_cat', 'affected_cat', 'helped_cat']).sort_index()
     cat_info_event_iah["help_received"] = 0.0
     cat_info_event_iah["help_fee"] = 0.0
 
@@ -106,8 +107,6 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
         columns_to_add = ["need", "aid"]
         macro_event[columns_to_add] += m__[columns_to_add]
 
-    cat_info_event_iah.set_index(['income_cat', 'affected_cat', 'helped_cat'], append=True, inplace=True)
-
     return macro_event, cat_info_event_iah
 
 
@@ -132,6 +131,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
 
     macro_event_ = macro_event.copy()
     cat_info_event_iah_ = cat_info_event_iah.copy()
+    cat_info_event_iah_[['income_cat', 'helped_cat', 'affected_cat']] = cat_info_event_iah_.reset_index()[['income_cat', 'helped_cat', 'affected_cat']].values
 
     # because cats_event_ia is duplicated in cat_info_event_iah_, cat_info_event_iah_.n.groupby(level=event_level).sum() is
     # 2 instead of 1, here /2 is to correct it. macro_event_["fa"] =  agg_to_event_level(cats_event_ia,"fa") would work
@@ -324,6 +324,8 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
         cat_info_event_iah_.loc[(~cat_info_event_iah_.income_cat.isin(poor_categories)), "help_fee"] = fraction_inside * agg_to_event_level(
             cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_categories)], 'help_received', event_level) / (cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_categories)].n.sum())
         cat_info_event_iah_[['help_received', 'help_fee']] += cats_event_iah_pre_pds[['help_received', 'help_fee']]
+
+        cat_info_event_iah_.drop(['income_cat', 'helped_cat', 'affected_cat'], axis=1, inplace=True)
     return macro_event_, cat_info_event_iah_
 
 
