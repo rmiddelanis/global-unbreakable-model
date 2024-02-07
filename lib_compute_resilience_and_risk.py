@@ -12,16 +12,21 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level):
     # FORMATING
     # gets the event level index
     # index composed on countries, hazards and rps.^
-    event_level_index = hazard_ratios.reset_index().set_index(event_level).index
+    # event_level_index = hazard_ratios.reset_index().set_index(event_level).index
 
     # Broadcast macro to event level
-    macro_event = broadcast_simple(macro, event_level_index)
+    macro_event = pd.merge(macro, hazard_ratios.iloc[:, 0].unstack('income_cat'), left_index=True, right_index=True)[macro.columns]
+    macro_event = macro_event.reorder_levels(event_level).sort_index()
+    # macro_event = broadcast_simple(macro, event_level_index)
 
     # cat_info_event = pd.merge(cat_info, hazard_ratios[['fa', 'v_ew', 'macro_multiplier_Gamma']], left_index=True,
     #                           right_index=True)
     # TODO: broadcast_simple creates many NaN entries; fix this
-    cat_info_event = broadcast_simple(cat_info, event_level_index).reset_index().set_index(event_level + ["income_cat"])
-    cat_info_event[['fa', 'v_ew', 'macro_multiplier_Gamma']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew', 'macro_multiplier_Gamma']]
+    # cat_info_event = broadcast_simple(cat_info, event_level_index).reset_index().set_index(event_level + ["income_cat"])
+    # cat_info_event[['fa', 'v_ew', 'macro_multiplier_Gamma']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew', 'macro_multiplier_Gamma']]
+    cat_info_event = pd.merge(hazard_ratios[['fa', 'v_ew', 'macro_multiplier_Gamma']], cat_info, left_index=True,
+                              right_index=True)
+    cat_info_event = cat_info_event.reorder_levels(event_level + ["income_cat"]).sort_index()
     print("pulling ['fa', 'v_ew', 'macro_multiplier_Gamma'] into cat_info_event from hazard_ratios")
 
     return macro_event, cat_info_event
@@ -190,6 +195,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
         cats_event_iah_pre_pds = cat_info_event_iah_.copy()
 
     # post disaster support (PDS) calculation depending on option_pds
+    # TODO make sure to avoid NaNs in help_needed and help_received when creating these columns
     if option_pds == "no":
         macro_event_["aid"] = 0
         macro_event_['need'] = 0
@@ -200,10 +206,14 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
         # Step 1: help_received for all helped hh = 80% of dk for poor, affected hh
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
                 # share of losses to be covered * (losses of helped, affected, poor households)
+                # TODO: check if this is correct: set help_needed only 'helped' households?! or rather all households
+                #  that are affected and poor?
                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
                                                                     & (cat_info_event_iah_.affected_cat == 'a')
                                                                     & (cat_info_event_iah_.income_cat.isin(poor_categories)), loss_measure])
-        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_needed"] = 0
+        # cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_needed"] = 0
+        # TODO: check if this is correct; all households that do not need help should be set to 0
+        cat_info_event_iah_["help_needed"].fillna(0, inplace=True)
     elif option_pds == "unif_poor_only":
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
@@ -296,9 +306,10 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
 
     if option_pds == "unif_poor":
         # Step 4: help_received = unif_aid = aid/(N hh helped)
-        macro_event_["unif_aid"] = macro_event_["aid"] / (
+        macro_event_["unif_aid"] = (macro_event_["aid"] / (
             cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == "helped"), "n"].groupby(level=event_level).sum()
-        )
+        )).fillna(0)    # if division by 0 occurs, there are no helped households; thus, set to 0
+        # TODO: check if fillna(0) is necessary also for other options
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_received"] = macro_event_["unif_aid"]
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_received"] = 0
     elif option_pds == "unif_poor_only":

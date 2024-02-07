@@ -74,16 +74,16 @@ for pol_str in ['']:
     # adds 'error_incl', 'error_excl', 'max_aid', 'need', 'aid', 'unif_aid' to macro_event
     # adds 'help_received', 'help_fee', 'help_needed' to cat_info_event_ia(h)
     macro_event, cat_info_event_iah = calculate_response(
-        macro_event=macro_event, 
+        macro_event=macro_event,
         cat_info_event_ia=cat_info_event_ia,
         event_level=event_level,
         poor_cats=poor_cats,
         helped_cats=helped_cats,
-        option_fee=option_fee, 
-        option_t=option_t, 
+        option_fee=option_fee,
+        option_t=option_t,
         option_pds=option_pds,
-        option_b=option_b, 
-        loss_measure="dk", 
+        option_b=option_b,
+        loss_measure="dk",
         fraction_inside=1,
         share_insured=.25,
     )
