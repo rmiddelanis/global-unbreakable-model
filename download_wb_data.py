@@ -6,7 +6,7 @@ from pandas_helper import load_input_data
 from wb_api_wrapper import *
 
 
-def clean_merge_update(df_, series_other_, how='outer'):
+def clean_merge_update(df_, series_other_, any_to_wb, how='outer'):
     if df_.index.names is None:
         raise ValueError('df_ index names are None')
     if series_other_.index.names != df_.index.names:
@@ -79,7 +79,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
                                       most_recent_value=True, upper_bound=100, lower_bound=0) / 100
     # make sure income shares add up to 1
     income_shares /= income_shares.unstack('income_cat').sum(axis=1)
-    cat_info_df = clean_merge_update(cat_info_df, income_shares)
+    cat_info_df = clean_merge_update(cat_info_df, income_shares, any_to_wb)
 
 
     # ASPIRE
@@ -117,7 +117,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     else:
         # fraction of income that is from transfers
         social = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab).rename('social')
-    cat_info_df = clean_merge_update(cat_info_df, social)
+    cat_info_df = clean_merge_update(cat_info_df, social, any_to_wb)
 
     # financial inclusion
     # axfin = download_cat_info(name='axfin', id_q1='fin17a.t.d.7', id_q2='fin17a.t.d.7', id_q3='fin17a.t.d.8',
@@ -125,7 +125,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     #                           lower_bound=0) / 100
     axfin = load_input_data(root_dir, "FINDEX/findex_axfin.csv", index_col=[0, 1, 2]).squeeze()
     axfin = get_most_recent_value(axfin)
-    cat_info_df = clean_merge_update(cat_info_df, axfin)
+    cat_info_df = clean_merge_update(cat_info_df, axfin, any_to_wb)
 
 
     # FROM HERE: FILL MISSING VALUES IN ASPIRE DATA
@@ -142,7 +142,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
             manual_additions_sids.axfin_p.rename('q1'), manual_additions_sids.axfin_r.rename('q2'),
             manual_additions_sids.axfin_r.rename('q3'), manual_additions_sids.axfin_r.rename('q4'),
             manual_additions_sids.axfin_r.rename('q5'),], axis=1).stack().rename('axfin')
-        cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_axfin)
+        cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_axfin, any_to_wb)
 
         # for SIDS countries, use share1 for q1, and (1-share1)/4 for q2-5
         manual_additions_sids_shares = pd.DataFrame(index=manual_additions_sids.index[~manual_additions_sids.share1.isna()],
@@ -151,7 +151,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
         manual_additions_sids_shares = manual_additions_sids_shares.assign(
             **{c: ((1 - manual_additions_sids_shares.q1) / 4).values for c in ['q2', 'q3', 'q4', 'q5']}
         ).stack().rename('income_share')
-        cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_shares)
+        cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_shares, any_to_wb)
 
 
         # Social transfer Data from EUsilc (European Union Survey of Income and Living Conditions) and other countries.
@@ -166,7 +166,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
         silc_social = pd.concat([silc_file.social_p.rename('q1'), silc_file.social_r.rename('q2'),
                                  silc_file.social_r.rename('q3'), silc_file.social_r.rename('q4'),
                                  silc_file.social_r.rename('q5')], axis=1).stack().rename('social')
-        cat_info_df = clean_merge_update(cat_info_df, silc_social)
+        cat_info_df = clean_merge_update(cat_info_df, silc_social, any_to_wb)
 
 
         # shows the country where social_p and social_r are not all NaN.
