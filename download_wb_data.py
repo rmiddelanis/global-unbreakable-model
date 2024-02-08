@@ -56,7 +56,7 @@ def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value
 
 
 def download_wb_data(root_dir, include_remitances=True, use_additional_data=False, drop_incomplete=True,
-                     output_dir='inputs/WB_socio_economic_data'):
+                     output_dir=None):
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
     # World Development Indicators
@@ -203,8 +203,10 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
         macro_df = macro_df.loc[complete_countries]
         cat_info_df = cat_info_df.loc[complete_countries]
 
-    macro_df.to_csv(os.path.join(root_dir, output_dir, "wb_data_macro.csv"))
-    cat_info_df.to_csv(os.path.join(root_dir, output_dir, "wb_data_cat_info.csv"))
+    if output_dir is not None:
+        macro_df.to_csv(os.path.join(root_dir, output_dir, "wb_data_macro.csv"))
+        cat_info_df.to_csv(os.path.join(root_dir, output_dir, "wb_data_cat_info.csv"))
+    return macro_df, cat_info_df
 
 
 if __name__ == "__main__":
