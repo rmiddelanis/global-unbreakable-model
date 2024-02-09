@@ -92,6 +92,7 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
 
     # compute relative exposure
     exposure['f_a'] = exposure.pop_a / exposure['pop']
+    exposure.loc[exposure.f_a > 1, 'f_a'] = 1  # TODO: see row above
     exposure.loc[exposure.f_a < 0, 'f_a'] = np.nan  # some entries have f_a < 0 (only very small headcounts)
     exposure['f_a'] = exposure['f_a'].fillna(exposure_avg)  # exposure for these entries with country avg
 
