@@ -495,18 +495,22 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
                               f"{any_to_wb_.loc[name]}")
                     return get_iso3(any_to_wb_.loc[name])
                 else:
-                    print(f"Warning: {name} not found in pycountry, and fuzzy search failed")
+                    if verbose_:
+                        print(f"Warning: {name} not found in pycountry, and fuzzy search failed")
                     return None
             if len(fuzzy_search_res) == 1:
                 if verbose_:
                     print(f"Warning: {name} not found in pycountry, but fuzzy search found {fuzzy_search_res[0].name}")
                 return fuzzy_search_res[0].alpha_3
             elif len(fuzzy_search_res) > 1:
-                print(f"Warning: {name} not found in pycountry, but fuzzy search found multiple matches: {fuzzy_search_res}")
+                if verbose_:
+                    print(f"Warning: {name} not found in pycountry, but fuzzy search found multiple matches: {fuzzy_search_res}")
                 return None
 
     df = df_.copy()
     df['iso3'] = df[column_name_].apply(lambda x: get_iso3(x))
+    if df.iso3.isna().any():
+        print(f"Warning: ISO3 could not be found for {len(df[df.iso3.isna()].country.unique())} countries.")
     return df
 
 
