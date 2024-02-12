@@ -4,7 +4,9 @@ import numpy as np
 
 
 def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias.dta",
-                     poverty_data_path="inputs/PEB/poverty_data/", outfile=None):
+                     poverty_data_path="inputs/PEB/poverty_data/",
+                     wb_macro_path="inputs/WB_socio_economic_data/wb_data_macro.csv", outfile=None,
+                     exclude_povline=None):
     exposure_data_path = os.path.join(root_dir, exposure_data_path)
     poverty_data_path = os.path.join(root_dir, poverty_data_path)
 
@@ -17,6 +19,8 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
     exposure.pop_a *= 1e6
     exposure.pov_line = exposure.pov_line.fillna(np.inf) / 100  # use np.inf for full population; convert to percentage
     exposure = exposure.set_index(['iso3', 'hazard', 'pov_line']).squeeze()
+    if exclude_povline:
+        exposure.drop(exclude_povline, level='pov_line', inplace=True)
 
     # split cyclone into storm surge and wind
     exposure = exposure.unstack('hazard')
@@ -57,7 +61,6 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
     # set headcount for poverty lines 0 to 0 and np.inf (full population) to 1
     new_cols[0] = 0
     new_cols[np.inf] = 1
-
     pov_head = pd.concat([pov_head, new_cols], axis=1).stack().sort_index().rename('pov_headcount')
 
     # compute population per poverty line
@@ -75,13 +78,29 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
     drop_idx = exposure[(exposure.pov_line == np.inf) & (exposure.pop_a == 0)].droplevel('pop_slice').index
     exposure.drop(drop_idx, inplace=True)
 
-    # keep only the average exposure for the total country
-    exposure_avg = exposure.loc[exposure.pov_line == np.inf].droplevel('pop_slice')
-    exposure_avg = exposure_avg.pop_a / exposure_avg['pop']
-    exposure_avg[exposure_avg > 1] = 1  # TODO: use more recent population data for some countries w old values
+    # retain total exposure
+    exposure_tot = exposure.loc[exposure.pov_line == np.inf].drop('pov_line', axis=1)
+    exposure_tot = exposure_tot.reset_index('pop_slice').replace({'pop_slice': 9.0}, 'tot').set_index('pop_slice', append=True)
 
     # calculate row-wise difference to get values per population slice
-    exposure = exposure.drop('pov_line', axis=1).sort_index().groupby(['iso3', 'hazard']).diff().dropna()
+    exposure = pd.concat([
+        exposure.drop('pov_line', axis=1).sort_index().groupby(['iso3', 'hazard']).diff().dropna(),
+        exposure_tot],
+        axis=0
+    ).sort_index()
+
+    # use more recent population data for countries with f_a > 1:
+    excess_countries = exposure[exposure['pop_a'] > exposure['pop']].index.get_level_values('iso3').unique()
+    if len(excess_countries) > 0:
+        print(f"Using more recent population data for {len(excess_countries)} countries with f_a > 1")
+        wb_pop = pd.read_csv(wb_macro_path).set_index('iso3')['pop']
+        wb_pop = wb_pop.loc[np.intersect1d(wb_pop.index, excess_countries)].rename('pop')
+        new_pop = (exposure.pov_headcount * wb_pop).dropna()
+        exposure.loc[new_pop.index, 'pop'] = new_pop
+        excess_rows = exposure[exposure['pop_a'] > exposure['pop']].index
+        if len(excess_rows) > 0:
+            print(f"Setting pop_a to pop for {len(excess_rows)} entries with pop_a > pop")
+            exposure.loc[excess_rows, 'pop_a'] = exposure.loc[excess_rows, 'pop']
 
     # TODO: some categories have pov_headcount == 0 but pop_a > 0
     # drop data where pov_headcount == 0 (these don't contribute to any income quintile)
@@ -92,12 +111,12 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
 
     # compute relative exposure
     exposure['f_a'] = exposure.pop_a / exposure['pop']
-    exposure.loc[exposure.f_a > 1, 'f_a'] = 1  # TODO: see row above
+    # exposure.loc[exposure.f_a > 1, 'f_a'] = 1
     exposure.loc[exposure.f_a < 0, 'f_a'] = np.nan  # some entries have f_a < 0 (only very small headcounts)
-    exposure['f_a'] = exposure['f_a'].fillna(exposure_avg)  # exposure for these entries with country avg
+    exposure['f_a'] = exposure['f_a'].fillna(exposure.loc[pd.IndexSlice[:, :, 'tot'], 'f_a'].droplevel('pop_slice'))  # exposure for these entries with country avg
 
     # compute exposure bias
-    exposure['exposure_bias'] = exposure.f_a / exposure_avg
+    exposure['exposure_bias'] = exposure.f_a / exposure.loc[pd.IndexSlice[:, :, 'tot'], 'f_a'].droplevel('pop_slice')
 
     # calculate exposure bias per quintile
     quintiles = ['q1', 'q2', 'q3', 'q4', 'q5']
@@ -126,9 +145,10 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
 
 
 if __name__ == "__main__":
-    process_peb_data(
+    exp_bias_q = process_peb_data(
         root_dir=os.getcwd(),
         exposure_data_path="inputs/PEB/exposure bias.dta",
         poverty_data_path="inputs/PEB/poverty_data/",
-        outfile="./inputs/PEB/exposure_bias_per_quintile.csv"
+        outfile="./inputs/PEB/exposure_bias_per_quintile.csv",
+        exclude_povline=13.7,
     )
