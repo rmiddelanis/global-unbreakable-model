@@ -253,6 +253,8 @@ def load_vulnerability_data(income_shares_, n_quantiles=5,
                             building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv"):
     house_cats = load_input_data(root_dir, gem_vulnerability_classes_filepath_, index_col=[0, 1], header=[0, 1])
     house_cats = house_cats.droplevel('country', axis=0)
+    if 'default' in house_cats.columns:
+        house_cats = house_cats.drop('default', axis=1, level=0)
 
     # matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
     hous_cat_vulnerability = load_input_data(root_dir, building_class_vuln_path, index_col=0)
@@ -274,7 +276,7 @@ def load_vulnerability_data(income_shares_, n_quantiles=5,
                 # cumulative shares of income categories until the category before (i.e., excluding) the current quantile
                 (house_cats[hazard] - (house_cats[hazard].cumsum(axis=1).add(-(cum_head - q_headcount), axis=0)).clip(lower=0)).clip(0)
             ) / q_headcount
-            vulnerability_h_q = (share_h_q * hous_cat_vulnerability.loc[hazard]).sum(axis=1, skipna=False)
+            vulnerability_h_q = (share_h_q * hous_cat_vulnerability.loc[hazard]).sum(axis=1, skipna=True)
             vulnerability_.loc[(slice(None), quantile), hazard] = vulnerability_h_q.values
 
     # vulnerability weighted with income shares
