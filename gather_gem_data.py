@@ -290,8 +290,7 @@ if __name__ == '__main__':
     gem_repo_root_dir = '../global_exposure_model/'
     hazus_gem_mapping_path = './inputs/GEM_vulnerability/hazus-gem_mapping.csv'
     gem_fields_path = "./inputs/GEM_vulnerability/gem_taxonomy_fields.json"
-    # vulnerability_class_output = './inputs/GEM_vulnerability/country_vulnerability_classes.csv'
-    vulnerability_class_output = None
+    vulnerability_class_output = './inputs/GEM_vulnerability/country_vulnerability_classes.csv'
     gem_data, vuln_class_shares = gather_gem_data(
         gem_repo_root_dir=gem_repo_root_dir,
         hazus_gem_mapping_path=hazus_gem_mapping_path,
