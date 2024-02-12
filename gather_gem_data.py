@@ -1,239 +1,53 @@
+import json
 import os
 import tqdm
 import pandas as pd
 import numpy as np
 
-# possible materials (level 1) for GEM taxonomy; from GEM Building Taxonomy Version 2.0
-GEM_LAT_LOAD_MAT_NAMES = {'MAT99': 'Unknown material', 'C99': 'Concrete, unknown reinforcement',
-                          'CU': 'Concrete, unreinforced', 'CR': 'Concrete, reinforced',
-                          'SRC': 'Concrete, composite with steel section', 'S': 'Steel', 'ME': 'Metal (except steel)',
-                          'M99': 'Masonry, unknown reinforcement', 'MUR': 'Masonry, unreinforced',
-                          'MCF': 'Masonry, confined', 'MR': 'Masonry, reinforced',
-                          'E99': 'Earth, unknown reinforcement',
-                          'EU': 'Earth, unreinforced', 'ER': 'Earth, reinforced', 'W': 'Wood', 'MATO': 'Other material'}
-
-GEM_LAT_LOAD_MAT_FIRST_LEVEL = ['MAT99', 'C99', 'CU', 'CR', 'SRC', 'S', 'ME', 'M99', 'MUR', 'MCF', 'MR', 'E99', 'EU',
-                                'ER', 'W', 'MATO']
-GEM_LAT_LOAD_MAT_SECOND_LEVEL = ['CT99', 'CIP', 'PC', 'CIPPS', 'PCPS', 'S99', 'SL', 'SR', 'SO', 'ME99', 'MEIR', 'MEO',
-                                 'MUN99', 'ADO', 'ST99', 'STRUB', 'STDRE', 'CL99', 'CLBRS', 'CLBRH', 'CLBLH', 'CB99',
-                                 'CBS', 'CBH', 'MO', 'MR99', 'RS', 'RW', 'RB', 'RCM', 'RBC', 'ET99', 'ETR', 'ETC',
-                                 'ETO', 'W99', 'WHE', 'WLI', 'WS', 'WWD', 'WBB', 'WO']
-GEM_LAT_LOAD_MAT_THIRD_LEVEL = ['SC99', 'WEL', 'RIV', 'BOL', 'MO99', 'MON', 'MOM', 'MOL', 'MOC', 'MOCL', 'SP99', 'SPLI',
-                                'SPSA', 'SPTU', 'SPSL', 'SPGR', 'SPBA', 'SPO']
-
-GEM_LAT_LOAD_SYS_FIRST_LEVEL = ['L99', 'LN', 'LFM', 'LFINF', 'LFBR', 'LPB', 'LWAL', 'LDUAL', 'LFLS', 'LFLSINF', 'LH',
-                                'LO']
-GEM_LAT_LOAD_SYS_SECOND_LEVEL = ['DU99', 'DUC', 'DNO', 'DBD']
-
-GEM_HEIGHT_FIRST_LEVEL = ['H99', 'H', 'HBET', 'HEX', 'HAPP']  # only hight above ground is necessary, ignore HB, HF
-
-# manually add materials that are not in the GEM taxonomy but appear in the dataset:
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('M')  # Masonry (assumed due to 'M+ST' materials, occurs only in India)
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('ST')  # Stone, unknown technology (=ST99) (assumed)
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('CB')  # Concrete block, unknown type (=CB99)
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('INF')  # Informal (assumed)
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(C-S)')  # Mix of Concrete (assumed) and Steel
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(C-W)')  # Mix of Concrete and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(M-W)')  # Mix of Masonry and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(S-W)')  # Mix of Steel and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(CR-W)')  # Mix of Concrete, reinforced and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(M-ST)')  # Mix of Masonry and Stone, unknown technology (=ST99)
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(W-M)')  # Mix of Wood and Masonry
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(W-EU)')  # Mix of Wood and Earth, unknown reinforcement (=E99)
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(MUR-W)')  # Mix of Masonry, unreinforced and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(MUR-CR)')  # Mix of Masonry, unreinforced and Concrete, reinforced
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(MUR-STDRE-W)')  # Mix of Masonry, unreinforced + Dressed stone masonry and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(MUR-STRUB-W)')  # Mix of Masonry, unreinforced + Rubble (field stone) or semi-dressed stone and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(S-CR-PC)')  # Mix of Steel + Concrete, reinforced + Precast concrete
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(MR-W)')  # Mix of Masonry, reinforced and Wood
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX(S-CR)')  # Mix of Steel and Concrete, reinforced
-GEM_LAT_LOAD_MAT_FIRST_LEVEL.append('MIX')  # Mix of materials
-
-# GEM_LAT_LOAD_SYS_FIRST_LEVEL.append('UNK')
-GEM_LAT_LOAD_MAT_SECOND_LEVEL.append('ST')  # Stone, unknown technology (=ST99)
-GEM_LAT_LOAD_MAT_SECOND_LEVEL.append('CB')  # Concrete blocks, unknown type (=CB99)
-
-FIELD_VALUE_TO_TYPE_MAP = {
-    **{v: 'lat_load_mat' for v in GEM_LAT_LOAD_MAT_FIRST_LEVEL},
-    **{v: 'lat_load_mat' for v in GEM_LAT_LOAD_MAT_SECOND_LEVEL},
-    **{v: 'lat_load_mat' for v in GEM_LAT_LOAD_MAT_THIRD_LEVEL},
-    **{v: 'lat_load_sys' for v in GEM_LAT_LOAD_SYS_FIRST_LEVEL},
-    **{v: 'lat_load_sys' for v in GEM_LAT_LOAD_SYS_SECOND_LEVEL},
-    **{v: 'height' for v in GEM_HEIGHT_FIRST_LEVEL}
-}
-
 HAZUS_COUNTRIES = ['VIR', 'PRI', 'CAN', 'USA']
 
-VULNERABILITY_MAPPING = {
-    # setting any adobe block structure to fragile
-    'MUR': 'fragile',  # Masonry, unreinforced
-    'MUR+MO': 'fragile',  # Masonry, unreinforced (+ mortar unknown)
-    'MUR+ADO': 'fragile',  # Masonry, unreinforced + adobe blocks
-    'MUR+ADO+MOC': 'fragile',  # Masonry, unreinforced + adobe blocks + cement mortar
-    'MUR+ADO+MOM': 'fragile',  # Masonry, unreinforced + adobe blocks + mud mortar
-    'MUR+STRUB': 'fragile',  # Masonry, unreinforced + Rubble (field stone) or semi-dressed stone + mortar unknown
-    'MUR+STRUB+MON': 'fragile',  # Masonry, unreinforced + Rubble (field stone) or semi-dressed stone + no mortar
-    'MUR+STRUB+MOM': 'fragile',  # Masonry, unreinforced + Rubble (field stone) or semi-dressed stone + mud mortar
-    'MUR+STRUB+MOL': 'fragile',  # Masonry, unreinforced + Rubble (field stone) or semi-dressed stone + lime mortar
-    'MUR+STRUB+MOC': 'fragile',  # Masonry, unreinforced + Rubble (field stone) or semi-dressed stone + cement mortar
-    'MUR+STDRE': 'fragile',  # Masonry, unreinforced + Dressed stone masonry + mortar unknown
-    'MUR+STDRE+MOM': 'fragile',  # Masonry, unreinforced + Dressed stone masonry + mud mortar
-    'MUR+STDRE+MOL': 'fragile',  # Masonry, unreinforced + Dressed stone masonry + lime mortar
-    'MUR+STDRE+MOC': 'median',  # Masonry, unreinforced + Dressed stone masonry + cement mortar
-    'MUR+CL': 'fragile',  # Masonry, unreinforced + Fired clay unit, unknown type (+ mortar unknown)
-    'MUR+CLBRS': 'fragile',  # Masonry, unreinforced + Fired clay solid bricks (+ mortar unknown)
-    'MUR+CLBRS+MOM': 'fragile',  # Masonry, unreinforced + Fired clay solid bricks + mud mortar
-    'MUR+CLBRS+MOL': 'fragile',  # Masonry, unreinforced + Fired clay solid bricks + lime mortar
-    'MUR+CLBRS+MOC': 'median',  # Masonry, unreinforced + Fired clay solid bricks + cement mortar
-    'MUR+CLBRH': 'fragile',  # Masonry, unreinforced + Fired clay hollow bricks (+ mortar unknown)
-    'MUR+CB99+MOC': 'median',  # Masonry, unreinforced + Concrete block + cement mortar ==> PAGER UCB
 
-    # here, assume as observed with previous mappings, that mud mortar is fragile, lime and cement mortar are median
-    'MUR+ST': 'fragile',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + mortar unknown
-    'MUR+ST+MOM': 'fragile',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + mud mortar
-    'MUR+ST+MOL': 'fragile',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + lime mortar
-    'MUR+ST+MOC': 'median',  # Masonry, unreinforced + Stone, unknown technology (assuming ST99) + cement mortar
+def load_mapping(gem_fields_path='inputs/GEM_vulnerability/gem_taxonomy_fields.json'):
+    gem_fields = json.load(open(gem_fields_path, 'r'))
+    field_value_to_type_map = {v: k.lower() for k in gem_fields.keys() for l in gem_fields[k].keys() for v in
+                               gem_fields[k][l]}
 
-    'MUR+CLBLH': 'fragile',  # Masonry, unreinforced + Fired clay hollow blocks (+ mortar unknown)
-    'MUR+CB': 'fragile',  # Masonry, unreinforced + Concrete block + (mortar unknown) # TODO: could also be median, depending on mortar type
-    'MUR+CBS': 'fragile',  # Masonry, unreinforced + Concrete block, solid + (mortar unknown)
-    'MUR+CBH': 'fragile',  # Masonry, unreinforced + Concrete block, hollow + (mortar unknown)
-    'MUR+CBR': 'fragile',  # Masonry, unreinforced + (CBR not in spec, some type of concrete block) + (mortar unknown)
+    mapping_df = pd.read_excel("./inputs/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx", header=0)
+    mapping_df.drop('comment', inplace=True, axis=1)
+    mapping_df.rename(columns={'combined': 'default'}, inplace=True)
+    mapping_df.set_index(['lat_load_mat', 'lat_load_sys', 'height'], inplace=True)
+    for c in mapping_df.columns:
+        if '+' in c:
+            for c_ in c.split('+'):
+                if len(c_) > 1:
+                    mapping_df[c_] = mapping_df[c]
+            mapping_df = mapping_df.drop(c, axis=1)
+    mapping_df = mapping_df.sort_index()
+    # vulnerability_mapping = {}
+    # for i, row in mapping_df.iterrows():
+    #     row_mapping = row
+    #     # row_mapping = row['hazard'].to_dict()['combined']
+    #     lat_load_mat, lat_load_sys, height = i
+    #     if lat_load_sys is np.nan:
+    #         vulnerability_mapping[lat_load_mat] = row_mapping
+    #     elif height is np.nan:
+    #         if lat_load_mat not in vulnerability_mapping:
+    #             vulnerability_mapping[lat_load_mat] = {lat_load_sys: row_mapping}
+    #         else:
+    #             vulnerability_mapping[lat_load_mat][lat_load_sys] = row_mapping
+    #     else:
+    #         if lat_load_mat not in vulnerability_mapping:
+    #             vulnerability_mapping[lat_load_mat] = {lat_load_sys: {height: row_mapping}}
+    #         elif lat_load_sys not in vulnerability_mapping[lat_load_mat]:
+    #             vulnerability_mapping[lat_load_mat][lat_load_sys] = {height: row_mapping}
+    #         else:
+    #             vulnerability_mapping[lat_load_mat][lat_load_sys][height] = row_mapping
 
-    'E+ETO': 'fragile',  # Earth, unknown reinforcement + Earth technology other (E not in spec, assume E99) # TODO fragile or median?
-    'EU': 'fragile',  # Earth, unreinforced TODO fragile or median?
-    'EU+ETC': 'fragile',  # Earth, unreinforced + cob or wet construction ==> PAGER M1
-    'EU+ETR': 'fragile',  # Earth, unreinforced + rammed earth
-    'ER+ETR': 'fragile',  # Earth, reinforced + rammed earth
+    # return vulnerability_mapping, field_value_to_type_map
+    return mapping_df, field_value_to_type_map
 
-    'MCF': 'median',  # Masonry, confined
-    'MCF+CB': 'robust',  # Masonry, confined + Concrete block, unknown type (assuming CB99)
-    'MCF+CBH': 'median',  # Masonry, confined + Concrete block, hollow
-    'MCF+CBS': 'robust',  # Masonry, confined + Concrete block, solid
-    'MCF+CBR': 'median',  # Masonry, confined + (CBR not in spec, some type of concrete block)
-    'MCF+CL': 'robust',  # Masonry, confined + Fired clay unit, unknown type (assuming CL99)
-    'MCF+CF': 'median',  # Masonry, confined + (CF not in spec)
-    'MCF+CLBRS': 'robust',  # Masonry, confined + Fired clay solid bricks
-    'MCF+CLBRH': 'robust',  # Masonry, confined + Fired clay hollow bricks
-    'MCF+CLBLH': 'robust',  # Masonry, confined + Fired clay hollow blocks or tiles
-    'MCF+S': 'robust',  # Masonry, confined + Steel
 
-    'MR': 'median',  # Masonry, reinforced
-    'MR+CB': 'median',  # Masonry, reinforced + Concrete block, unknown type (assuming CB99)
-    'MR+CBR': 'median',  # Masonry, reinforced + (CBR not in spec, some type of concrete block)
-    'MR+CBH': 'median',  # Masonry, reinforced + Concrete block, hollow
-    'MR+CL': 'robust',  # Masonry, reinforced + Fired clay unit, unknown type (assuming CL99)
-    'MR+STRUB+RCB+MOC': 'median',  # Masonry, reinforced + Rubble (field stone) or semi-dressed stone +
-                                   # reinforced concrete block + cement mortar
-
-    'CR': 'robust',  # Concrete, reinforced ==> PAGER 'C'
-    'CR+CIP': {  # Concrete, reinforced + Cast in place
-        'LDUAL': {
-            'HBET:3,1': 'median',  # Concrete, reinforced + Cast in place + Dual frame-wall system, low rise
-            'default': 'robust'  # Concrete, reinforced + Cast in place + Dual frame-wall system, other heights
-        },
-        'LFINF': {
-            'HBET:3,1': 'median',  # Concrete, reinforced + Cast in place + Infilled frame, low rise
-            'default': 'robust'  # Concrete, reinforced + Cast in place + Infilled frame, other heights
-        },
-        'LFM': {
-            'HBET:3,1': 'median',  # Concrete, reinforced + Cast in place + Moment frame, low rise
-            'default': 'robust'  # Concrete, reinforced + Cast in place + Moment frame, other heights
-        },
-        'default': 'robust',  # other possible lat load sys values in data: None, LWAL
-    },
-    'CR+PCPS': {  # Concrete, reinforced + Precast prestressed concrete
-        'LFM': {
-            'HBET:3,1': 'median',  # distinguish heights as for CR+CIP; Concrete, reinforced + Precast prestressed concrete + Moment frame, low rise
-            'default': 'robust'  # distinguish heights as for CR+CIP; Concrete, reinforced + Precast prestressed concrete + Moment frame, other heights
-        },
-        'default': 'robust',  # only other lat load system is 'LWAL'
-    },
-    'CR+PC': {  # Concrete, reinforced + Precast concrete
-        'LDUAL': {
-            'HBET:3,1': 'median',  # Concrete, reinforced + Precast concrete + Dual frame-wall system, low rise
-            'default': 'robust'  # Concrete, reinforced + Precast concrete + Dual frame-wall system, other heights
-        },
-        'LFINF': {
-            'HBET:3,1': 'median',  # Concrete, reinforced + Precast concrete + Infilled frame, low rise
-            'default': 'robust'  # Concrete, reinforced + Precast concrete + Infilled frame, other heights
-        },
-        'LFM': {
-            'HBET:3,1': 'median',  # Concrete, reinforced + Precast concrete + Moment frame, low rise
-            'default': 'robust'  # Concrete, reinforced + Precast concrete + Moment frame, other heights
-        },
-        'default': 'robust',  # TODO: What about LFM, LPB which also occur in GEM data but not in PAGER vulnerabilities?
-    },
-
-    'S': 'robust',  # Steel
-    'S+SL': 'robust',  # Steel + light-weight steel members
-    'SL': 'robust',  # Steel, light-weight steel members
-    'S+SR': 'robust',  # Steel + regular-weight steel members
-    'SR': 'robust',  # Steel, regular-weight steel members
-    'S+SO': 'robust',  # Steel + other steel members
-    'SRC': 'robust',  # Concrete, composite with steel section
-
-    'W': 'median',  # Wood ==> PAGER 'W'
-    'W+WWD': 'fragile',  # Wood + Wattle and daub
-    'W+WBB': 'fragile',  # Wood + Bamboo
-    'W+WO': 'fragile',  # Wood + Wood other
-    'W+WS': 'median',  # Wood + Solid Wood ==> PAGER W4
-    'W+WLI': {
-        'LPB': 'fragile',  # Wood + Light wood members + Post and beam
-        'LWAL': 'median',  # Wood + Light wood members + Wall; PAGER MH (mobile homes) maps to W+WLI/LWAL/HBET:1,2; but it does not seem useful to distinguish here
-        'LFBR': 'fragile',  # Wood + Light wood members + Braced frame TODO discuss
-        'LFM': 'fragile',  # Wood + Light wood members + Moment frame; according to the documentation, this is not a valid system for 'Wood'; TODO discuss vulnerability
-        'default': 'fragile',  # TODO discuss
-    },
-    'W+WHE': 'fragile',  # Wood + Heavy wood
-    'ME': 'fragile',  # Metal (except steel) TODO: should metal always be fragile?
-    'ME+MEO': 'fragile',  # Metal (except steel) + other metal TODO: discuss
-    'ME+MEIR': 'fragile',  # Metal (except steel) + iron TODO: discuss
-
-    'M+ADO': 'fragile',  # Masonry (unknown reinforcement) + adobe (M not in spec, assume M99)
-    'M+ST': 'fragile',  # Masonry + Stone, unknown technology (=ST99); occurs only in India for Insutrial and Commercial use
-    'M+CB': 'median',  # Masonry + Concrete block, unknown type (=SB99); occurs only in Japan TODO: discuss
-
-    # here follow all the mixed types. TODO: discuss
-    'W+S': 'median',  # Wood + Steel; occurs only in the Netherlands and for Industrial use
-    'MIX(MUR-STRUB-W)': 'fragile',  # Mix of Masonry, unreinforced + Rubble (field stone) or semi-dressed stone and Wood
-    'MIX(MUR-STDRE-W)': 'fragile',  # Mix of Masonry, unreinforced + Dressed stone masonry and Wood
-    'MIX(MUR-W)': 'fragile',  # Mix of Masonry, unreinforced and Wood
-    'MIX(MUR-CR)': 'median',  # Mix of Masonry, unreinforced and Concrete, reinforced; occurs only in Switzerland and Germany TODO: discuss
-    'MIX(S-CR-PC)': 'robust',  # Mix of Steel + Concrete, reinforced + Precast concrete; occurs only in Australia
-                               # and for Industrial use
-    'MIX(S-W)': 'median',  # Mix of Steel and Wood, occurs only in India and with lateral load system 'LO' (other)
-    'MIX(S-CR)': 'robust',  # Mix of Steel and Concrete, reinforced; occurs only in Australia and for industrial use
-    'MIX(C-S)': 'robust',  # Mix of Concrete and Steel; occurs only in India and with lateral load system 'LO' (other)
-    'MIX(C-W)': 'median',  # Mix of Concrete and Wood; occurs only in India and with lateral load system 'LO' (other)
-    'MIX(M-W)': 'fragile',  # Mix of Masonry and Wood; occurs only with lateral load system 'LO' (other) or NaN
-    'MIX(M-ST)': 'fragile',  # Mix of Masonry and Stone, unknown technology (=ST99); occurs only in India and with
-                             # lateral load system 'LO' (other)
-    'MIX(W-M)': 'fragile',  # Mix of Wood and Masonry; occurs only in India and with lateral load system 'LO' (other)
-    'MIX(W-EU)': 'fragile',  # Mix of Wood and Earth, unknown reinforcement (=E99); occurs only in Pakistan
-    'MIX(CR-W)': 'median',  # Mix of Concrete, reinforced and Wood; only entries with lateral load system NaN; use
-                            # 'median', as concrete, reinforced is typically robust
-    'MIX(MR-W)': 'median',  # Mix of Masonry, reinforced and Wood; occurs only in Russia and only for residential use
-    'MIX': 'median',  # Mix of materials; occurs only in Kosovo, Slovenia, Bulgaria, Austria, and with hybrid lateral
-                      # load resistance system
-    'MATO': 'fragile',  # Other material
-    'INF': 'fragile',  # Informal; occurs only on Fiji, Solomon Islands, Vanatu, lat_load_sys always NaN TODO: discuss
-    'UNK': 'median',  # material unknown / not specified
-}
-
-# add mapping for occurring full material strings
-VULNERABILITY_MAPPING['S+S99+SC99'] = VULNERABILITY_MAPPING['S']  # same as S
-VULNERABILITY_MAPPING['S+SL+SC99'] = VULNERABILITY_MAPPING['S+SL']  # same as S+SL
-VULNERABILITY_MAPPING['MR+MUN99+MR99+MO99'] = VULNERABILITY_MAPPING['MR']  # same as MR
-VULNERABILITY_MAPPING['MUR+MUN99+MO99'] = VULNERABILITY_MAPPING['MUR']  # same as MUR
-
-VULNERABILITY_MAPPING_WIND = VULNERABILITY_MAPPING.copy()
-VULNERABILITY_MAPPING_FLOOD = VULNERABILITY_MAPPING.copy()
-VULNERABILITY_MAPPING_EARTHQUAKE = VULNERABILITY_MAPPING.copy()
-VULNERABILITY_MAPPING_STORMSURGE = VULNERABILITY_MAPPING.copy()
-VULNERABILITY_MAPPING_TSUNAMI = VULNERABILITY_MAPPING.copy()
-
-def assign_vulnerability(material, resistance_system, height, mapping):
+def assign_vulnerability(material, resistance_system, height, mapping):#, new_approach=True):
     """
     This function assigns a vulnerability to a given GEM taxonomy.
 
@@ -244,16 +58,16 @@ def assign_vulnerability(material, resistance_system, height, mapping):
     Returns:
     str: The vulnerability.
     """
-    if material in mapping.keys():
-        material_vulnerability = mapping[material]
-        if type(material_vulnerability) is str:
-            return material_vulnerability
-        if type(resistance_system) is str and len(resistance_system) > 0:
-            resistance_system = resistance_system.split('+')[0]
-            if resistance_system in material_vulnerability.keys():
-                resistance_system_vulnerability = material_vulnerability[resistance_system]
-                if type(resistance_system_vulnerability) is str:
-                    return resistance_system_vulnerability
+    # if new_approach:
+    if material in mapping.index:
+        if len(mapping.loc[material]) == 1:
+            return mapping.loc[[material]].transpose().squeeze().rename('vulnerability')
+        else:
+            if type(resistance_system) is str and len(resistance_system) > 0:
+                resistance_system = resistance_system.split('+')[0]
+            if (material, resistance_system) in mapping.index:
+                if len(mapping.loc[(material, resistance_system)]) == 1:
+                    return mapping.loc[material, resistance_system].transpose().squeeze().rename('vulnerability')
                 else:
                     if type(height) is str and len(height) > 0:
                         height = height.split(':')[1].split('+')[0].split('-' if '-' in height else ',')
@@ -261,22 +75,54 @@ def assign_vulnerability(material, resistance_system, height, mapping):
                             height = [height[0], height[0]]
                         try:
                             height = [int(h) for h in height]
+                            for h_idx in mapping.loc[(material, resistance_system)].index:
+                                if h_idx != 'default':
+                                    h_range = sorted([int(h) for h in h_idx.split(':')[1].split(',')])
+                                    if h_range[0] <= height[0] <= h_range[1] or h_range[0] <= height[1] <= h_range[1]:
+                                        return mapping.loc[(material, resistance_system, h_idx)].transpose().squeeze().rename('vulnerability')
                         except ValueError as e:
                             print(f"Warning: could not parse height value {height} to integer. Using default value.")
-                            return resistance_system_vulnerability['default']
-                        for key in resistance_system_vulnerability.keys():
-                            if key != 'default':
-                                h_range = sorted([int(h) for h in key.split(':')[1].split(',')])
-                                if h_range[0] <= height[0] <= h_range[1] or h_range[0] <= height[1] <= h_range[1]:
-                                    return resistance_system_vulnerability[key]
-                return resistance_system_vulnerability['default']
-        return material_vulnerability['default']
-    # raise ValueError(f"Unknown material {material} for taxonomy {gem_taxonomy}.")
-    print(f"Could not assign vulnerability for unknown material {material}.")
-    return 'unknown'
+                return mapping.loc[(material, resistance_system, 'default')].transpose().squeeze().rename('vulnerability')
+            return mapping.loc[(material, 'default')].transpose().squeeze().rename('vulnerability')
+    else:
+        raise ValueError(f"Could not assign vulnerability for unknown material {material}.")
+        # print(f"Could not assign vulnerability for unknown material {material}.")
+        # return 'unknown'
+    #
+    # else:
+    #     if material in mapping.keys():
+    #         material_vulnerability = mapping[material]
+    #         if type(material_vulnerability) is str:
+    #             return material_vulnerability
+    #         if type(resistance_system) is str and len(resistance_system) > 0:
+    #             resistance_system = resistance_system.split('+')[0]
+    #             if resistance_system in material_vulnerability.keys():
+    #                 resistance_system_vulnerability = material_vulnerability[resistance_system]
+    #                 if type(resistance_system_vulnerability) is str:
+    #                     return resistance_system_vulnerability
+    #                 else:
+    #                     if type(height) is str and len(height) > 0:
+    #                         height = height.split(':')[1].split('+')[0].split('-' if '-' in height else ',')
+    #                         if len(height) > 1 and len(height[1]) == 0 or len(height) == 1:
+    #                             height = [height[0], height[0]]
+    #                         try:
+    #                             height = [int(h) for h in height]
+    #                         except ValueError as e:
+    #                             print(f"Warning: could not parse height value {height} to integer. Using default value.")
+    #                             return resistance_system_vulnerability['default']
+    #                         for key in resistance_system_vulnerability.keys():
+    #                             if key != 'default':
+    #                                 h_range = sorted([int(h) for h in key.split(':')[1].split(',')])
+    #                                 if h_range[0] <= height[0] <= h_range[1] or h_range[0] <= height[1] <= h_range[1]:
+    #                                     return resistance_system_vulnerability[key]
+    #                 return resistance_system_vulnerability['default']
+    #         return material_vulnerability['default']
+    #     # raise ValueError(f"Unknown material {material} for taxonomy {gem_taxonomy}.")
+    #     print(f"Could not assign vulnerability for unknown material {material}.")
+    #     return 'unknown'
 
 
-def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_class_output=None,
+def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, gem_fields_path, vulnerability_class_output=None,
                     weight_by='replacement_cost'):
     """
         This function gathers GEM (Global Exposure Model) data from the GEM repository directory, decodes the taxonomy
@@ -354,9 +200,11 @@ def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_cla
         )
     )
 
+    vulnerability_mapping, field_value_to_type_map = load_mapping(gem_fields_path=gem_fields_path)
+
     unique_tax_strings = gem_data.taxonomy.unique()
     decoded_tax_strings = pd.concat(
-        [decode_taxonomy(t, keep_unknown=False, verbose=False)
+        [decode_taxonomy(t, field_value_to_type_map, keep_unknown=False, verbose=False)
          for t in tqdm.tqdm(unique_tax_strings, desc="decoding taxonomy strings")]
     )
     res = pd.merge(gem_data, decoded_tax_strings, how='left', on='taxonomy')
@@ -366,17 +214,16 @@ def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_cla
     # if taxonomy starts with 'UNK', assume this is the material code and set material to 'UNK'
     res.lat_load_mat[(res.lat_load_mat.isna()) & (res.taxonomy.apply(lambda x: x.startswith('UNK')))] = 'UNK'
 
+    # assign vulnerability classes
+    vulnerability = res.apply(
+        lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height, vulnerability_mapping), axis=1
+    )
+    merged = pd.concat([res, vulnerability], axis=1)
+
     vuln_class_shares = []
-    for hazard_class, vulnerability_mapping in zip(
-            ['Earthquake', 'Wind', 'Flood', 'Storm surge', 'Tsunami'],
-            [VULNERABILITY_MAPPING_EARTHQUAKE, VULNERABILITY_MAPPING_WIND, VULNERABILITY_MAPPING_FLOOD,
-             VULNERABILITY_MAPPING_STORMSURGE, VULNERABILITY_MAPPING_TSUNAMI]
-    ):
-        res[f'{hazard_class}_vulnerability'] = res.apply(
-            lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height, vulnerability_mapping), axis=1
-        )
-        vuln_class_shares_ = res.groupby(['iso3', 'country', f'{hazard_class}_vulnerability'])[weight_by].sum()
-        vuln_class_shares_ = vuln_class_shares_ / res.groupby('iso3')[weight_by].sum()
+    for hazard_class in vulnerability.columns:
+        vuln_class_shares_ = merged.groupby(['iso3', 'country', f'{hazard_class}'])[weight_by].sum()
+        vuln_class_shares_ = vuln_class_shares_ / merged.groupby('iso3')[weight_by].sum()
         vuln_class_shares_ = vuln_class_shares_.unstack()
         vuln_class_shares_.fillna(0, inplace=True)
         vuln_class_shares_.columns = pd.MultiIndex.from_product([[hazard_class], vuln_class_shares_.columns])
@@ -394,8 +241,8 @@ def gather_gem_data(gem_repo_root_dir, hazus_gem_mapping_path, vulnerability_cla
     return res, vuln_class_shares
 
 
-def decode_taxonomy(taxonomy, keep_unknown=False, verbose=True, compute_vulnerability=False):
-    res = pd.DataFrame({col: [[]] for col in ['lat_load_mat', 'lat_load_sys', 'height', 'unknown', 'vulnerability']},
+def decode_taxonomy(taxonomy, field_value_to_type_map, keep_unknown=False, verbose=True):
+    res = pd.DataFrame({col: [[]] for col in ['lat_load_mat', 'lat_load_sys', 'height', 'unknown']},
                        index=[taxonomy])
     res.index.name = 'taxonomy'
     # # HAZUS taxonomy
@@ -403,7 +250,7 @@ def decode_taxonomy(taxonomy, keep_unknown=False, verbose=True, compute_vulnerab
     #     res.loc[taxonomy, 'hazus_id'] = [taxonomy.split('/')[0].split('-')[1]]
     # # GEM taxonomy
     # elif '/' in taxonomy:
-    attribute_types = {attribute: identify_gem_attribute_type(attribute, verbose) for attribute in taxonomy.split('/')}
+    attribute_types = {attribute: identify_gem_attribute_type(attribute, field_value_to_type_map, verbose) for attribute in taxonomy.split('/')}
     for attribute, attribute_type in attribute_types.items():
         res.loc[[taxonomy], attribute_type] = (
                 res.loc[taxonomy, attribute_type] +
@@ -420,21 +267,16 @@ def decode_taxonomy(taxonomy, keep_unknown=False, verbose=True, compute_vulnerab
             elif verbose:
                 print(f"Warning: Multiple attributes have been mapped to the same type for taxonomy {taxonomy}.")
     material, resistance_system, height = res.loc[taxonomy, ['lat_load_mat', 'lat_load_sys', 'height']]
-    if compute_vulnerability:
-        res.loc[taxonomy, 'vulnerability'] = assign_vulnerability(material, resistance_system, height,
-                                                                  VULNERABILITY_MAPPING)
-    else:
-        res.drop('vulnerability', axis=1, inplace=True)
     if keep_unknown:
         return res
     else:
         return res.drop('unknown', axis=1)
 
 
-def identify_gem_attribute_type(attribute, verbose=True):
+def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True):
     if len(attribute) == 0 and verbose:
         print("Warning: Empty attribute.")
-    types = np.unique([FIELD_VALUE_TO_TYPE_MAP.get(field.split(':')[0], 'unknown') for field in attribute.split('+')])
+    types = np.unique([field_value_to_type_map.get(field.split(':')[0], 'unknown') for field in attribute.split('+')])
     if len(types) == 1 and 'unknown' in types and verbose:
         print(f"Warning: Unknown type for attribute {attribute}.")
     elif len(types) == 2 and 'unknown' in types:
@@ -447,12 +289,15 @@ def identify_gem_attribute_type(attribute, verbose=True):
 if __name__ == '__main__':
     gem_repo_root_dir = '../global_exposure_model/'
     hazus_gem_mapping_path = './inputs/GEM_vulnerability/hazus-gem_mapping.csv'
-    vulnerability_class_output = './inputs/GEM_vulnerability/country_vulnerability_classes.csv'
+    gem_fields_path = "./inputs/GEM_vulnerability/gem_taxonomy_fields.json"
+    # vulnerability_class_output = './inputs/GEM_vulnerability/country_vulnerability_classes.csv'
+    vulnerability_class_output = None
     gem_data, vuln_class_shares = gather_gem_data(
         gem_repo_root_dir=gem_repo_root_dir,
         hazus_gem_mapping_path=hazus_gem_mapping_path,
+        gem_fields_path=gem_fields_path,
         vulnerability_class_output=vulnerability_class_output,
-        weight_by='replacement_cost'
+        weight_by='replacement_cost',
     )
     print(gem_data)
     print(vuln_class_shares)

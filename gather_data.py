@@ -225,7 +225,7 @@ def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, 
     if np.any(fa_v_merged.fa > fa_threshold_):
         excess_exposure = fa_v_merged.loc[fa_v_merged.fa > fa_threshold_, 'fa']
         print(f"Exposure values f_a are above fa_threshold for {len(excess_exposure)} entries. Setting them to "
-              f"fa_threshold and adjusting vulnerability accordingly.")
+              f"fa_threshold={fa_threshold_} and adjusting vulnerability accordingly.")
         r = excess_exposure / fa_threshold_  # ratio by which fa is above fa_threshold
         r.name = 'r'
         # set f_a to fa_threshold
