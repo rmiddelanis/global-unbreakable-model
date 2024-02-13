@@ -56,7 +56,7 @@ def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value
 
 
 def download_wb_data(root_dir, include_remitances=True, use_additional_data=False, drop_incomplete=True,
-                     output_dir=None):
+                     use_legacy_additions=False, output_dir=None):
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
     # World Development Indicators
@@ -129,7 +129,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
 
 
     # FROM HERE: FILL MISSING VALUES IN ASPIRE DATA
-    if use_additional_data:
+    if use_additional_data and use_legacy_additions:
         # GDP per capita from google (GDP per capita plays no role in the indicator. only usefull to plot the data)
         # TODO: what about Syria?!
         # macro_df.loc["Syrian Arab Republic", "gdp_pc_pp"] = 5100 / 10700 * 10405.
@@ -193,6 +193,12 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     cat_info_df = cat_info_df[~cat_info_df.iso3.isna()].set_index(['iso3', 'income_cat']).drop('country', axis=1)
     cat_info_df.dropna(how="all", inplace=True)
 
+    # TODO: legacy additions are not formatted to ISO3; therefore, they cannot be added after the df_to_iso3 function
+    if use_additional_data and not use_legacy_additions:
+        guessed_social = load_input_data(root_dir, "social_share_regression/social_predicted.csv",
+                                         index_col=[0, 1]).squeeze()
+        cat_info_df.social.fillna(guessed_social, inplace=True)
+
     complete_countries = np.intersect1d(macro_df.dropna().index.get_level_values('iso3').unique(),
                                         cat_info_df.dropna().index.get_level_values('iso3').unique())
     print(f"Full data for {len(complete_countries)} countries.")
@@ -213,13 +219,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Script parameters')
     parser.add_argument('--exclude_remittances', action='store_true', help='Exclude remittances.')
     parser.add_argument('--no_additional_data', action='store_true', help='Do not use additional data.')
+    parser.add_argument('--use_legacy_additions', action='store_true', help='If using additional data, use '
+                                                                            'legacy additions.')
     parser.add_argument('--keep_incomplete', action='store_true', help='Do not drop incomplete data.')
 
     root_dir = os.getcwd()
     args = parser.parse_args()
     include_remittances = not args.exclude_remittances
     use_additional_data = not args.no_additional_data
+    use_legacy_additions = args.use_legacy_additions
     drop_incomplete = not args.keep_incomplete
 
-    download_wb_data(root_dir, include_remitances=include_remittances, use_additional_data=use_additional_data,
-                     drop_incomplete=drop_incomplete, output_dir='inputs/WB_socio_economic_data')
+    macro_df, cat_info_df = download_wb_data(
+        root_dir=root_dir,
+        include_remitances=include_remittances,
+        use_additional_data=use_additional_data,
+        use_legacy_additions=use_legacy_additions,
+        drop_incomplete=drop_incomplete,
+        output_dir='inputs/WB_socio_economic_data',
+    )
