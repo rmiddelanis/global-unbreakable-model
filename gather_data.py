@@ -485,6 +485,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_avg_pe', type=bool, default=True, help='Use average PE')
     parser.add_argument('--drop_unused_data', type=bool, default=True, help='Drop unused data')
     parser.add_argument('--econ_scope', type=str, default='iso3', help='Economic scope')
+    parser.add_argument('--include_pov_head', type=float, default=2.15, help='poverty headcount to include in macro.')
     parser.add_argument('--default_rp', type=str, default='default_rp', help='Default return period')
     parser.add_argument('--reconstruction_time', type=float, default=3.0, help='Reconstruction time')
     parser.add_argument('--reduction_vul', type=float, default=0.2, help='Reduction in vulnerability')
@@ -518,6 +519,7 @@ if __name__ == '__main__':
     test_run = args.test_run
     default_reconstruction_time = args.reconstruction_time
     force_recovery_recompute = args.force_recovery_recompute
+    include_pov_head = args.include_pov_head
 
     econ_scope = args.econ_scope
     event_level = [econ_scope, "hazard", "rp"]  # levels of index at which one event happens
@@ -541,6 +543,8 @@ if __name__ == '__main__':
         wb_data_macro_full = wb_data_macro
         wb_data_macro = wb_data_macro.loc[['USA']]
         wb_data_cat_info = wb_data_cat_info.loc[['USA']]
+
+    pov_headcount = load_input_data(root_dir, "PEB/pov_headcount.csv", index_col=[0, 1]).squeeze()
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
@@ -640,6 +644,8 @@ if __name__ == '__main__':
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
+    macro = macro.join(pov_headcount.unstack('pov_line')[include_pov_head].rename(f"pov_rate_{include_pov_head}"),
+                       how='left')
     # TODO: these global parameters should eventually be moved elsewhere and not stored in macro!
     macro['rho'] = discount_rate_rho
     macro['max_increased_spending'] = max_increased_spending

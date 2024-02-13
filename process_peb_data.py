@@ -5,7 +5,7 @@ import numpy as np
 
 def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias.dta",
                      poverty_data_path="inputs/PEB/poverty_data/",
-                     wb_macro_path="inputs/WB_socio_economic_data/wb_data_macro.csv", outfile=None,
+                     wb_macro_path="inputs/WB_socio_economic_data/wb_data_macro.csv", outpath=None,
                      exclude_povline=None):
     exposure_data_path = os.path.join(root_dir, exposure_data_path)
     poverty_data_path = os.path.join(root_dir, poverty_data_path)
@@ -141,9 +141,10 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
         exp_bias_q.loc[exp_bias_q_.index] = exp_bias_q_.values
 
     # store exposure bias per quintile
-    if outfile is not None:
-        exp_bias_q.to_csv(outfile)
-        print(f"Exposure bias per quintile stored in {outfile}")
+    if outpath is not None:
+        exp_bias_q.to_csv(os.path.join(outpath, 'exposure_bias_per_quintile.csv'))
+        pov_head.to_csv(os.path.join(outpath, 'pov_headcount.csv'))
+        print(f"Exposure bias per quintile stored in {outpath}")
 
     return exp_bias_q
 
@@ -153,6 +154,7 @@ if __name__ == "__main__":
         root_dir=os.getcwd(),
         exposure_data_path="inputs/PEB/exposure bias.dta",
         poverty_data_path="inputs/PEB/poverty_data/",
-        outfile="./inputs/PEB/exposure_bias_per_quintile.csv",
+        outpath="./inputs/PEB/",
+        wb_macro_path="inputs/WB_socio_economic_data/wb_data_macro.csv",
         exclude_povline=13.7,
     )
