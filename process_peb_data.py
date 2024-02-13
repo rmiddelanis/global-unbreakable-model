@@ -58,7 +58,7 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
         columns=pd.Index(pov_head.index.unique(), name='iso3')
     ).transpose()
 
-    # set headcount for poverty lines 0 to 0 and np.inf (full population) to 1
+    # set headcount for poverty lines 0 and np.inf (full population) to 0 and 1, respectively
     new_cols[0] = 0
     new_cols[np.inf] = 1
     pov_head = pd.concat([pov_head, new_cols], axis=1).stack().sort_index().rename('pov_headcount')
@@ -79,8 +79,9 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
     exposure.drop(drop_idx, inplace=True)
 
     # retain total exposure
-    exposure_tot = exposure.loc[exposure.pov_line == np.inf].drop('pov_line', axis=1)
-    exposure_tot = exposure_tot.reset_index('pop_slice').replace({'pop_slice': 9.0}, 'tot').set_index('pop_slice', append=True)
+    exposure_tot = exposure.loc[exposure.pov_line == np.inf].drop('pov_line', axis=1).reset_index('pop_slice')
+    exposure_tot['pop_slice'] = 'tot'
+    exposure_tot = exposure_tot.set_index('pop_slice', append=True)
 
     # calculate row-wise difference to get values per population slice
     exposure = pd.concat([
@@ -88,6 +89,10 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
         exposure_tot],
         axis=0
     ).sort_index()
+
+    # TODO: some categories have pov_headcount == 0 but pop_a > 0
+    # drop data where pov_headcount == 0 (these don't contribute to any income quintile)
+    exposure = exposure[exposure.pov_headcount > 0].copy()
 
     # use more recent population data for countries with f_a > 1:
     excess_countries = exposure[exposure['pop_a'] > exposure['pop']].index.get_level_values('iso3').unique()
@@ -102,13 +107,6 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
             print(f"Setting pop_a to pop for {len(excess_rows)} entries with pop_a > pop")
             exposure.loc[excess_rows, 'pop_a'] = exposure.loc[excess_rows, 'pop']
 
-    # TODO: some categories have pov_headcount == 0 but pop_a > 0
-    # drop data where pov_headcount == 0 (these don't contribute to any income quintile)
-    exposure = exposure[exposure.pov_headcount > 0].copy()
-
-    # compute cumulative headcount (needed for calculation of per-quintile exposure)
-    exposure['cum_headcount'] = exposure.groupby(['iso3', 'hazard']).pov_headcount.cumsum()
-
     # compute relative exposure
     exposure['f_a'] = exposure.pop_a / exposure['pop']
     # exposure.loc[exposure.f_a > 1, 'f_a'] = 1
@@ -117,6 +115,12 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
 
     # compute exposure bias
     exposure['exposure_bias'] = exposure.f_a / exposure.loc[pd.IndexSlice[:, :, 'tot'], 'f_a'].droplevel('pop_slice')
+
+    # drop total exposure
+    exposure.drop('tot', level='pop_slice', inplace=True)
+
+    # compute cumulative headcount (needed for calculation of per-quintile exposure)
+    exposure['cum_headcount'] = exposure.groupby(['iso3', 'hazard']).pov_headcount.cumsum()
 
     # calculate exposure bias per quintile
     quintiles = ['q1', 'q2', 'q3', 'q4', 'q5']
