@@ -10,12 +10,11 @@ model = os.getcwd()  # get current directory
 input_dir = model + '/inputs/'  # get inputs data directory
 intermediate_dir = model + '/intermediate/'  # get outputs data directory
 
-results_policy_summary = pd.DataFrame(index=pd.read_csv(intermediate_dir + "scenario__macro.csv", index_col='iso3').dropna().index)
-# for pol_str in ['', '_bbb_complete1', '_bbb_incl1', '_bbb_fast1', '_bbb_fast2', '_bbb_fast4', '_bbb_fast5',
-#                 '_bbb_50yrstand1']:
-for pol_str in ['']:
+scenarios = os.listdir(os.path.join(intermediate_dir, 'scenarios'))
+scenarios = [s for s in scenarios if os.path.isdir(os.path.join(intermediate_dir, 'scenarios', s))]
 
-    print(pol_str)
+for scenario in scenarios:
+    print(scenario)
     option_fee = "tax"
     option_pds = "unif_poor"
 
@@ -39,18 +38,18 @@ for pol_str in ['']:
     # read data
 
     # macro-economic country economic data
-    macro = pd.read_csv(os.path.join(intermediate_dir, 'scenario__macro' + pol_str + ".csv"), index_col=econ_scope)
+    macro = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', scenario, "scenario__macro.csv"), index_col=econ_scope)
 
     # consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
-    cat_info = pd.read_csv(os.path.join(intermediate_dir, 'scenario__cat_info' + pol_str + ".csv"),
+    cat_info = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', scenario, "scenario__cat_info.csv"),
                            index_col=[econ_scope, "income_cat"])
 
     # exposure, vulnerability, and access to early warning by country, hazard, return period, income category
-    hazard_ratios = pd.read_csv(os.path.join(intermediate_dir, 'scenario__hazard_ratios' + pol_str + ".csv"),
+    hazard_ratios = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', scenario, "scenario__hazard_ratios.csv"),
                                 index_col=event_level + ["income_cat"])
 
-    hazard_protection = pd.read_csv(os.path.join(intermediate_dir, 'scenario__hazard_protection' + pol_str + ".csv"),
-                                    index_col= [econ_scope, "hazard"])
+    hazard_protection = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', scenario, "scenario__hazard_protection.csv"),
+                                    index_col=[econ_scope, "hazard"])
 
     # compute
     # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
@@ -110,19 +109,17 @@ for pol_str in ['']:
         return_stats=True,
     )
 
+    if not os.path.exists(f'output/scenarios/{scenario}'):
+        os.makedirs(f'output/scenarios/{scenario}')
+
     # save macro_event
-    macro_event.to_csv('output/macro_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8",
+    macro_event.to_csv(f'output/scenarios/{scenario}/macro_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
                        header=True)
 
     # save cat_info_event_iah
-    cat_info_event_iah.to_csv('output/iah_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8",
+    cat_info_event_iah.to_csv(f'output/scenarios/{scenario}/iah_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
                               header=True)
 
     # Save results
-    results.to_csv('output/results_' + option_fee + '_' + option_pds + '_' + pol_str + '.csv', encoding="utf-8",
+    results.to_csv(f'output/scenarios/{scenario}/results_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
                    header=True)
-
-    results_policy_summary[pol_str + '_dw_tot_curr'] = results['dWtot_currency']
-
-# save results_policy_summary
-results_policy_summary.to_csv('output/results_policy_summary.csv')

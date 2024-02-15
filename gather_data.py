@@ -666,17 +666,18 @@ if __name__ == '__main__':
     # TODO: check that different policies still work
     # for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
     #                          ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
-    for pol_str, pol_opt in [[None, None]]:
-
+    for pol_name, pol_opt in [[None, None], ['reduce_poor_exposure', 0.05]]:
         # apply policy
-        scenario_macro, scenario_cat_info, scenario_hazard_ratios, pol_desc = apply_policy(
+        scenario_macro, scenario_cat_info, scenario_hazard_ratios, pol_name, pol_desc = apply_policy(
             macro_=macro.copy(deep=True),
             cat_info_=cat_info.copy(deep=True),
             hazard_ratios_=hazard_ratios.copy(deep=True),
-            event_level=event_level,
-            policy_name=pol_str,
+            policy_name=pol_name,
             policy_opt=pol_opt
         )
+
+        if not os.path.exists(os.path.join(intermediate_dir, 'scenarios', pol_name)):
+            os.makedirs(os.path.join(intermediate_dir, 'scenarios', pol_name))
 
         # TODO: ideally, all variables that are computed in gather_data.py should be computed in
         #  recomputed_after_policy_change(); before, only input data should be loaded to avoid double computation and
@@ -699,40 +700,39 @@ if __name__ == '__main__':
 
         # Save all data
         print(scenario_macro_rec.shape[0], 'countries in analysis')
-        outstring = (f"_{pol_str}" if pol_str is not None else '') + (str(pol_opt) if pol_opt is not None else '')
 
         # TODO: should save vulenrability_per_income_cat_adjusted instead of vulnerability here!
         # save vulnerability (total, poor, rich) by country
         vulnerability.to_csv(
-            os.path.join(intermediate_dir + "/scenario__vulnerability_unadjusted" + outstring + ".csv"),
+            os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__vulnerability_unadjusted.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save protection by country and hazard
         hazard_protection.to_csv(
-            os.path.join(intermediate_dir + "/scenario__hazard_protection" + outstring + ".csv"),
+            os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__hazard_protection.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save macro-economic country economic data
         scenario_macro_rec.to_csv(
-            os.path.join(intermediate_dir + "/scenario__macro" + outstring + ".csv"),
+            os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__macro.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
         scenario_cat_info_rec.to_csv(
-            os.path.join(intermediate_dir + "/scenario__cat_info" + outstring + ".csv"),
+            os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__cat_info.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save exposure, vulnerability, and access to early warning by country, hazard, return period, income category
         scenario_hazard_ratios_rec.to_csv(
-            os.path.join(intermediate_dir + "/scenario__hazard_ratios" + outstring + ".csv"),
+            os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__hazard_ratios.csv"),
             encoding="utf-8",
             header=True
         )

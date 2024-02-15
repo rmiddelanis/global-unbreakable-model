@@ -4,7 +4,7 @@ import copy
 
 from gather_gir_data import load_gir_hazard_losses
 from lib_gather_data import *
-from apply_policy import *
+from apply_policy_old import *
 import pandas as pd
 from pandas import isnull
 from lib_gather_data import replace_with_warning, get_country_name_dicts
@@ -395,9 +395,9 @@ for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], [
                          ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
 
     # apply policy
-    pol_df, pol_cat_info, pol_hazard_ratios, pol_desc = apply_policy(df.copy(deep=True), cat_info.copy(deep=True),
-                                                                     hazard_ratios.copy(deep=True), event_level,
-                                                                     pol_str, pol_opt)
+    pol_df, pol_cat_info, pol_hazard_ratios, pol_desc = apply_policy_old(df.copy(deep=True), cat_info.copy(deep=True),
+                                                                         hazard_ratios.copy(deep=True), event_level,
+                                                                         pol_str, pol_opt)
 
     # clean up and save out
     if drop_unused_data:
