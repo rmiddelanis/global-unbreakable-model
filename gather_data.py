@@ -16,7 +16,7 @@ from lib_gather_data import get_country_name_dicts
 #  hazard specific, so it cannot be used for computing recovery duration.
 # TODO: discuss standard parameter values
 def get_recovery_duration(avg_prod_k_=None, vulnerability_=None, discount_rate_=None, consump_util_=1.5, force_recompute=True,
-                          lambda_increment_=.001, years_to_recover_=20, max_duration_=10, store_output=True):
+                          lambda_increment_=.001, years_to_recover_=20, max_recovery_rate_=10, store_output=True):
     if not force_recompute and os.path.exists(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv')):
         print("Loading recovery rates from file.")
         df = pd.read_csv(os.path.join(root_dir, 'intermediate', 'recovery_rates.csv'))
@@ -37,9 +37,9 @@ def get_recovery_duration(avg_prod_k_=None, vulnerability_=None, discount_rate_=
                 lambda_increment=lambda_increment_, years_to_recover=years_to_recover_
             )
         df['recovery_rate'] = df.apply(lambda x: recovery_rates[(x.v, x.avg_prod_k)], axis=1)
-        df_ = df.loc[df['recovery_rate'] < max_duration_]
+        df_ = df.loc[df['recovery_rate'] < max_recovery_rate_]
         interp = NearestNDInterpolator(list(zip(df_.v, df_.avg_prod_k)), df_['recovery_rate'])
-        df_error = df.loc[df['recovery_rate'] >= max_duration_]
+        df_error = df.loc[df['recovery_rate'] >= max_recovery_rate_]
         df_error['recovery_rate'] = interp(df_error.v, df_error.avg_prod_k)
         df = pd.concat((df_, df_error))
 
