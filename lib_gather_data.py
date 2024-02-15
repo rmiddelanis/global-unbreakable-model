@@ -376,8 +376,9 @@ def gather_capital_data(root_dir_, include_legacy_sids=False):
     return capital_data
 
 
-def integrate_and_find_recovery_rate(v: float, consump_util: float, discount_rate: float, average_productivity: float, lambda_increment: float, years_to_recover: int) -> float:
-    '''Find recovery rate (lambda) given the value of `v` (household vulnerability).
+def integrate_and_find_recovery_rate(v: float, consump_util: float, discount_rate: float, average_productivity: float,
+                                     lambda_increment: float, years_to_recover: int) -> float:
+    """Find recovery rate (lambda) given the value of `v` (household vulnerability).
 
     Args:
         v (float): Household vulnerability.
@@ -389,7 +390,7 @@ def integrate_and_find_recovery_rate(v: float, consump_util: float, discount_rat
 
     Returns:
         float: Recovery rate (lambda).
-    '''
+    """
 
     # No existing solution found, so we need to optimize
     tot_weeks = 52 * years_to_recover
