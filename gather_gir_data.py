@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -5,7 +7,7 @@ from lib_gather_data import average_over_rp
 from pandas_helper import load_input_data
 
 
-def load_gir_hazard_losses(root_dir, gir_filepath, default_rp, extrapolate_rp=True):
+def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True):
     """
     Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
     country, hazard, and return period. GIR data contains data for hazards Tropical cyclone, Tsunami, Flood (riverine),
@@ -21,11 +23,11 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp, extrapolate_rp=Tr
     pandas.Series: A pandas Series with a MultiIndex of ['iso3', 'hazard', 'rp'] and values representing the
     fraction of value destroyed for each country, hazard, and return period.
     """
-    gir_data = load_input_data(root_dir, gir_filepath, version='new')
-    gir_data.rename({'value_axis_2': 'rp', 'value_axis_1': 'loss', 'iso3cd': 'iso3',
+    gir_data = load_input_data(root_dir_, gir_filepath_, version='new')
+    gir_data.rename({'value_axis_1': 'loss', 'value_axis_2': 'rp', 'iso3cd': 'iso3',
                      'country_name': 'country'}, axis=1,
                     inplace=True)
-    gir_data.drop('unit_axis_1', axis=1, inplace=True)
+    gir_data.drop(['unit_axis_1', 'name_axis_1', 'name_axis_2'], axis=1, inplace=True)
 
     # drop disputed territories without distinct iso3 code
     gir_data = gir_data[~gir_data.iso3.isin(['xUK', 'xAB', 'xAC', 'xAP', 'xJK', 'xRI', 'xPI', 'xJL', 'xxx'])]
@@ -58,40 +60,36 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp, extrapolate_rp=Tr
     # TODO: West Sahara (ESH)
 
     # drop SSP scenarios
-    gir_data = gir_data[gir_data.climate_scenario == 'Existing climate']
+    gir_data = gir_data[gir_data.climate_scenario == 'Existing climate'].drop('climate_scenario', axis=1)
 
     # drop Loss exceedance curve
-    gir_data = gir_data[gir_data.risk_metric_abbr.isin(['PML', 'AAL'])]
+    gir_data = gir_data[gir_data.risk_metric_abbr.isin(['PML', 'AAL'])].drop('risk_metric', axis=1)
 
     # TODO: decide whether to use subhazard or hazard
     # TODO: Landslides
     # drop Landslides for now --> no overlap of subhazards between hazards
-    gir_data = gir_data[gir_data.hazard != 'Landslide']
+    gir_data = gir_data[gir_data.hazard != 'Landslide'].drop('hazard', axis=1).rename({'subhazard': 'hazard'}, axis=1)
 
     # set empty return (=AAL) periods to 0
-    gir_data.rp.fillna(0, inplace=True)
-    gir_data = gir_data[['iso3', 'country', 'subhazard', 'rp', 'loss', 'pop', 'cap_stock_capita', 'gdp_capita']].groupby(
-        ['iso3', 'country', 'subhazard', 'rp']#, 'sector_type', ]
-    ).agg(
-        {'loss': 'sum', 'pop': 'mean', 'cap_stock_capita': 'mean', 'gdp_capita': 'mean'}
-    ).reset_index().rename({'subhazard': 'hazard'}, axis=1)
+    gir_data.rp = gir_data.rp.astype(object)
+    gir_data.rp.fillna('AAL', inplace=True)
+    
+    gir_data[['cap_stock', 'gdp']] = gir_data[['cap_stock_capita', 'gdp_capita']].mul(gir_data['pop'], axis=0)
+    gir_macro = gir_data[['iso3', 'country', 'pop', 'cap_stock', 'gdp']].drop_duplicates().groupby(['iso3', 'country']).sum().reset_index('country')
+    gir_loss = gir_data.groupby(['iso3', 'hazard', 'rp']).loss.sum().to_frame()
+    gir_loss['frac_value_destroyed'] = gir_loss.loss / gir_macro.cap_stock
 
-    # TODO: check that (gir_data.cap_stock_capita * gir_data.pop) = exposed value is valid
-    gir_data['frac_value_destroyed'] = gir_data.loss / (gir_data.cap_stock_capita * gir_data['pop'])
-    assert np.all(gir_data.frac_value_destroyed >= 0)
-    frac_value_destroyed = gir_data.set_index(['iso3', 'hazard', 'rp']).frac_value_destroyed.reset_index()
-    frac_value_destroyed_aal = frac_value_destroyed[frac_value_destroyed.rp == 0].drop('rp', axis=1)
-    frac_value_destroyed_aal = frac_value_destroyed_aal.set_index(['iso3', 'hazard']).frac_value_destroyed
-    frac_value_destroyed_pml = frac_value_destroyed[frac_value_destroyed.rp != 0]
-    frac_value_destroyed_pml = frac_value_destroyed_pml.set_index(['iso3', 'hazard', 'rp']).frac_value_destroyed
+    frac_value_destroyed_pml = gir_loss.frac_value_destroyed.drop('AAL', level='rp')
+    frac_value_destroyed_aal = gir_loss.frac_value_destroyed.xs('AAL', level='rp')
 
-    loss_incoherences = frac_value_destroyed_aal - average_over_rp(frac_value_destroyed_pml, default_rp) < 0
+    # check for incoherences
+    loss_incoherences = frac_value_destroyed_aal - average_over_rp(frac_value_destroyed_pml, default_rp_) < 0
     if loss_incoherences.any():
         print(f"Warning: AAL is smaller than the average loss over all return periods for the following "
               f"(iso3, hazard) tuples:\n\n{loss_incoherences[loss_incoherences].index.values}.\n\nThis will result "
               f"in negative losses for additional return periods.")
 
-    if not extrapolate_rp:
+    if not extrapolate_rp_:
         return frac_value_destroyed_pml
     else:
         def add_rp(aal_data_, pml_data_, new_rp_):
@@ -106,7 +104,7 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp, extrapolate_rp=Tr
                                  "pml_data")
             # average_over_rp() averages return period losses, weighted with the probability of each return period, i.e.
             # the inverse of the return period
-            new_data = (aal_data_ - average_over_rp(pml_data_, default_rp).squeeze()) / new_probability
+            new_data = (aal_data_ - average_over_rp(pml_data_, default_rp_).squeeze()) / new_probability
             negative_results = new_data < 0
             if np.any(negative_results):
                 print(f"Setting negative losses for return period {new_rp_} to 0 for {len(new_data[negative_results])} "
@@ -117,7 +115,7 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp, extrapolate_rp=Tr
             new_data = new_data.set_index(['iso3', 'hazard', 'rp']).frac_value_destroyed
             res = pd.concat([pml_data_, new_data]).sort_index()
             # check that the new data is consistent with the overall AAL. Values should be 0 (tolerance 1e-10)
-            max_deviation = (average_over_rp(res, default_rp).squeeze() - aal_data_).abs().max()
+            max_deviation = (average_over_rp(res, default_rp_).squeeze() - aal_data_).abs().max()
             if max_deviation > 1e-10:
                 print(f"Warning: new data for return period {new_rp_} is not consistent with the overall AAL. The "
                       f"difference of the AAL to the return period average is up to {max_deviation}.")
@@ -151,3 +149,16 @@ def load_gir_hazard_losses(root_dir, gir_filepath, default_rp, extrapolate_rp=Tr
             #                      frac_value_destroyed_complete[overflow_country_indexer], new_max_rp)  # TODO this is wrong, duplicate entries after indexing
             frac_value_destroyed_completed = add_rp(frac_value_destroyed_aal, frac_value_destroyed_completed, new_max_rp)
         return frac_value_destroyed_completed
+
+
+if __name__ == '__main__':
+    root_dir = os.getcwd()
+    gir_filepath = "GIR_hazard_loss_data/export_all_metrics.csv.zip"
+    default_rp = "default_rp"
+    extrapolate_rp = False
+    load_gir_hazard_losses(
+        root_dir_=root_dir,
+        gir_filepath_=gir_filepath,
+        default_rp_=default_rp,
+        extrapolate_rp_=extrapolate_rp,
+    )
