@@ -176,8 +176,6 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
         cat_info_df.loc[where, 'social'] = np.nan
 
         # Guess social transfer
-        # TODO: @Bramka this appears to be the econometric model data mentioned in paper p. 16/17. Is this model still
-        #   available? Should we use it? @Stephane
         guessed_social = load_input_data(root_dir, "df_social_transfers_statistics.csv", index_col=0)
         guessed_social = guessed_social[["social_p_est", "social_r_est"]].clip(lower=0, upper=1)
         guessed_social = pd.concat([guessed_social.social_p_est.rename('q1'), guessed_social.social_r_est.rename('q2'),

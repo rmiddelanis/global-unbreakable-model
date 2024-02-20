@@ -21,7 +21,6 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level):
 
     # cat_info_event = pd.merge(cat_info, hazard_ratios[['fa', 'v_ew', 'macro_multiplier_Gamma']], left_index=True,
     #                           right_index=True)
-    # TODO: broadcast_simple creates many NaN entries; fix this
     # cat_info_event = broadcast_simple(cat_info, event_level_index).reset_index().set_index(event_level + ["income_cat"])
     # cat_info_event[['fa', 'v_ew', 'macro_multiplier_Gamma']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew', 'macro_multiplier_Gamma']]
     cat_info_event = pd.merge(hazard_ratios[['fa', 'v_ew', 'macro_multiplier_Gamma']], cat_info, left_index=True,
@@ -51,7 +50,6 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     # capital losses and total capital losses
     cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
 
-    # TODO: keep multi-index with affected and income categories
     cat_info_event_ia.loc[pd.IndexSlice[:, :, :, :, 'na'], "dk"] = 0
     # cat_info_event_ia.loc[(cat_info_event_ia.affected_cat == 'na'), "dk"] = 0
 

@@ -1,7 +1,5 @@
 import pandas as pd
 
-from lib_compute_resilience_and_risk import agg_to_event_level
-
 
 def apply_policy(macro_, cat_info_, hazard_ratios_, policy_name=None, policy_opt=None, verbose=True):
     """
