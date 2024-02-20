@@ -83,7 +83,6 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
                     protection_level_assumptions_file="WB_country_classification/protection_level_assumptions.csv",
                     income_groups_file="WB_country_classification/country_classification.xlsx",
                     income_groups_file_historical="WB_country_classification/country_classification_historical.xlsx"):
-    # TODO: is this applied to all hazards or just floods?
     # TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
     if 'rp' in index_.names:
         index_ = index_.droplevel('rp').drop_duplicates()
@@ -152,7 +151,6 @@ def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthqu
     return ew_per_hazard_
 
 
-# TODO: update with new PEB data
 def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, population_data_=None,  # n_quantiles_, poor_categories_,
                                 peb_data_path="PEB/exposure_bias_per_quintile.csv",
                                 # peb_povmaps_filepath_="PEB_flood_povmaps.xlsx",
@@ -214,7 +212,7 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, population_data_=None
 
 
 def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, fa_threshold_):
-    exposure_fa_guessed_ = (hazard_loss_tot_ / vulnerability_.loc[(slice(None), 'tot')]).dropna().rename('fa')
+    exposure_fa_guessed_ = (hazard_loss_tot_ / vulnerability_.loc[pd.IndexSlice[:, :, 'tot']]).dropna().rename('fa')
 
     vulnerability_quintiles = vulnerability_.drop('tot', level='income_cat')
 
@@ -250,43 +248,78 @@ def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, 
 
 def load_vulnerability_data(income_shares_, n_quantiles=5,
                             gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
-                            building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv"):
-    house_cats = load_input_data(root_dir, gem_vulnerability_classes_filepath_, index_col=[0, 1], header=[0, 1])
-    house_cats = house_cats.droplevel('country', axis=0)
-    if 'default' in house_cats.columns:
-        house_cats = house_cats.drop('default', axis=1, level=0)
+                            building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
+                            gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling_quintile_vul_ratio.xlsx"):
+    building_classes = load_input_data(root_dir, gem_vulnerability_classes_filepath_, index_col=[0, 1], header=[0, 1])
+    building_classes.columns.names = ['hazard', 'vulnerability_class']
+    building_classes = building_classes.droplevel('country', axis=0)
+    if 'default' in building_classes.columns:
+        building_classes = building_classes.drop('default', axis=1, level=0)
 
     # matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
-    hous_cat_vulnerability = load_input_data(root_dir, building_class_vuln_path, index_col=0)
+    building_class_vulnerability = load_input_data(root_dir, building_class_vuln_path, index_col=0)
+    building_class_vulnerability.index.name = 'hazard'
+    building_class_vulnerability.columns.name = 'vulnerability_class'
 
-    # TODO here, simply assuming that the poorest quantiles occupy the most vulnerable housing. A better approach might
-    #  be desirable, e.g. using GMD data
-    quantiles = [f"q{q}" for q in range(1, n_quantiles + 1)]
-    q_headcount = 1 / n_quantiles
-    vulnerability_ = pd.DataFrame(
-        index=pd.MultiIndex.from_product((house_cats.index, quantiles), names=['iso3', 'income_cat']),
-        columns=pd.Index(house_cats.columns.get_level_values(0).unique(), name='hazard'),
-        dtype=float
-    )
-    for cum_head, quantile in zip(np.linspace(q_headcount, 1, n_quantiles), quantiles):
-        for hazard in vulnerability_.columns:
-            share_h_q = (
-                # cumulative shares of income categories until the current quantile
-                (house_cats[hazard] - (house_cats[hazard].cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(0) -
-                # cumulative shares of income categories until the category before (i.e., excluding) the current quantile
-                (house_cats[hazard] - (house_cats[hazard].cumsum(axis=1).add(-(cum_head - q_headcount), axis=0)).clip(lower=0)).clip(0)
-            ) / q_headcount
-            vulnerability_h_q = (share_h_q * hous_cat_vulnerability.loc[hazard]).sum(axis=1, skipna=True)
-            vulnerability_.loc[(slice(None), quantile), hazard] = vulnerability_h_q.values
+    # # TODO here, simply assuming that the poorest quantiles occupy the most vulnerable housing. A better approach might
+    # #  be desirable, e.g. using GMD data
+    # quantiles = [f"q{q}" for q in range(1, n_quantiles + 1)]
+    # q_headcount = 1 / n_quantiles
+    # vulnerability_ = pd.DataFrame(
+    #     index=pd.MultiIndex.from_product((building_classes.index, quantiles), names=['iso3', 'income_cat']),
+    #     columns=pd.Index(building_classes.columns.get_level_values(0).unique(), name='hazard'),
+    #     dtype=float
+    # )
+    # for cum_head, quantile in zip(np.linspace(q_headcount, 1, n_quantiles), quantiles):
+    #     for hazard in vulnerability_.columns:
+    #         share_h_q = (
+    #                         # cumulative shares of income categories until the current quantile
+    #                             (building_classes[hazard] - (
+    #                                 building_classes[hazard].cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(
+    #                                 0) -
+    #                             # cumulative shares of income categories until the category before (i.e., excluding) the current quantile
+    #                             (building_classes[hazard] - (
+    #                                 building_classes[hazard].cumsum(axis=1).add(-(cum_head - q_headcount),
+    #                                                                             axis=0)).clip(lower=0)).clip(0)
+    #                     ) / q_headcount
+    #         vulnerability_h_q = (share_h_q * building_class_vulnerability.loc[hazard]).sum(axis=1, skipna=True)
+    #         vulnerability_.loc[(slice(None), quantile), hazard] = vulnerability_h_q.values
+    #
+    # # vulnerability weighted with income shares
+    # # TODO: why weight vulenrability by income shares?
+    # vulnerability_tot = vulnerability_.mul(income_shares_, axis=0).dropna().groupby('iso3').sum()
+    # vulnerability_tot['income_cat'] = 'tot'
+    # vulnerability_tot.set_index('income_cat', append=True, inplace=True)
+    #
+    # vulnerability_ = pd.concat([vulnerability_, vulnerability_tot], axis=0).sort_index().dropna().stack()
+    # vulnerability_.name = 'v'
 
-    # vulnerability weighted with income shares
-    # TODO: why weight vulenrability by income shares?
-    vulnerability_tot = vulnerability_.mul(income_shares_, axis=0).dropna().groupby('iso3').sum()
-    vulnerability_tot['income_cat'] = 'tot'
-    vulnerability_tot.set_index('income_cat', append=True, inplace=True)
+    vulnerability_tot = building_classes.mul(building_class_vulnerability.stack(), axis=1).T.groupby(level='hazard').sum().T
+    vulnerability_tot = vulnerability_tot.stack().rename('tot').to_frame()
+    vulnerability_tot.columns.name = 'income_cat'
+    vulnerability_tot = vulnerability_tot.stack()
+    vulnerability_tot = vulnerability_tot.reorder_levels(['iso3', 'hazard', 'income_cat']).sort_index()
+    vulnerability_tot = vulnerability_tot.rename('v')
 
-    vulnerability_ = pd.concat([vulnerability_, vulnerability_tot], axis=0).sort_index().dropna().stack()
-    vulnerability_.name = 'v'
+    vuln_distr = load_input_data(root_dir, gmd_vulnerability_distribution_path)
+    vuln_distr = vuln_distr.loc[vuln_distr.groupby('code')['year'].idxmax()]
+    vuln_distr.rename({'code': 'iso3', 'ratio1': 'q1', 'ratio2': 'q2', 'ratio3': 'q3', 'ratio4': 'q4', 'ratio5': 'q5'},
+                      axis=1, inplace=True)
+    vuln_distr = vuln_distr.set_index('iso3')[['q1', 'q2', 'q3', 'q4', 'q5']]
+
+    missing_index = np.setdiff1d(vulnerability_tot.index.get_level_values('iso3').unique(), vuln_distr.index)
+    vuln_distr = pd.concat((vuln_distr, pd.DataFrame(index=pd.Index(missing_index, name='iso3'), columns=vuln_distr.columns, data=np.nan)), axis=0)
+
+    # TODO: for missing countries, either use previous approach or averaging
+    # TODO: if averaging, think about averages per WB region / income level group
+    vuln_distr.fillna(vuln_distr.mean(axis=0), inplace=True)
+    vuln_distr.columns.name = 'income_cat'
+    vuln_distr = vuln_distr.stack().rename('v_rel').sort_index()
+
+    vulnerability_ = pd.merge(vuln_distr, vulnerability_tot.droplevel('income_cat'), left_index=True, right_index=True).product(axis=1)
+    vulnerability_ = vulnerability_.reorder_levels(['iso3', 'hazard', 'income_cat'])
+    vulnerability_ = pd.concat((vulnerability_, vulnerability_tot), axis=0).sort_index().rename('v')
+
     return vulnerability_
 
 
@@ -327,8 +360,6 @@ def load_hfa_data():
     # normalized between zero and 1
     hfa_data["prepare_scaleup"] = (hfa_data["P4-C2"] + hfa_data["P5-C2"] + hfa_data["P4-C5"]) / 3 / 5
 
-    # between 0 and 1	!!!!!!!!!!!!!!!!!!!REMARK: INCONSISTENT WITH THE TECHNICAL PAPER. Q_f=1/2(ratings+P5C3/5)
-    # TODO @Bramka @Stephane
     hfa_data["finance_pre"] = (1 + hfa_data["P5-C3"]) / 6
 
     hfa_data = hfa_data[["ew", "prepare_scaleup", "finance_pre"]]
@@ -414,10 +445,9 @@ def load_credit_ratings(tradingecon_ratings_path="credit_ratings/2023-12-13_trad
     # Trading Economics ratings
     print("Warning. Check that [date]_tradingeconomics_ratings.csv is up to date. If not, download it from "
           "http://www.tradingeconomics.com/country-list/rating")
-    # TODO: Fitch no longer on tradingeconomics.com. Find a different source? Also, here DBRS is not used. Why?
     te_ratings = load_input_data(root_dir, tradingecon_ratings_path, dtype="str", encoding="utf8", na_values=['NR'])
     te_ratings = te_ratings.dropna(how='all')
-    te_ratings = te_ratings[["country", "S&P", "Moody's"]]  # TODO: why not DBRS / TE?
+    te_ratings = te_ratings[["country", "S&P", "Moody's"]]
 
     # drop EU
     te_ratings = te_ratings[te_ratings.country != 'European Union']
@@ -579,9 +609,12 @@ if __name__ == '__main__':
                                             n_quantiles=len(wb_data_cat_info.index.get_level_values('income_cat').unique()))
 
     # load total hazard losses per return period (on the country level)
-    hazard_loss_tot = load_gir_hazard_losses(root_dir,
-                                             "GIR_hazard_loss_data/export_all_metrics.csv.zip", default_rp,
-                                             extrapolate_rp=False)
+    hazard_loss_tot = load_gir_hazard_losses(
+        root_dir_=root_dir,
+        gir_filepath_="GIR_hazard_loss_data/export_all_metrics.csv.zip",
+        default_rp_=default_rp,
+        extrapolate_rp_=False,
+    )
     # TODO: remove later
     if test_run:
         hazard_loss_tot = hazard_loss_tot.loc[['USA']]
@@ -594,13 +627,6 @@ if __name__ == '__main__':
     # apply poverty exposure bias
     exposure_fa_with_peb = apply_poverty_exposure_bias(exposure_fa, use_avg_pe,
                                                        wb_data_macro['pop'] if not test_run else wb_data_macro_full['pop'])
-    # TODO: figure out what these data are and if to keep them
-    # TODO: constant_fa does not come in five income categories; ignoring for now
-    # if update_exposure_with_constant_fa:
-    #     constant_fa = load_input_data(root_dir, 'constant_fa.csv')
-    #     constant_fa = df_to_iso3(constant_fa, 'country', any_to_wb)
-    #     constant_fa.set_index(event_level + ['income_cat'], inplace=True)
-    #     exposure_fa_with_peb.update(constant_fa.fa)
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake)
@@ -623,7 +649,6 @@ if __name__ == '__main__':
         # TODO: potentially use vulnerability_per_income_cat_adjusted instead of vulnerability here
         recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate_rho,
                                          force_recompute=force_recovery_recompute)
-        # TODO: now, recovery also requires hazard!
         hazard_ratios = pd.merge(hazard_ratios, recovery, left_index=True, right_index=True)
         # TODO: remove later
         if test_run:
@@ -637,8 +662,6 @@ if __name__ == '__main__':
         else:
             hazard_protection = load_protection(hazard_ratios.index, protection_data="country_income", min_rp=1)
 
-    # TODO: before, also included pov_head, pi (vulnerability reduction with early warning), income_elast, rho,
-    #  shareable, max_increased_spending, protection; check if this is necessary
     macro = wb_data_macro
     macro = macro.join(disaster_preparedness['prepare_scaleup'], how='left')
     macro = macro.join(borrowing_ability, how='left')
@@ -683,11 +706,6 @@ if __name__ == '__main__':
         #  recomputed_after_policy_change(); before, only input data should be loaded to avoid double computation and
         #  recomputation errors.
 
-        # TODO: check that scenario_hazard_ratios_rec (return periods extrapolated to protection rp's) has the same AAL
-        #  as scenario_hazard_ratios (which does not include protection return periods)
-
-        # clean data
-        # TODO: can be removed after compute_resilience_and_risk.py is updated to use variable 'diversified_share'
         scenario_macro_rec, scenario_cat_info_rec, scenario_hazard_ratios_rec = recompute_after_policy_change(
             macro_=scenario_macro,
             cat_info_=scenario_cat_info,
