@@ -4,7 +4,7 @@ import pandas as pd
 import geopandas as gpd
 from sklearn.metrics import r2_score
 from numpy.polynomial.polynomial import polyfit, polyval
-
+import cartopy.crs as ccrs
 from lib_gather_data import get_country_name_dicts
 
 
@@ -27,7 +27,7 @@ def format_axis(ax, x_name=None, y_name=None, name_mapping=None, title='infer', 
 
 
 def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap='viridis', name_dict=None, outfile=None):
-    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres')).set_crs(4326).to_crs('World_Robinson')
     world = world[~world.continent.isin(['Antarctica', 'seven seas (open ocean)'])]
     if isinstance(data, str):
         data = pd.read_csv(data)
@@ -58,12 +58,15 @@ def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap=
             exclude_countries = [exclude_countries]
         data_ = data_[~data_.iso3.isin(exclude_countries)]
 
-    fig, axs = plt.subplots(len(variables), 1, figsize=(15, 6 * len(variables)))  # , gridspec_kw={'width_ratios': [20, .5]})
+    proj = ccrs.Robinson(central_longitude=0, globe=None)
+    fig, axs = plt.subplots(len(variables), 1, figsize=(12, 6 * len(variables)),
+                            subplot_kw=dict(projection=proj))  # , gridspec_kw={'width_ratios': [20, .5]})
     if isinstance(axs, plt.Axes):
         axs = [axs]
 
     for ax, variable in zip(axs, variables):
         world.boundary.plot(ax=ax, fc='lightgrey', lw=.5, zorder=0, ec='k')
+        ax.set_extent([-160, 180, -60, 85])
 
         if variable in ['resilience', 'risk', 'risk_to_assets']:
             data_[variable] = data_[variable] * 100
