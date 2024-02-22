@@ -212,7 +212,7 @@ def apply_poverty_exposure_bias(exposure_fa_, use_avg_pe_, population_data_=None
 
 
 def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, fa_threshold_):
-    exposure_fa_guessed_ = (hazard_loss_tot_ / vulnerability_.loc[pd.IndexSlice[:, :, 'tot']]).dropna().rename('fa')
+    exposure_fa_guessed_ = (hazard_loss_tot_ / vulnerability_.xs('tot', level='income_cat')).dropna().rename('fa')
 
     vulnerability_quintiles = vulnerability_.drop('tot', level='income_cat')
 
@@ -246,45 +246,49 @@ def compute_exposure_and_adjust_vulnerability(hazard_loss_tot_, vulnerability_, 
     return exposure_fa_guessed_, vulnerability_per_income_cat_adjusted_
 
 
-def load_vulnerability_data(income_shares_, n_quantiles=5,
-                            gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
-                            building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
-                            gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling_quintile_vul_ratio.xlsx"):
+def load_vulnerability_data(
+        n_quantiles_=5,
+        gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
+        building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
+        gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling_quintile_vul_ratio.xlsx"
+):
+    # load distribution of vulnerability classes per country
     building_classes = load_input_data(root_dir, gem_vulnerability_classes_filepath_, index_col=[0, 1], header=[0, 1])
     building_classes.columns.names = ['hazard', 'vulnerability_class']
     building_classes = building_classes.droplevel('country', axis=0)
     if 'default' in building_classes.columns:
         building_classes = building_classes.drop('default', axis=1, level=0)
 
-    # matching vulnerability of buildings and people's income and calculate poor's, rich's and country's vulnerability
+    # load vulnerability of building classes
     building_class_vulnerability = load_input_data(root_dir, building_class_vuln_path, index_col=0)
     building_class_vulnerability.index.name = 'hazard'
     building_class_vulnerability.columns.name = 'vulnerability_class'
 
-    # # TODO here, simply assuming that the poorest quantiles occupy the most vulnerable housing. A better approach might
-    # #  be desirable, e.g. using GMD data
-    # quantiles = [f"q{q}" for q in range(1, n_quantiles + 1)]
-    # q_headcount = 1 / n_quantiles
-    # vulnerability_ = pd.DataFrame(
-    #     index=pd.MultiIndex.from_product((building_classes.index, quantiles), names=['iso3', 'income_cat']),
-    #     columns=pd.Index(building_classes.columns.get_level_values(0).unique(), name='hazard'),
-    #     dtype=float
-    # )
-    # for cum_head, quantile in zip(np.linspace(q_headcount, 1, n_quantiles), quantiles):
-    #     for hazard in vulnerability_.columns:
-    #         share_h_q = (
-    #                         # cumulative shares of income categories until the current quantile
-    #                             (building_classes[hazard] - (
-    #                                 building_classes[hazard].cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(
-    #                                 0) -
-    #                             # cumulative shares of income categories until the category before (i.e., excluding) the current quantile
-    #                             (building_classes[hazard] - (
-    #                                 building_classes[hazard].cumsum(axis=1).add(-(cum_head - q_headcount),
-    #                                                                             axis=0)).clip(lower=0)).clip(0)
-    #                     ) / q_headcount
-    #         vulnerability_h_q = (share_h_q * building_class_vulnerability.loc[hazard]).sum(axis=1, skipna=True)
-    #         vulnerability_.loc[(slice(None), quantile), hazard] = vulnerability_h_q.values
-    #
+    # compute extreme case of vuln. distribution, assuming that the poorest live in the most vulnerable buildings
+    quantiles = [f"q{q}" for q in range(1, n_quantiles_ + 1)]
+    q_headcount = 1 / n_quantiles_
+    v_extreme = pd.DataFrame(
+        index=pd.MultiIndex.from_product((building_classes.index, quantiles), names=['iso3', 'income_cat']),
+        columns=pd.Index(building_classes.columns.get_level_values(0).unique(), name='hazard'),
+        dtype=float
+    )
+    for cum_head, quantile in zip(np.linspace(q_headcount, 1, n_quantiles_), quantiles):
+        for hazard in v_extreme.columns:
+            share_h_q = (
+                            # cumulative shares of income categories until the current quantile
+                                (building_classes[hazard] - (
+                                    building_classes[hazard].cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(
+                                    0) -
+                                # cumulative shares of income categories until the category before (i.e., excluding) the current quantile
+                                (building_classes[hazard] - (
+                                    building_classes[hazard].cumsum(axis=1).add(-(cum_head - q_headcount),
+                                                                                axis=0)).clip(lower=0)).clip(0)
+                        ) / q_headcount
+            v_extreme_h_q = (share_h_q * building_class_vulnerability.loc[hazard]).sum(axis=1, skipna=True)
+            v_extreme.loc[(slice(None), quantile), hazard] = v_extreme_h_q.values
+    v_extreme = v_extreme.stack().rename('v_extreme')
+    v_extreme = v_extreme.reorder_levels(['iso3', 'hazard', 'income_cat']).sort_index()
+
     # # vulnerability weighted with income shares
     # # TODO: why weight vulenrability by income shares?
     # vulnerability_tot = vulnerability_.mul(income_shares_, axis=0).dropna().groupby('iso3').sum()
@@ -294,6 +298,7 @@ def load_vulnerability_data(income_shares_, n_quantiles=5,
     # vulnerability_ = pd.concat([vulnerability_, vulnerability_tot], axis=0).sort_index().dropna().stack()
     # vulnerability_.name = 'v'
 
+    # compute total vulnerability per country as the weighted sum of vulnerability classes
     vulnerability_tot = building_classes.mul(building_class_vulnerability.stack(), axis=1).T.groupby(level='hazard').sum().T
     vulnerability_tot = vulnerability_tot.stack().rename('tot').to_frame()
     vulnerability_tot.columns.name = 'income_cat'
@@ -301,25 +306,40 @@ def load_vulnerability_data(income_shares_, n_quantiles=5,
     vulnerability_tot = vulnerability_tot.reorder_levels(['iso3', 'hazard', 'income_cat']).sort_index()
     vulnerability_tot = vulnerability_tot.rename('v')
 
+    # load vulnerability distribution as per GMD
     vuln_distr = load_input_data(root_dir, gmd_vulnerability_distribution_path)
     vuln_distr = vuln_distr.loc[vuln_distr.groupby('code')['year'].idxmax()]
     vuln_distr.rename({'code': 'iso3', 'ratio1': 'q1', 'ratio2': 'q2', 'ratio3': 'q3', 'ratio4': 'q4', 'ratio5': 'q5'},
                       axis=1, inplace=True)
     vuln_distr = vuln_distr.set_index('iso3')[['q1', 'q2', 'q3', 'q4', 'q5']]
 
+    # fill missing countries in the GMD data with average
     missing_index = np.setdiff1d(vulnerability_tot.index.get_level_values('iso3').unique(), vuln_distr.index)
     vuln_distr = pd.concat((vuln_distr, pd.DataFrame(index=pd.Index(missing_index, name='iso3'), columns=vuln_distr.columns, data=np.nan)), axis=0)
-
     # TODO: for missing countries, either use previous approach or averaging
     # TODO: if averaging, think about averages per WB region / income level group
     vuln_distr.fillna(vuln_distr.mean(axis=0), inplace=True)
     vuln_distr.columns.name = 'income_cat'
     vuln_distr = vuln_distr.stack().rename('v_rel').sort_index()
+    vuln_distr = vuln_distr.loc[vulnerability_tot.index.get_level_values('iso3').unique()]
 
-    vulnerability_ = pd.merge(vuln_distr, vulnerability_tot.droplevel('income_cat'), left_index=True, right_index=True).product(axis=1)
-    vulnerability_ = vulnerability_.reorder_levels(['iso3', 'hazard', 'income_cat'])
-    vulnerability_ = pd.concat((vulnerability_, vulnerability_tot), axis=0).sort_index().rename('v')
+    # compute vulnerability per income quintile as the product of national-level vulnerability and the relative
+    # vulnerability distribution
+    vulnerability_ = (vulnerability_tot.droplevel('income_cat') * vuln_distr).rename('v')
 
+    # merge vulnerability with the maximum (fragile) and minimum (robust) vulnerability, as well as
+    # the extreme case of vulnerability; then, replace vulnerability with the extreme case if it is outside the
+    # robust-fragile range
+    vulnerability_ = pd.merge(vulnerability_, building_class_vulnerability, left_index=True, right_index=True, how='left')
+    vulnerability_ = pd.merge(vulnerability_, v_extreme, left_index=True, right_index=True, how='left')
+    vulnerability_['replace'] = vulnerability_.apply(lambda x: x.v < x.robust or x.v > x.fragile, axis=1)
+    vulnerability_ = vulnerability_.apply(lambda x: x.v_extreme if x['replace'] else x.v, axis=1).rename('v')
+
+    # recompute total vulnerability, as this may have changed due to the replacement of vulnerability, and concatenate
+    vulnerability_tot = vulnerability_.groupby(['iso3', 'hazard']).mean().to_frame()
+    vulnerability_tot['income_cat'] = 'tot'
+    vulnerability_tot = vulnerability_tot.set_index('income_cat', append=True).squeeze()
+    vulnerability_ = pd.concat((vulnerability_, vulnerability_tot), axis=0).sort_index()
     return vulnerability_
 
 
@@ -605,8 +625,8 @@ if __name__ == '__main__':
     avg_prod_k = gather_capital_data(root_dir).avg_prod_k
 
     # load building vulnerability classification and compute vulnerability per income class
-    vulnerability = load_vulnerability_data(income_shares_=wb_data_cat_info.income_share,
-                                            n_quantiles=len(wb_data_cat_info.index.get_level_values('income_cat').unique()))
+    vulnerability = load_vulnerability_data(
+        n_quantiles_=len(wb_data_cat_info.index.get_level_values('income_cat').unique()))
 
     # load total hazard losses per return period (on the country level)
     hazard_loss_tot = load_gir_hazard_losses(
