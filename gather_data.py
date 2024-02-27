@@ -615,10 +615,10 @@ if __name__ == '__main__':
     wb_data_macro = load_input_data(root_dir, "WB_socio_economic_data/wb_data_macro.csv").set_index(econ_scope)
     wb_data_cat_info = load_input_data(root_dir, "WB_socio_economic_data/wb_data_cat_info.csv").set_index(
         [econ_scope, 'income_cat'])
-    plot_map(pd.Series(index=wb_data_macro.index, data=1).rename('coverage wb_data_macro'), cmap='PuRd_r',
+    plot_map(pd.Series(index=wb_data_macro.index, data=1, name='iso3').rename('coverage wb_data_macro'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                 'coverage_wb_data_macro.png'))
-    plot_map(pd.Series(index=wb_data_cat_info.index.get_level_values('iso3').unique(), data=1).rename('coverage wb_data_cat_info'), cmap='PuRd_r',
+    plot_map(pd.Series(index=wb_data_cat_info.index.get_level_values('iso3').unique(), data=1, name='iso3').rename('coverage wb_data_cat_info'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                 'coverage_wb_data_cat_info.png'))
 
@@ -640,7 +640,7 @@ if __name__ == '__main__':
     #     hfa_data = hfa_data.loc[['USA']]
     # TODO: WRP data contains about 30 countries less than HFA data
     wrp_data = load_wrp_data("WRP/lrf_wrp_2021_full_data.csv.zip", root_dir)
-    plot_map(pd.Series(index=wrp_data.index, data=1).rename('coverage wrp_data'), cmap='PuRd_r',
+    plot_map(pd.Series(index=wrp_data.index, data=1, name='iso3').rename('coverage wrp_data'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                 'coverage_wrp_data.png'))
 
@@ -651,7 +651,7 @@ if __name__ == '__main__':
 
     # read credit ratings
     credit_ratings = load_credit_ratings()
-    plot_map(pd.Series(index=credit_ratings.index, data=1).rename('coverage credit_ratings'), cmap='PuRd_r',
+    plot_map(pd.Series(index=credit_ratings.index, data=1, name='iso3').rename('coverage credit_ratings'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                  'coverage_credit_ratings.png'))
     # TODO: remove later
@@ -661,13 +661,13 @@ if __name__ == '__main__':
     # compute country borrowing ability
     # borrowing_ability = compute_borrowing_ability(credit_ratings, disaster_preparedness.finance_pre)
     borrowing_ability = compute_borrowing_ability(credit_ratings)
-    plot_map(pd.Series(index=borrowing_ability.index, data=1).rename('coverage borrowing_ability'), cmap='PuRd_r',
+    plot_map(pd.Series(index=borrowing_ability.index, data=1, name='iso3').rename('coverage borrowing_ability'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                  'coverage_borrowing_ability.png'))
 
     # load average productivity of capital
     avg_prod_k = gather_capital_data(root_dir).avg_prod_k
-    plot_map(pd.Series(index=avg_prod_k.index, data=1).rename('coverage avg_prod_k'), cmap='PuRd_r',
+    plot_map(pd.Series(index=avg_prod_k.index, data=1, name='iso3').rename('coverage avg_prod_k'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                  'coverage_avg_prod_k.png'))
 
@@ -678,7 +678,7 @@ if __name__ == '__main__':
         fill_missing_gmd_with_country_average=False,
         vulnerability_bounds='gem_extremes',
     )
-    plot_map(pd.Series(index=vulnerability.index.get_level_values('iso3').unique(), data=1).rename('coverage vulnerability'), cmap='PuRd_r',
+    plot_map(pd.Series(index=vulnerability.index.get_level_values('iso3').unique(), data=1, name='iso3').rename('coverage vulnerability'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                  'coverage_vulnerability.png'))
 
@@ -689,7 +689,7 @@ if __name__ == '__main__':
         default_rp_=default_rp,
         extrapolate_rp_=False,
     )
-    plot_map(pd.Series(index=hazard_loss_tot.index.get_level_values('iso3').unique(), data=1).rename('coverage hazard_loss_tot'), cmap='PuRd_r',
+    plot_map(pd.Series(index=hazard_loss_tot.index.get_level_values('iso3').unique(), data=1, name='iso3').rename('coverage hazard_loss_tot'), cmap='PuRd_r',
                 show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                     'coverage_hazard_loss_tot.png'))
     # TODO: remove later
@@ -700,7 +700,7 @@ if __name__ == '__main__':
     exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(
         hazard_loss_tot, vulnerability, fa_threshold
     )
-    plot_map(pd.Series(index=exposure_fa.index.get_level_values('iso3').unique(), data=1).rename('coverage exposure_fa'), cmap='PuRd_r',
+    plot_map(pd.Series(index=exposure_fa.index.get_level_values('iso3').unique(), data=1, name='iso3').rename('coverage exposure_fa'), cmap='PuRd_r',
                 show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                     'coverage_exposure_fa.png'))
 
@@ -762,7 +762,7 @@ if __name__ == '__main__':
     hazard_protection.dropna(inplace=True)
 
     for df, name in zip([macro, cat_info, hazard_ratios], ['macro', 'cat_info', 'hazard_ratios']):
-        plot_map(pd.Series(index=df.index.get_level_values('iso3').unique(), data=1).rename(f'coverage {name}'), cmap='PuRd_r',
+        plot_map(pd.Series(index=df.index.get_level_values('iso3').unique(), data=1, name='iso3').rename(f'coverage {name}'), cmap='PuRd_r',
                     show_legend=False, show=False, outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps',
                                                                         f'coverage_{name}.png'))
 

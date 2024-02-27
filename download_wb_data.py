@@ -4,6 +4,7 @@ import os
 from lib_gather_data import get_country_name_dicts, df_to_iso3
 from pandas_helper import load_input_data
 from wb_api_wrapper import *
+from plotting import plot_map
 
 
 def clean_merge_update(df_, series_other_, any_to_wb, how='outer'):
@@ -64,6 +65,15 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population
     urbanization_rate = get_wb_mrv("SP.URB.TOTL.IN.ZS", "urbanization_rate") / 100
 
+    # plot country coverage
+    for df, name in zip([gdp_pc_pp, pop, urbanization_rate], ['gdp_pc_pp', 'pop', 'urbanization_rate']):
+        plot_map(
+            data=pd.Series(index=df.index.get_level_values('country').unique(), data=1).rename(f'coverage {name}'),
+            cmap='PuRd_r',
+            show_legend=False, show=False,
+            outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', f'coverage_{name}.png')
+        )
+
     # create output data frames
     macro_df = pd.concat([gdp_pc_pp, pop, urbanization_rate], axis=1).reset_index()
     macro_df.country = macro_df.country.replace(any_to_wb)
@@ -80,6 +90,10 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     # make sure income shares add up to 1
     income_shares /= income_shares.unstack('income_cat').sum(axis=1)
     cat_info_df = clean_merge_update(cat_info_df, income_shares, any_to_wb)
+
+    plot_map(data=pd.Series(index=income_shares.index.get_level_values('country').unique(), data=1).rename('coverage income_share'),
+                cmap='PuRd_r', show_legend=False, show=False,
+                outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', 'coverage_income_share.png'))
 
 
     # ASPIRE
@@ -110,6 +124,15 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
                                               id_q4='per_allsp.cov_q4_tot', id_q5='per_allsp.cov_q5_tot',
                                               most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
+    for df, name in zip([adequacy_remittances, adequacy_all_prot_lab, coverage_remittances, coverage_all_prot_lab],
+                        ['adequacy_remittances', 'adequacy_all_prot_lab', 'coverage_remittances', 'coverage_all_prot_lab']):
+        plot_map(
+            data=pd.Series(index=df.index.get_level_values('country').unique(), data=1).rename(f'coverage {name}'),
+            cmap='PuRd_r',
+            show_legend=False, show=False,
+            outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', f'coverage_{name}.png')
+        )
+
     if include_remitances:
         # fraction of income that is from transfers
         social = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab +
@@ -119,6 +142,10 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
         social = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab).rename('social')
     cat_info_df = clean_merge_update(cat_info_df, social, any_to_wb)
 
+    plot_map(data=pd.Series(index=social.index.get_level_values('country').unique(), data=1).rename('coverage social'),
+                cmap='PuRd_r', show_legend=False, show=False,
+                outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', 'coverage_social.png'))
+
     # financial inclusion
     # axfin = download_cat_info(name='axfin', id_q1='fin17a.t.d.7', id_q2='fin17a.t.d.7', id_q3='fin17a.t.d.8',
     #                           id_q4='fin17a.t.d.8', id_q5='fin17a.t.d.8', most_recent_value=True, upper_bound=100,
@@ -126,6 +153,10 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     axfin = load_input_data(root_dir, "FINDEX/findex_axfin.csv", index_col=[0, 1, 2]).squeeze()
     axfin = get_most_recent_value(axfin)
     cat_info_df = clean_merge_update(cat_info_df, axfin, any_to_wb)
+
+    plot_map(data=pd.Series(index=axfin.index.get_level_values('country').unique(), data=1).rename('coverage axfin'),
+                cmap='PuRd_r', show_legend=False, show=False,
+                outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', 'coverage_axfin.png'))
 
 
     # FROM HERE: FILL MISSING VALUES IN ASPIRE DATA
@@ -195,7 +226,13 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     if use_additional_data and not use_legacy_additions:
         guessed_social = load_input_data(root_dir, "social_share_regression/social_predicted.csv",
                                          index_col=[0, 1]).squeeze()
+        plot_map(data=pd.Series(index=guessed_social.index.get_level_values('iso3').unique(), data=1).rename('coverage guessed social'),
+                    cmap='PuRd_r', show_legend=False, show=False,
+                    outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', 'coverage_guessed_social.png'))
         cat_info_df.social.fillna(guessed_social, inplace=True)
+        plot_map(data=pd.Series(index=cat_info_df.social.dropna().index.get_level_values('iso3').unique(), data=1).rename('coverage combined social'),
+                    cmap='PuRd_r', show_legend=False, show=False,
+                    outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', 'coverage_social_combined.png'))
 
     complete_countries = np.intersect1d(macro_df.dropna().index.get_level_values('iso3').unique(),
                                         cat_info_df.dropna().index.get_level_values('iso3').unique())

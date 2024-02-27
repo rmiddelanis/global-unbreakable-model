@@ -34,6 +34,11 @@ def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap=
         data = pd.read_csv(data)
     elif not isinstance(data, (pd.DataFrame, pd.Series, gpd.GeoDataFrame)):
         raise ValueError('data should be a path to a csv file, a pandas DataFrame, a pandas Series, or a GeoDataFrame.')
+    if 'iso3' not in list(data.columns if isinstance(data, pd.DataFrame) else []) + list(data.index.names):
+        if 'country' in list(data.columns if isinstance(data, pd.DataFrame) else []) + list(data.index.names):
+            data = df_to_iso3(data.reset_index(), 'country').set_index('iso3').copy()
+        else:
+            raise ValueError('Neither "iso3" nor "country" were found in the data.')
     data_ = gpd.GeoDataFrame(pd.merge(data, world.rename(columns={'iso_a3': 'iso3'}), on='iso3', how='inner'))
     if len(data_) != len(data):
         print(f'{len(data) - len(data_)} countries were not found in the world map. They will be excluded from the plot.')
@@ -44,7 +49,7 @@ def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap=
     elif variables is None:
         if isinstance(data_, pd.Series):
             data_ = data_.to_frame()
-        variables = list(set(data_.columns) - set(world.columns) - {'iso3'})
+        variables = list(set(data_.columns) - set(world.columns) - {'iso3', 'country'})
     if bins_list is None:
         bins_list = {v: None for v in variables}
     if isinstance(cmap, str):
