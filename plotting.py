@@ -5,7 +5,7 @@ import geopandas as gpd
 from sklearn.metrics import r2_score
 from numpy.polynomial.polynomial import polyfit, polyval
 import cartopy.crs as ccrs
-from lib_gather_data import get_country_name_dicts
+from lib_gather_data import get_country_name_dicts, df_to_iso3
 
 
 def format_axis(ax, x_name=None, y_name=None, name_mapping=None, title='infer', ylim=None, xlim=None):
@@ -26,7 +26,8 @@ def format_axis(ax, x_name=None, y_name=None, name_mapping=None, title='infer', 
         ax.set_xlim(xlim)
 
 
-def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap='viridis', name_dict=None, outfile=None):
+def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap='viridis', name_dict=None, outfile=None,
+             show=False, show_legend=True):
     world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres')).set_crs(4326).to_crs('World_Robinson')
     world = world[~world.continent.isin(['Antarctica', 'seven seas (open ocean)'])]
     if isinstance(data, str):
@@ -72,10 +73,10 @@ def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap=
             data_[variable] = data_[variable] * 100
 
         if bins_list[variable] is not None:
-            data_.plot(column=variable, ax=ax, legend=True, zorder=5, cmap=cmap[variable], scheme="User_Defined",
+            data_.plot(column=variable, ax=ax, legend=show_legend, zorder=5, cmap=cmap[variable], scheme="User_Defined",
                           classification_kwds={'bins': bins_list[variable]})
         else:
-            data_.plot(column=variable, ax=ax, legend=True, zorder=5, cmap=cmap[variable])
+            data_.plot(column=variable, ax=ax, legend=show_legend, zorder=5, cmap=cmap[variable])
 
         format_axis(ax, title=variable, name_mapping=name_dict)
 
@@ -83,12 +84,18 @@ def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap=
     plt.tight_layout()
     if outfile:
         plt.savefig(outfile, dpi=300, bbox_inches='tight')
-    plt.show(block=False)
+    if show:
+        plt.show(block=False)
+    else:
+        plt.close()
 
 
-def plot_scatter(data_path, x_vars, y_vars, exclude_countries=None, reg_degrees=None, name_dict=None, outfile=None,
-                 xlim=None, ylim=None):
-    data = pd.read_csv(data_path)
+def plot_scatter(data, x_vars, y_vars, exclude_countries=None, reg_degrees=None, name_dict=None, outfile=None,
+                 xlim=None, ylim=None, plot_unit_line=False):
+    if isinstance(data, str):
+        data = pd.read_csv(data)
+    elif not isinstance(data, pd.DataFrame):
+        raise ValueError('data should be a path to a csv file or a pandas DataFrame.')
     if exclude_countries:
         if isinstance(exclude_countries, str):
             exclude_countries = [exclude_countries]
@@ -106,6 +113,8 @@ def plot_scatter(data_path, x_vars, y_vars, exclude_countries=None, reg_degrees=
         reg_degrees = [reg_degrees] * len(x_vars)
     elif reg_degrees is not None and len(reg_degrees) != len(x_vars):
         raise ValueError('The number of reg_degree should be the same as the number of x_vars')
+    elif reg_degrees is None:
+        reg_degrees = [None] * len(x_vars)
 
     if not (isinstance(xlim, dict) or isinstance(xlim, tuple) or xlim is None):
         raise ValueError('xlim should be a dictionary, tuple, or None.')
@@ -147,6 +156,9 @@ def plot_scatter(data_path, x_vars, y_vars, exclude_countries=None, reg_degrees=
                         color=color)
 
         format_axis(ax, x_name=x_var, y_name=y_var, name_mapping=name_dict, xlim=xlim.get(x_var), ylim=ylim.get(y_var))
+
+        if plot_unit_line:
+            ax.axline([0, 0], slope=1, ls='--', c='k', lw=.5)
 
     plt.tight_layout()
     if outfile:
@@ -237,7 +249,7 @@ if __name__ == '__main__':
         outfile="./figures/resilience-wellbeing_risk-asset_risk_map.pdf",
     )
     plot_scatter(
-        data_path=results_path,
+        data=results_path,
         x_vars=['gdp_pc_pp', 'gdp_pc_pp', 'gdp_pc_pp'],
         y_vars=['resilience', 'risk', 'risk_to_assets'],
         reg_degrees={'resilience': [1, 2], 'risk': [1, 2], 'risk_to_assets': [1, 2]},
@@ -279,4 +291,15 @@ if __name__ == '__main__':
         norm='GDP',
         name_dict=name_dict,
         outfile="./figures/dW-dk_GDP_rel.pdf",
+    )
+    old_results_path = "./__legacy_structure/output/original_output/results_tax_unif_poor_.csv"
+    old_new_data = pd.merge(pd.read_csv(results_path).set_index('iso3'),
+                            df_to_iso3(pd.read_csv(old_results_path), 'country').set_index('iso3'),
+                            left_index=True, right_index=True, suffixes=('_new', '_old'))
+    plot_scatter(
+        data=old_new_data,
+        x_vars=['resilience_old', 'risk_old', 'risk_to_assets_old'],
+        y_vars=['resilience_new', 'risk_new', 'risk_to_assets_new'],
+        outfile="./figures/old_new_comparison.pdf",
+        plot_unit_line=True,
     )
