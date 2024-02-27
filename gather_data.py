@@ -840,7 +840,12 @@ if __name__ == '__main__':
         )
 
         # save adjusted vulnerability by country and income category
-        vulnerability_per_income_cat_adjusted.to_csv(
+        pd.merge(
+            vulnerability.rename('v_unadj'),
+            pd.merge(vulnerability_per_income_cat_adjusted.rename('v_adj'), scenario_hazard_ratios_rec.v_ew,
+                     left_index=True, right_index=True, how='inner'),
+            left_index=True, right_index=True, how='inner',
+        ).to_csv(
             os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__vulnerability_adjusted.csv"),
             encoding="utf-8",
             header=True
