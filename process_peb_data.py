@@ -16,18 +16,12 @@ def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias
     exposure = exposure[['iso3', 'hazard', 'pop_a', 'pov_line']]
     exposure = exposure.astype({'hazard': str, 'iso3': str, 'pov_line': float, 'pop_a': float})
     exposure.hazard = exposure.hazard.apply(lambda x: str.capitalize(x.replace('exp_', '')))
+    exposure.hazard = exposure.hazard.replace({'Cyclone': 'Wind'})  # TC is only Wind, not Storm surge
     exposure.pop_a *= 1e6
     exposure.pov_line = exposure.pov_line.fillna(np.inf) / 100  # use np.inf for full population; convert to percentage
     exposure = exposure.set_index(['iso3', 'hazard', 'pov_line']).squeeze()
     if exclude_povline:
         exposure.drop(exclude_povline, level='pov_line', inplace=True)
-
-    # split cyclone into storm surge and wind
-    exposure = exposure.unstack('hazard')
-    exposure['Storm surge'] = exposure.Cyclone
-    exposure['Wind'] = exposure.Cyclone
-    exposure.drop('Cyclone', axis=1, inplace=True)
-    exposure = exposure.stack('hazard')
 
     # add poverty line 0
     exposure = exposure.unstack('pov_line')
