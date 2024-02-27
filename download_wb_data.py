@@ -237,6 +237,10 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     complete_countries = np.intersect1d(macro_df.dropna().index.get_level_values('iso3').unique(),
                                         cat_info_df.dropna().index.get_level_values('iso3').unique())
     print(f"Full data for {len(complete_countries)} countries.")
+    plot_map(data=pd.Series(index=pd.Index(complete_countries, name='iso3'), data=1).rename('coverage complete'),
+             cmap='PuRd_r', show_legend=False, show=False,
+             outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data',
+                                  'coverage_wb_data_complete.png'))
     if drop_incomplete:
         dropped = list(set(list(macro_df.index.get_level_values('iso3').unique()) +
                            list(cat_info_df.index.get_level_values('iso3').unique())) - set(complete_countries))
