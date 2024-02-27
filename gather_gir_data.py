@@ -5,9 +5,10 @@ import pandas as pd
 
 from lib_gather_data import average_over_rp
 from pandas_helper import load_input_data
+from plotting import plot_map
 
 
-def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True):
+def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True, plot_coverage_map=False):
     """
     Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
     country, hazard, and return period. GIR data contains data for hazards Tropical cyclone, Tsunami, Flood (riverine),
@@ -90,7 +91,7 @@ def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp
               f"in negative losses for additional return periods.")
 
     if not extrapolate_rp_:
-        return frac_value_destroyed_pml
+        frac_value_destroyed_result = frac_value_destroyed_pml
     else:
         def add_rp(aal_data_, pml_data_, new_rp_):
             smallest_rp = min(pml_data_.index.get_level_values('rp'))
@@ -148,7 +149,16 @@ def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp
             # data_update = add_rp(frac_value_destroyed_aal.loc[overflow_country_indexer],
             #                      frac_value_destroyed_complete[overflow_country_indexer], new_max_rp)  # TODO this is wrong, duplicate entries after indexing
             frac_value_destroyed_completed = add_rp(frac_value_destroyed_aal, frac_value_destroyed_completed, new_max_rp)
-        return frac_value_destroyed_completed
+        frac_value_destroyed_result = frac_value_destroyed_completed
+
+    if plot_coverage_map:
+        plot_map(
+            pd.Series(index=frac_value_destroyed_result.index.get_level_values('iso3').unique(), data=1,
+                      name='iso3').rename('coverage hazard_loss_tot'), cmap='PuRd_r', show_legend=False, show=False,
+            outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps', 'coverage_hazard_loss_tot.png')
+        )
+
+    return frac_value_destroyed_result
 
 
 if __name__ == '__main__':

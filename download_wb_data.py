@@ -1,7 +1,7 @@
 # Downloads wb data
 import argparse
 import os
-from lib_gather_data import get_country_name_dicts, df_to_iso3
+from lib import get_country_name_dicts, df_to_iso3
 from pandas_helper import load_input_data
 from wb_api_wrapper import *
 from plotting import plot_map

@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from lib_gather_data import get_country_name_dicts
+from lib import get_country_name_dicts
 
 
 def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_: str, varname_: str):

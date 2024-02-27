@@ -5,7 +5,7 @@ import geopandas as gpd
 from sklearn.metrics import r2_score
 from numpy.polynomial.polynomial import polyfit, polyval
 import cartopy.crs as ccrs
-from lib_gather_data import get_country_name_dicts, df_to_iso3
+from lib import get_country_name_dicts, df_to_iso3
 
 
 def format_axis(ax, x_name=None, y_name=None, name_mapping=None, title='infer', ylim=None, xlim=None):
