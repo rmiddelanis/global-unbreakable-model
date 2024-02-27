@@ -329,6 +329,11 @@ def load_vulnerability_data(
         )
         vuln_distr = vuln_distr.set_index('iso3')[['q1', 'q2', 'q3', 'q4', 'q5']]
 
+        if plot_coverage_map:
+            plot_map(pd.Series(index=vuln_distr.index.get_level_values('iso3').unique(), data=1, name='iso3').rename(
+                'coverage vuln_distr'), cmap='PuRd_r', show_legend=False, show=False,
+                outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'coverage_gmd.png'))
+
         # fill missing countries in the GMD data with average
         if fill_missing_gmd_with_country_average:
             missing_index = np.setdiff1d(vulnerability_.index.get_level_values('iso3').unique(), vuln_distr.index)
@@ -827,9 +832,16 @@ if __name__ == '__main__':
         print(scenario_macro_rec.shape[0], 'countries in analysis')
 
         # TODO: should save vulenrability_per_income_cat_adjusted instead of vulnerability here!
-        # save vulnerability (total, poor, rich) by country
+        # save vulnerability by country and income category
         vulnerability.to_csv(
             os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__vulnerability_unadjusted.csv"),
+            encoding="utf-8",
+            header=True
+        )
+
+        # save adjusted vulnerability by country and income category
+        vulnerability_per_income_cat_adjusted.to_csv(
+            os.path.join(intermediate_dir + f"/scenarios/{pol_name}/scenario__vulnerability_adjusted.csv"),
             encoding="utf-8",
             header=True
         )
