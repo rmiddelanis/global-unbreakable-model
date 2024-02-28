@@ -265,7 +265,7 @@ def load_vulnerability_data(
         vulnerability_bounds='gem_extremes',
         gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
         building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
-        gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling_quintile_vul_ratio.xlsx",
+        gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling quintile vul ratio.xlsx",
         plot_coverage_map=False,
 ):
     # load distribution of vulnerability classes per country
@@ -321,7 +321,7 @@ def load_vulnerability_data(
     # use GMD data to distribute GEM national vulnerability
     if use_gmd_to_distribute:
         # load vulnerability distribution as per GMD
-        vuln_distr = load_input_data(root_dir, gmd_vulnerability_distribution_path)
+        vuln_distr = load_input_data(root_dir, gmd_vulnerability_distribution_path, sheet_name='Data')
         vuln_distr = vuln_distr.loc[vuln_distr.groupby('code')['year'].idxmax()]
         vuln_distr.rename(
             {'code': 'iso3', 'ratio1': 'q1', 'ratio2': 'q2', 'ratio3': 'q3', 'ratio4': 'q4', 'ratio5': 'q5'},
