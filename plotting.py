@@ -247,8 +247,8 @@ if __name__ == '__main__':
     plot_map(
         data=results_path,
         variables=['resilience', 'risk', 'risk_to_assets'],
-        bins_list={'resilience': [25, 51, 59, 65, 72, 81], 'risk': [.3, .5, .8, 1.5, 6.55],
-                   'risk_to_assets': [.2, .3, .5, .9, 4.5]},
+        # bins_list={'resilience': [25, 51, 59, 65, 72, 81], 'risk': [.3, .5, .8, 1.5, 6.55],
+        #            'risk_to_assets': [.2, .3, .5, .9, 4.5]},
         name_dict=name_dict,
         cmap={'resilience': 'YlOrBr_r', 'risk': 'Blues', 'risk_to_assets': 'Greens'},
         outfile="./figures/resilience-wellbeing_risk-asset_risk_map.pdf",
