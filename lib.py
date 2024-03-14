@@ -6,6 +6,7 @@ def get_country_name_dicts(root_dir):
     # Country dictionaries
     any_to_wb = load_input_data(root_dir, "country_name_mappings/any_name_to_wb_name.csv", index_col="any")
     any_to_wb = any_to_wb[~any_to_wb.index.duplicated(keep='first')]  # drop duplicates
+    any_to_wb.dropna(inplace=True)  # drop rows with NaN values
 
     any_to_wb = any_to_wb.squeeze()
 

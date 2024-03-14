@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 
 from lib import get_country_name_dicts
+from pandas_helper import load_input_data
+from wb_api_wrapper import get_wb_series
 
 
 def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_: str, varname_: str):
@@ -43,17 +45,19 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
             if 'year' not in findex_data.columns:
                 findex_data['year'] = year
 
+            findex_data['FINDEX_wave'] = year
+
             findex_data.rename({'economycode': 'iso3', 'inc_q': 'income_cat', question: varname_},
                                axis=1, inplace=True)
             findex_data[varname_] = findex_data[varname_].fillna(0)
-            findex_data = findex_data[['iso3', 'income_cat', varname_, 'wgt', 'year']].dropna()
+            findex_data = findex_data[['iso3', 'income_cat', varname_, 'wgt', 'year', 'FINDEX_wave']].dropna()
 
             # some country names have changed between FINDEX rounds; therefore, first use iso3, then convert to WB name
             findex_data['country'] = findex_data.iso3.replace(iso3_to_wb)
             findex_data.drop('iso3', axis=1, inplace=True)
 
             findex_data = findex_data.astype({'country': 'str', 'income_cat': 'int', varname_: 'float',
-                                              'wgt': 'float', 'year': 'int'})
+                                              'wgt': 'float', 'year': 'int', 'FINDEX_wave': 'int'})
             findex_data.income_cat = findex_data.income_cat.apply(lambda x: 'q{}'.format(x))
 
             # Set the index of the DataFrame to be a combination of country, and income quintile
@@ -113,7 +117,7 @@ def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
     return axfin_data
 
 
-def gather_savings_data(root_dir_, findex_data_paths_, write_output_=False):
+def gather_savings_data(root_dir_, findex_data_paths_, write_output_=False, drop_refused=True):
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}
 
     # Gather the data from the FINDEX datasets
@@ -134,21 +138,90 @@ def gather_savings_data(root_dir_, findex_data_paths_, write_output_=False):
     # 1 to 6: Savings / Family, relatives, friends / Work or employer loan / Borrowing / informal private lender or
     # pawn house / Other
     # 7 to 8: don’t know / refused to answer
-    findex_data.savings = findex_data.savings.replace({7: 0, 8: 0, 9: 0})
+    if drop_refused:
+        findex_data = findex_data[((findex_data.savings != 8) & (findex_data.FINDEX_wave != 2021)) |
+                                  ((findex_data.savings != 9) & (findex_data.FINDEX_wave == 2021))]
+
+    # liquidity is the ability to come up with 1/20 of the GNI pc in the country currency. Respondents answering
+    # don't know / cannot come up with the money / would need to sell assets (/ refused) are considered not liquid.
+    findex_data['liquidity'] = findex_data.savings.replace({1: 1, 2: 1, 3: 1, 4: 1, 5: 0, 6: 1, 7: 0, 8: 0, 9: 0})
 
     # Calculate the result by multiplying all columns (prod), grouping by country, year, and income quintile,
     # summing the groups, and then dividing by the sum of the 'wgt' column for each group
-    savings_data = findex_data.groupby(['country', 'year', 'income_cat', 'savings']).wgt.sum() / findex_data.groupby(
-        ['country', 'year', 'income_cat']).wgt.sum()
+    liquidity_data = (findex_data[['wgt', 'liquidity']].prod(axis=1).groupby(['country', 'year', 'income_cat']).sum() /
+                      findex_data.groupby(['country', 'year', 'income_cat']).wgt.sum()).rename('liquidity')
 
-    savings_data = savings_data.unstack('savings').fillna(0)
-    savings_data = savings_data.rename(columns={0: 'NA/couldnt', 1: 'savings', 2: 'family_friends', 3: 'work_loan',
-                                                4: 'borrowing', 5: 'selling_assets', 6: 'other'})
+    # savings_data = findex_data.groupby(['country', 'year', 'income_cat', 'savings']).wgt.sum() / findex_data.groupby(
+    #     ['country', 'year', 'income_cat']).wgt.sum()
+    #
+    # savings_data = savings_data.unstack('savings').fillna(0)
+    # savings_data = savings_data.rename(columns={0: 'NA/couldnt', 1: 'savings', 2: 'family_friends', 3: 'work_loan',
+    #                                             4: 'borrowing', 5: 'selling_assets', 6: 'other'})
 
     if write_output_:
-        savings_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_savings.csv'))
+        liquidity_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_liquidity.csv'))
+        # savings_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_savings.csv'))
 
-    return savings_data
+    return liquidity_data
+
+
+# TODO: here, the average liquidity L_avg is computed by assuming some distribution for the share of people X that have
+#  less liquidity than 1/20 of the GNI in the country currency. This approach requires setting an upper bound for
+#  liquidity L_max. However, with this approach, L_avg is strongly driven by the choise of L_max, and L_avg does not
+#  converge as L_max -> inf.
+def compute_average_liquidity(findex_liquidity, l_max='GDP'):
+    # findex_liquidity contains one data point (1 - X_F, L_F) for each country and quintile, where (1 - X_F) is the
+    # fraction of the population in the country and quintile that has a liquidity of at least L_F (hence, X_F is the
+    # fraction of the population that has less liquidity than L_F). L_F is one twentieth of the GNI per capita in the
+    # country.
+    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
+
+    gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI')
+    gni = gni.reset_index()
+    gni.year = gni.year.astype(int)
+    # gni.country = gni.country.replace({'Czechia': 'Czech Republic', 'North Macedonia': 'Macedonia, FYR',
+    #                                    'Viet Nam': 'Vietnam',})
+    gni.country = gni.country.apply(lambda c: any_to_wb.loc[c] if c in any_to_wb else c)
+    gni = gni.set_index(['country', 'year']).squeeze().unstack('country')
+    gni = gni.interpolate(method='nearest').ffill().bfill()  # fill missing values with the nearest non-missing value
+
+    # TODO: for now, simply using the latest data available, assuming that the liquidity of the population is constant
+    #  wrt 1/20 of the GNI over time.
+    l_f = (gni.loc[gni.index.max()].rename('GNI') / 20).rename('L_F')
+    x_f = 1 - findex_liquidity.iloc[findex_liquidity.reset_index().groupby(['country', 'income_cat']).year.idxmax()]
+    x_f = x_f.droplevel('year').rename('X_F').sort_index()
+
+    # merge
+    data = pd.merge(x_f, l_f, left_index=True, right_index=True, how='left').dropna()
+
+    if 'GDP' in l_max:
+        if l_max == 'GDP':
+            factor = 1
+        elif l_max != 'GDP' and '*' in l_max:
+            factor = float(l_max.split('*')[0])
+        else:
+            raise ValueError(f"Unknown l_max: {l_max}")
+        wb_data_macro = load_input_data(root_dir, "WB_socio_economic_data/wb_data_macro.csv")
+        wb_data_cat_info = load_input_data(root_dir, "WB_socio_economic_data/wb_data_cat_info.csv")
+        wb_data_macro['country'] = wb_data_macro.iso3.apply(lambda c: iso3_to_wb.loc[c] if c in iso3_to_wb else np.nan)
+        wb_data = pd.merge(wb_data_macro, wb_data_cat_info, on='iso3', how='left').set_index(['country', 'income_cat'])
+        wb_data['n'] = .2
+        income_pc = (wb_data.gdp_pc_pp * wb_data.income_share / wb_data.n).rename('L_max')
+        data = pd.merge(data, income_pc * factor, left_index=True, right_index=True, how='left')
+
+    # assuming a distribution for the share of people X that have less liquidity than L_F of the form
+    # X(L) = aL / (bL + c)
+    # with the constraint that X(0) = 0, X(L_F) = X_F, and X(L_max) = 1
+    # solving for parameters a, b, and c yields
+    a = data.X_F * (data.L_F - data.L_max)
+    b = data.L_F - data.L_max * data.X_F
+    c = data.L_max * data.L_F * (data.X_F - 1)
+
+    # the average liquidity is then obtained by rewriting X(L) to L(X) and integrating from 0 to 1;
+    # this integral is given by
+    data['L_avg'] = c / b * (a / b * (np.log((a / b).abs()) - np.log(((b - a) / b).abs())) - 1)
+
+    return data.L_avg.dropna()
 
 
 if __name__ == "__main__":
