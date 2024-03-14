@@ -1,3 +1,5 @@
+import itertools
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -229,6 +231,37 @@ def plot_hbar(data_path, variables, comparison_data_path=None, norm=None, how='a
     plt.tight_layout()
     if outfile:
         plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    plt.show(block=False)
+
+
+def fancy_scatter_matrix(data, reg_degree=1):
+    if isinstance(reg_degree, int):
+        reg_degree = [reg_degree]
+    axes = pd.plotting.scatter_matrix(data, diagonal='kde')
+    # corr = data.corr().to_numpy()
+
+    # for i, j in zip(*plt.np.tril_indices_from(axes, k=-1)):
+    for i, j in itertools.product(np.arange(axes.shape[0]), np.arange(axes.shape[1])):
+        if i == j:
+            continue
+        i_name = data.columns[i]
+        j_name = data.columns[j]
+        x_data_j = data.dropna(subset=[i_name, j_name])[j_name]
+        y_data_i = data.dropna(subset=[i_name, j_name])[i_name]
+        ax = axes[i, j]
+        # ax.annotate(f"r={np.round(corr[i, j], 3)}", (.05, .1), xycoords='axes fraction', ha='left',
+        #                     va='center', color='r', size=8)
+        for d_idx, (degree, color) in enumerate(zip(reg_degree, ['red', 'blue', 'green', 'orange', 'purple'])):
+            # Fit a polynomial to the data
+            p = polyfit(x_data_j, y_data_i, degree)
+            x_line = np.linspace(min(x_data_j), max(x_data_j), 100)
+            y_line = polyval(x_line, p)
+            ax.plot(x_line, y_line, color=color, lw=.5, alpha=.75)
+            # Calculate the R-squared value
+            y_pred = polyval(x_data_j, p)
+            r_squared = r2_score(y_data_i, y_pred)
+            ax.text(0.01, 0.99 - .15 * d_idx, r'$R^2 = $ {:.3f}'.format(r_squared), transform=ax.transAxes,
+                    color=color, ha='left', va='top', alpha=.75)
     plt.show(block=False)
 
 
