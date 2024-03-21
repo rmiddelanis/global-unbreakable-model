@@ -7,12 +7,12 @@ import numpy as np
 HAZUS_COUNTRIES = ['VIR', 'PRI', 'CAN', 'USA']
 
 
-def load_mapping(gem_fields_path_):
+def load_mapping(gem_fields_path_, vuln_class_mapping_):
     gem_fields = json.load(open(gem_fields_path_, 'r'))
     field_value_to_type_map = {v: k.lower() for k in gem_fields.keys() for l in gem_fields[k].keys() for v in
                                gem_fields[k][l]}
 
-    mapping_df = pd.read_excel("./inputs/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx", header=0)
+    mapping_df = pd.read_excel(vuln_class_mapping_, header=0)
     mapping_df.drop('comment', inplace=True, axis=1)
     mapping_df.rename(columns={'combined': 'default'}, inplace=True)
     mapping_df.set_index(['lat_load_mat', 'lat_load_sys', 'height'], inplace=True)
@@ -67,8 +67,8 @@ def assign_vulnerability(material, resistance_system, height, mapping):
         raise ValueError(f"Could not assign vulnerability for unknown material {material}.")
 
 
-def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path_, vulnerability_class_output_=None,
-                    weight_by='replacement_cost'):
+def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path_, vuln_class_mapping_,
+                    vulnerability_class_output_=None, weight_by='replacement_cost'):
     """
         This function gathers GEM (Global Exposure Model) data from the GEM repository directory, decodes the taxonomy
         strings, assigns vulnerabilities based on the decoded taxonomy, and optionally outputs the distribution of
@@ -145,7 +145,8 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
         )
     )
 
-    vulnerability_mapping, field_value_to_type_map = load_mapping(gem_fields_path_=gem_fields_path_)
+    vulnerability_mapping, field_value_to_type_map = load_mapping(gem_fields_path_=gem_fields_path_,
+                                                                  vuln_class_mapping_=vuln_class_mapping_)
 
     unique_tax_strings = gem.taxonomy.unique()
     decoded_tax_strings = pd.concat(
@@ -222,6 +223,7 @@ def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True
 
 if __name__ == '__main__':
     gem_repo_root_dir = '../global_exposure_model/'
+    vulnarebility_class_mapping = "./inputs/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx"
     hazus_gem_mapping_path = './inputs/GEM_vulnerability/hazus-gem_mapping.csv'
     gem_fields_path = "./inputs/GEM_vulnerability/gem_taxonomy_fields.json"
     vulnerability_class_output = './inputs/GEM_vulnerability/country_vulnerability_classes.csv'
@@ -229,6 +231,7 @@ if __name__ == '__main__':
         gem_repo_root_dir_=gem_repo_root_dir,
         hazus_gem_mapping_path_=hazus_gem_mapping_path,
         gem_fields_path_=gem_fields_path,
+        vuln_class_mapping_=vulnarebility_class_mapping,
         vulnerability_class_output_=vulnerability_class_output,
         weight_by='replacement_cost',
     )
