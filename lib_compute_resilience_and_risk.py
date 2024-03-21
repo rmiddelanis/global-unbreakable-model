@@ -375,6 +375,7 @@ def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_lev
     out = average_over_rp(out, default_rp, hazard_protection_)
 
     # Sums over hazard dk, dW (gets one line per economy)
+    # TODO: average over axfin, social, gamma_SP does not really carry any meaning. Should be dropped.
     out = out.groupby(level=econ_scope).aggregate(
         {c: 'sum' if c not in ['axfin', 'social', 'gamma_SP'] else 'mean' for c in out.columns}
     )
@@ -442,12 +443,12 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
     # Risk to welfare as percentage of local GDP
     df["risk"] = df["dWpc_currency"] / df["gdp_pc_pp"]
 
-    # socio-economic capacity
+    # socio-economic resilience
     # TODO: @Bramka in the paper, socio-econ. resilience = asset losses / welfare losses
     df["resilience"] = d_w_ref / df["dw"]
 
     # risk to assets
-    # TODO: @Bramka this is the same as d_w_ref / (w_prime * df["gdp_pc_pp"]). What does it mean?
+    # TODO: @Bramka this is the same as dk / gdp_pc_pp!
     df["risk_to_assets"] = df.resilience * df.risk
 
     return df

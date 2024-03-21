@@ -353,6 +353,8 @@ def integrate_and_find_recovery_rate(v: float, consump_util: float, discount_rat
     _lambda = 0
     last_dwdlambda = 0
 
+    # note: this is a numerical integration corresponding to equation 23 in Walsh and Hallegatte (2019) (Philippines
+    # paper)
     while True:
         dwdlambda = 0
         for _t in np.linspace(0, years_to_recover, tot_weeks):
