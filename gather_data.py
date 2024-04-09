@@ -298,15 +298,6 @@ def load_vulnerability_data(
     v_gem = v_gem.stack().rename('v')
     v_gem = v_gem.reorder_levels(['iso3', 'hazard', 'income_cat']).sort_index()
 
-    # # vulnerability weighted with income shares
-    # # TODO: why weight vulenrability by income shares?
-    # vulnerability_tot = vulnerability_.mul(income_shares_, axis=0).dropna().groupby('iso3').sum()
-    # vulnerability_tot['income_cat'] = 'tot'
-    # vulnerability_tot.set_index('income_cat', append=True, inplace=True)
-    #
-    # vulnerability_ = pd.concat([vulnerability_, vulnerability_tot], axis=0).sort_index().dropna().stack()
-    # vulnerability_.name = 'v'
-
     # compute total vulnerability per country as the weighted sum of vulnerability classes
     vulnerability_tot = building_classes.mul(building_class_vuln.stack(), axis=1).T.groupby(level='hazard').sum().T
     vulnerability_tot = vulnerability_tot.stack().rename('tot').to_frame()
@@ -620,7 +611,6 @@ if __name__ == '__main__':
                                                                              'instead of optimization.')
     parser.add_argument('--force_recovery_recompute', action='store_true', help='Force recomputation '
                                                                                 'of recovery duration.')
-    parser.add_argument('--test_run', action='store_true', help='If true, only runs with country USA')
     args = parser.parse_args()
 
     use_flopros_protection = args.use_flopros_protection
@@ -635,7 +625,6 @@ if __name__ == '__main__':
     fa_threshold = args.fa_threshold
     axfin_impact = args.axfin_impact
     no_optimized_recovery = args.no_optimized_recovery
-    test_run = args.test_run
     default_reconstruction_time = args.reconstruction_time
     force_recovery_recompute = args.force_recovery_recompute
     include_pov_head = args.include_pov_head
@@ -665,35 +654,22 @@ if __name__ == '__main__':
                                                                 'coverage_wb_data_cat_info.png'))
 
 
-    # TODO: remove later
-    if test_run:
-        wb_data_macro_full = wb_data_macro
-        wb_data_macro = wb_data_macro.loc[['USA']]
-        wb_data_cat_info = wb_data_cat_info.loc[['USA']]
-
     pov_headcount = load_input_data(root_dir, "PEB/pov_headcount.csv", index_col=[0, 1]).squeeze()
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
     # read HFA data
     # hfa_data = load_hfa_data()
-    # # TODO: remove later
-    # if test_run:
-    #     hfa_data = hfa_data.loc[['USA']]
     # TODO: WRP data contains about 30 countries less than HFA data
     wrp_data = load_wrp_data("WRP/lrf_wrp_2021_full_data.csv.zip", root_dir, plot_coverage_map=True)
 
     # merge HFA and WRP data: take the mean of the two data sets where both are available (i.e., ew + prepare_scaleup)
-    # disaster_preparedness = hfa_data[['finance_pre']].copy()
+    disaster_preparedness = wrp_data.copy()
     # disaster_preparedness['ew'] = pd.concat((hfa_data['ew'], wrp_data['ew']), axis=1).mean(axis=1)
     # disaster_preparedness['prepare_scaleup'] = pd.concat((hfa_data['prepare_scaleup'], wrp_data['prepare_scaleup']), axis=1).mean(axis=1)
 
     # read credit ratings
     credit_ratings = load_credit_ratings(plot_coverage_map=True)
-
-    # TODO: remove later
-    if test_run:
-        credit_ratings = credit_ratings.loc[['USA']]
 
     # compute country borrowing ability
     # borrowing_ability = compute_borrowing_ability(credit_ratings, disaster_preparedness.finance_pre)
@@ -719,9 +695,6 @@ if __name__ == '__main__':
         extrapolate_rp_=False,
         plot_coverage_map=True,
     )
-    # TODO: remove later
-    if test_run:
-        hazard_loss_tot = hazard_loss_tot.loc[['USA']]
 
     # compute exposure and adjust vulnerability (per income category) for excess exposure
     exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(
@@ -729,13 +702,12 @@ if __name__ == '__main__':
     )
 
     # apply poverty exposure bias
-    exposure_fa_with_peb = apply_poverty_exposure_bias(exposure_fa, use_avg_pe,
-                                                       wb_data_macro['pop'] if not test_run else wb_data_macro_full['pop'])
+    exposure_fa_with_peb = apply_poverty_exposure_bias(exposure_fa, use_avg_pe, wb_data_macro['pop'])
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake)
     # early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index)
-    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, wrp_data.ew)
+    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, disaster_preparedness.ew)
 
     # concatenate exposure, vulnerability and early warning into one dataframe
     hazard_ratios = pd.concat((exposure_fa_with_peb, vulnerability_per_income_cat_adjusted, early_warning_per_hazard),
@@ -751,12 +723,10 @@ if __name__ == '__main__':
         hazard_ratios['recovery_rate'] = np.log(1 / 0.05) / hazard_ratios['recovery_time']
     else:
         # TODO: potentially use vulnerability_per_income_cat_adjusted instead of vulnerability here
+        # TODO: this does not contain early warning yet. Should EW be included in the optimization?
         recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate_rho,
                                          force_recompute=force_recovery_recompute)
         hazard_ratios = pd.merge(hazard_ratios, recovery, left_index=True, right_index=True)
-        # TODO: remove later
-        if test_run:
-            recovery = recovery.loc[['USA']]
 
     if no_protection:
         hazard_protection = load_protection(hazard_ratios.index, protection_data="None", min_rp=0)
@@ -767,7 +737,7 @@ if __name__ == '__main__':
             hazard_protection = load_protection(hazard_ratios.index, protection_data="country_income", min_rp=1)
 
     macro = wb_data_macro
-    macro = macro.join(wrp_data['prepare_scaleup'], how='left')
+    macro = macro.join(disaster_preparedness, how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
