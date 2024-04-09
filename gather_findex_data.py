@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from lib import get_country_name_dicts
+from lib import get_country_name_dicts, df_to_iso3
 from pandas_helper import load_input_data
 from wb_api_wrapper import get_wb_series
 
@@ -117,7 +117,7 @@ def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
     return axfin_data
 
 
-def gather_savings_data(root_dir_, findex_data_paths_, write_output_=False, drop_refused=True):
+def get_liquidity_from_findex(root_dir_, findex_data_paths_, write_output_=False, drop_refused=True):
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}
 
     # Gather the data from the FINDEX datasets
@@ -148,43 +148,58 @@ def gather_savings_data(root_dir_, findex_data_paths_, write_output_=False, drop
 
     # Calculate the result by multiplying all columns (prod), grouping by country, year, and income quintile,
     # summing the groups, and then dividing by the sum of the 'wgt' column for each group
-    liquidity_data = (findex_data[['wgt', 'liquidity']].prod(axis=1).groupby(['country', 'year', 'income_cat']).sum() /
-                      findex_data.groupby(['country', 'year', 'income_cat']).wgt.sum()).rename('liquidity')
+    liquidity_shares = (findex_data[['wgt', 'liquidity']].prod(axis=1).groupby(['country', 'year', 'income_cat']).sum()
+                        / findex_data.groupby(['country', 'year', 'income_cat']).wgt.sum()).rename('quintile_share')
 
-    # savings_data = findex_data.groupby(['country', 'year', 'income_cat', 'savings']).wgt.sum() / findex_data.groupby(
-    #     ['country', 'year', 'income_cat']).wgt.sum()
+    # respondents are asked whether they could come up with 1/20 of the GNI pc in the country currency. Thus, the
+    # findex shares are combined with the GNI pc data to obtain the average liquidity per quintile
+
+    # load GNI data
+    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
+    gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI')
+    gni = gni.reset_index()
+    gni.year = gni.year.astype(int)
+    gni.country = gni.country.apply(lambda ctry: any_to_wb.loc[ctry] if ctry in any_to_wb else ctry)
+    gni = gni.set_index(['country', 'year']).squeeze().unstack('country')
+    gni = gni.interpolate(method='nearest').ffill().bfill()  # fill missing values with the nearest non-missing value
+    gni = gni.stack().reorder_levels(['country', 'year']).sort_index().rename('GNI')
+
+    liquidity_data = pd.merge(liquidity_shares, (gni / 20).rename('liquidity'), left_index=True, right_index=True,
+                              how='left').dropna()
+
+    liquidity_data = df_to_iso3(liquidity_data.reset_index('country'), 'country', any_to_wb, False)
+    liquidity_data = liquidity_data.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat'])
+
+    # # calculate the average liquidity
+    # # TODO: Taiwan is missing in the GNI data
+    # liquidity_data = liquidity_shares.to_frame()
+    # liquidity_data['n'] = .2
+    # liquidity_data['liquid'] = liquidity_data[['liquidity_share', 'n']].prod(axis=1)
+    # liquidity_data['not_liquid'] = liquidity_data.n - liquidity_data.liquid
+    # liquidity_data = liquidity_data[['liquid', 'not_liquid']].stack().rename('n')
+    # liquidity_data.index.names = ['country', 'year', 'income_cat', 'is_liquid']
+
+    # # merge with GNI data
+    # liquidity_data = pd.merge(liquidity_data, (gni / 20).rename('liquidity'), left_index=True, right_index=True,
+    #                           how='left').dropna()
+    # liquidity_data.loc[pd.IndexSlice[:, :, :, 'not_liquid'], 'liquidity'] = 0
     #
-    # savings_data = savings_data.unstack('savings').fillna(0)
-    # savings_data = savings_data.rename(columns={0: 'NA/couldnt', 1: 'savings', 2: 'family_friends', 3: 'work_loan',
-    #                                             4: 'borrowing', 5: 'selling_assets', 6: 'other'})
+    # # calculate the average liquidity per quintile
+    # l_avg = (liquidity_data.prod(axis=1).groupby(['country', 'year', 'income_cat']).sum()
+    #          / liquidity_data.groupby(['country', 'year', 'income_cat']).n.sum()).rename('liquidity').to_frame()
+    # l_avg['is_liquid'] = 'tot'
+    # l_avg = l_avg.set_index('is_liquid', append=True)
+    # l_avg['n'] = .2
+    #
+    # liquidity_data = pd.concat((liquidity_data, l_avg), axis=0).sort_index()
 
     if write_output_:
         liquidity_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_liquidity.csv'))
-        # savings_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_savings.csv'))
 
     return liquidity_data
 
 
-# TODO: here, the average liquidity L_avg is computed by assuming some distribution for the share of people X that have
-#  less liquidity than 1/20 of the GNI in the country currency. This approach requires setting an upper bound for
-#  liquidity L_max. However, with this approach, L_avg is strongly driven by the choise of L_max, and L_avg does not
-#  converge as L_max -> inf.
-def compute_average_liquidity(findex_liquidity, l_max='GDP'):
-    # findex_liquidity contains one data point (1 - X_F, L_F) for each country and quintile, where (1 - X_F) is the
-    # fraction of the population in the country and quintile that has a liquidity of at least L_F (hence, X_F is the
-    # fraction of the population that has less liquidity than L_F). L_F is one twentieth of the GNI per capita in the
-    # country.
-    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
-
-    gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI')
-    gni = gni.reset_index()
-    gni.year = gni.year.astype(int)
-    # gni.country = gni.country.replace({'Czechia': 'Czech Republic', 'North Macedonia': 'Macedonia, FYR',
-    #                                    'Viet Nam': 'Vietnam',})
-    gni.country = gni.country.apply(lambda c: any_to_wb.loc[c] if c in any_to_wb else c)
-    gni = gni.set_index(['country', 'year']).squeeze().unstack('country')
-    gni = gni.interpolate(method='nearest').ffill().bfill()  # fill missing values with the nearest non-missing value
-
+def compute_average_liquidity(findex_liquidity):
     # TODO: for now, simply using the latest data available, assuming that the liquidity of the population is constant
     #  wrt 1/20 of the GNI over time.
     l_f = (gni.loc[gni.index.max()].rename('GNI') / 20).rename('L_F')
@@ -235,7 +250,7 @@ if __name__ == "__main__":
     }
 
     gather_axfin_data(root_dir, findex_data_paths, write_output_=True)
-    gather_savings_data(root_dir, findex_data_paths, write_output_=True)
+    get_liquidity_from_findex(root_dir, findex_data_paths, write_output_=True)
 
 
 
