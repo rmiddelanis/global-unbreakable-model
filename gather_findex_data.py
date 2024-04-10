@@ -149,13 +149,13 @@ def get_liquidity_from_findex(root_dir_, findex_data_paths_, write_output_=False
     # Calculate the result by multiplying all columns (prod), grouping by country, year, and income quintile,
     # summing the groups, and then dividing by the sum of the 'wgt' column for each group
     liquidity_shares = (findex_data[['wgt', 'liquidity']].prod(axis=1).groupby(['country', 'year', 'income_cat']).sum()
-                        / findex_data.groupby(['country', 'year', 'income_cat']).wgt.sum()).rename('quintile_share')
+                        / findex_data.groupby(['country', 'year', 'income_cat']).wgt.sum()).rename('liquidity_share')
 
     # respondents are asked whether they could come up with 1/20 of the GNI pc in the country currency. Thus, the
     # findex shares are combined with the GNI pc data to obtain the average liquidity per quintile
 
     # load GNI data
-    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
+    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir_)
     gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI')
     gni = gni.reset_index()
     gni.year = gni.year.astype(int)

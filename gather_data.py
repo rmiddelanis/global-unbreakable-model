@@ -1,10 +1,11 @@
 # This script provides data input for the resilience indicator multihazard model.
-# The script was developed by Adrien Vogt-Schilb and improved by Jinqiang Chen and Robin Middelanis.
+# The script was developed by Robin Middelanis based on previous work by Adrien Vogt-Schilb and Jinqiang Chen.
 import argparse
 
 import tqdm
 from scipy.interpolate import NearestNDInterpolator
 
+from gather_findex_data import get_liquidity_from_findex
 from gather_gir_data import load_gir_hazard_losses
 from lib_gather_data import *
 from apply_policy import *
@@ -12,6 +13,7 @@ import pandas as pd
 from lib import get_country_name_dicts, df_to_iso3
 
 from plotting import plot_map
+from wb_api_wrapper import get_wb_mrv
 
 
 # TODO: Note: compute_recovery_duration does not use the adjusted vulnerability. However, adjusted vulnerability is
@@ -144,6 +146,89 @@ def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="F
     # res.protection = res.protection > res.rp
     # res = res.set_index('rp', append=True).swaplevel(2, 3).sort_index()
     return prot
+
+
+def load_liquidity(force_recompute_=False, write_output_=True):
+    if force_recompute_:
+        findex_data_paths = {
+            2021: os.path.join(root_dir, 'inputs', 'FINDEX', 'WLD_2021_FINDEX_v03_M.csv'),
+            2017: os.path.join(root_dir, 'inputs', 'FINDEX', 'WLD_2017_FINDEX_v02_M.csv'),
+            2014: os.path.join(root_dir, 'inputs', 'FINDEX', 'WLD_2014_FINDEX_v01_M.csv'),
+            2011: os.path.join(root_dir, 'inputs', 'FINDEX', 'WLD_2011_FINDEX_v02_M.csv'),
+        }
+        liquidity = get_liquidity_from_findex(root_dir, findex_data_paths, write_output_=False)
+        if write_output_:
+            liquidity.to_csv(os.path.join(root_dir, 'inputs', 'FINDEX', 'findex_liquidity.csv'))
+    else:
+        liquidity = pd.read_csv(os.path.join(root_dir, 'inputs', 'FINDEX', 'findex_liquidity.csv'),
+                                index_col=['iso3', 'year', 'income_cat'])
+    liquidity = liquidity.iloc[liquidity.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
+    liquidity = liquidity.reset_index('year').drop(['year', 'country'], axis=1)
+    return liquidity
+
+
+def calc_recovery_share_sigma(imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
+                              recovery_capital='private',
+                              # labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_unstats_labor_share_of_gdp.xlsx"):
+                              labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_Ourworldindata_labor-share-of-gdp.csv"):
+    imf_data = load_input_data(root_dir, imf_capital_data_file, sheet_name='Dataset')
+    imf_data = imf_data.rename(columns={'isocode': 'iso3'}).set_index(['iso3'])[['year', 'kgov_n', 'kpriv_n', 'kppp_n']]
+    imf_data['kpub_n'] = imf_data[['kgov_n', 'kppp_n']].sum(axis=1, skipna=True)
+    imf_data = imf_data.replace(0, np.nan)
+    imf_data = imf_data.rename({'kpriv_n': 'knonpub_n'}, axis=1)[['year', 'kpub_n', 'knonpub_n']].dropna(axis=0, how='any')
+    imf_data = imf_data.iloc[imf_data.reset_index().groupby('iso3').year.idxmax()].drop('year', axis=1)
+    imf_data['k_pub_share_kappa'] = imf_data['kpub_n'] / (imf_data['knonpub_n'] + imf_data['kpub_n'])
+
+    if "2024-04-10_unstats_labor_share_of_gdp.xlsx" in labor_share_data_file:
+        labor_share_of_gdp = load_input_data(root_dir, labor_share_data_file, sheet_name=1)
+        labor_share_of_gdp = labor_share_of_gdp.rename(columns={'GeoAreaName': 'country', 'Value': 'SL_EMP_GTOTL',
+                                                                'Time_Detail': 'year'})
+        labor_share_of_gdp = labor_share_of_gdp[['country', 'year', 'SL_EMP_GTOTL']]
+        labor_share_of_gdp.replace('Netherlands (Kingdom of the)', 'Netherlands', inplace=True)
+    elif "2024-04-10_Ourworldindata_labor-share-of-gdp.csv" in labor_share_data_file:
+        labor_share_of_gdp = load_input_data(root_dir, labor_share_data_file)
+        labor_share_of_gdp = labor_share_of_gdp.rename(
+            columns={'Code': 'iso3', '10.4.1 - Labour share of GDP (%) - SL_EMP_GTOTL': 'SL_EMP_GTOTL',
+                     'Entity': 'country', 'Year': 'year'}
+        )[['country', 'year', 'SL_EMP_GTOTL']]
+    else:
+        raise ValueError(f"Unknown labor_share_data_file: {labor_share_data_file}")
+
+    labor_share_of_gdp.SL_EMP_GTOTL = labor_share_of_gdp.SL_EMP_GTOTL / 100
+    labor_share_of_gdp = labor_share_of_gdp.loc[labor_share_of_gdp.groupby('country').year.idxmax()]
+    labor_share_of_gdp.replace('Democratic Republic of Congo', 'Congo, Democratic Republic of the', inplace=True)
+    labor_share_of_gdp = labor_share_of_gdp.set_index('country')['SL_EMP_GTOTL']
+
+    capital_share = (1 - labor_share_of_gdp).rename('capital_elasticity_alpha')
+    capital_share = df_to_iso3(capital_share.reset_index(), 'country', any_to_wb)
+    capital_share = capital_share.dropna().set_index('iso3')['capital_elasticity_alpha']
+
+    capital_shares = pd.merge(capital_share, imf_data.k_pub_share_kappa, left_index=True, right_index=True, how='inner')
+    capital_shares['k_pub_share'] = capital_shares.k_pub_share_kappa
+    capital_shares['k_prv_share'] = (capital_shares.k_pub_share_kappa * (1 / capital_shares.capital_elasticity_alpha - 1))
+    capital_shares['k_oth_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_prv_share
+
+    # some countries have negative values for k_oth_share
+    capital_shares['k_oth_share'] = capital_shares.k_oth_share.clip(lower=0)
+    capital_shares['k_prv_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_oth_share
+
+    capital_shares['recovery_share_sigma:prv_oth'] = capital_shares.k_prv_share + capital_shares.k_oth_share
+    capital_shares['recovery_share_sigma:prv'] = capital_shares.k_prv_share
+
+    # if make_plots:
+    #     for x, y in [('gdp_pc_pp', 'k_prv_share'), ('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_oth_share'),
+    #                  ('capital_elasticity_alpha', 'k_prv_share'), ('capital_elasticity_alpha', 'k_pub_share'),
+    #                  ('capital_elasticity_alpha', 'k_oth_share'), ('k_pub_share_kappa', 'k_prv_share'),
+    #                  ('k_pub_share_kappa', 'k_pub_share'), ('k_pub_share_kappa', 'k_oth_share'),
+    #                  ('k_pub_share_kappa', 'capital_elasticity_alpha'), ('gdp_pc_pp', 'recovery_share_sigma')]:
+    #         fig, ax = plt.subplots()
+    #         capital_shares.plot.scatter(x=x, y=y, marker='o', ax=ax)
+    #         for i, label in enumerate(capital_shares.index):
+    #             plt.text(capital_shares[x][i], capital_shares[y][i], label, fontsize=10)
+    #         plt.show()
+
+    return capital_shares[['recovery_share_sigma:prv', 'recovery_share_sigma:prv_oth']]
+
 
 
 def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthquake"):
@@ -609,8 +694,8 @@ if __name__ == '__main__':
     parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
     parser.add_argument('--no_optimized_recovery', action='store_true', help='Use fixed recovery duration'
                                                                              'instead of optimization.')
-    parser.add_argument('--force_recovery_recompute', action='store_true', help='Force recomputation '
-                                                                                'of recovery duration.')
+    parser.add_argument('--force_recompute', action='store_true', help='Force recomputation of recovery '
+                                                                       'duration and liquidity.')
     args = parser.parse_args()
 
     use_flopros_protection = args.use_flopros_protection
@@ -626,7 +711,7 @@ if __name__ == '__main__':
     axfin_impact = args.axfin_impact
     no_optimized_recovery = args.no_optimized_recovery
     default_reconstruction_time = args.reconstruction_time
-    force_recovery_recompute = args.force_recovery_recompute
+    force_recompute = args.force_recompute
     include_pov_head = args.include_pov_head
 
     econ_scope = args.econ_scope
@@ -718,6 +803,10 @@ if __name__ == '__main__':
                                                  avg_prod_k_=avg_prod_k, n_quantiles_=n_quantiles,
                                                  axfin_impact_=axfin_impact)
 
+    liquidity = load_liquidity(force_recompute_=force_recompute)
+    cat_info = pd.merge(cat_info, liquidity, left_index=True, right_index=True, how='left')
+
+
     if no_optimized_recovery:
         hazard_ratios['recovery_time'] = default_reconstruction_time
         hazard_ratios['recovery_rate'] = np.log(1 / 0.05) / hazard_ratios['recovery_time']
@@ -725,7 +814,7 @@ if __name__ == '__main__':
         # TODO: potentially use vulnerability_per_income_cat_adjusted instead of vulnerability here
         # TODO: this does not contain early warning yet. Should EW be included in the optimization?
         recovery = get_recovery_duration(avg_prod_k, vulnerability, discount_rate_rho,
-                                         force_recompute=force_recovery_recompute)
+                                         force_recompute=force_recompute)
         hazard_ratios = pd.merge(hazard_ratios, recovery, left_index=True, right_index=True)
 
     if no_protection:
@@ -736,11 +825,14 @@ if __name__ == '__main__':
         else:
             hazard_protection = load_protection(hazard_ratios.index, protection_data="country_income", min_rp=1)
 
+    recovery_share_sigma = calc_recovery_share_sigma(recovery_capital='private')
+
     macro = wb_data_macro
     macro = macro.join(disaster_preparedness, how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
+    macro = macro.join(recovery_share_sigma, how='left')
     macro = macro.join(pov_headcount.unstack('pov_line')[include_pov_head].rename(f"pov_rate_{include_pov_head}"),
                        how='left')
     # TODO: these global parameters should eventually be moved elsewhere and not stored in macro!
