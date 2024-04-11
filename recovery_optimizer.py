@@ -223,7 +223,6 @@ def calc_t_hat(lambda_h_, consumption_floor_xi_):
     return - 1 / lambda_h_ * np.log(consumption_floor_xi_)
 
 
-
 def delta_c_h_savings_pds_of_t(t_, lambda_h_, sigma_h_, productivity_pi_, consumption_floor_xi_, t_hat_,
                                delta_tilde_k_h_eff_, savings_s_h_, delta_i_h_pds_, t_tilde_):
     """
@@ -409,7 +408,7 @@ def solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity
     if lambda_h_ <= 0 or savings_s_h_ + delta_i_h_pds_ <= 0:
         xi_res, t_hat = np.nan, 0  # No savings available to offset consumption losses
     elif savings_s_h_ + delta_i_h_pds_ >= alpha / lambda_h_:
-        xi_res, t_hat = 0, 0  # All capital losses can be repaired at time 0, and consumption loss can be fduced to 0
+        xi_res, t_hat = 0, 0  # All capital losses can be repaired at time 0, and consumption loss can be reduced to 0
     else:
         # Solve numerically for xi
         def xi_func(xi_):
@@ -447,6 +446,14 @@ def solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity
     return xi_res, t_hat, t_tilde, delta_tilde_k_h_eff
 
 
+def calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_):
+    """
+    Compute the leftover savings
+    """
+    alpha = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
+    return max(0, savings_s_h_ + delta_i_h_pds_ - alpha / lambda_h_)
+
+
 def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
                    delta_i_h_pds_, eta_, delta_tax_sp_, discount_rate_rho_, k_h_eff_, delta_c_h_max_):
     """
@@ -468,9 +475,54 @@ def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity
         k_h_eff_=k_h_eff_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
-        delta_c_h_max_=delta_c_h_max_
+        delta_c_h_max_=delta_c_h_max_,
     )
+
+    # for the optimization, include leftover savings, s.th. not the first but the fastest recovery path is chosen where
+    # consumption losses can be fully offset
+    objective += calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                                       delta_i_h_pds_)
     return -objective  # negative to transform into a minimization problem
+
+
+def calc_lambda_bounds_for_optimization(lambda_h_init_, min_lambda_, max_lambda_, delta_c_h_max_, savings_s_h_,
+                                        delta_i_h_pds_, sigma_h_, delta_k_h_eff_, productivity_pi_, k_h_eff_):
+    """
+    Compute the bounds for the lambda parameter
+    @param min_lambda_: the exogenous minimum lambda value, set by the user
+    @param max_lambda_: the exogenous maximum lambda value, set by the user
+    @param delta_c_h_max_: the maximum allowable consumption loss
+    """
+
+    assert min_lambda_ >= 0
+
+    # if no maximum consumption loss is defined (and thus, the option to wait until t_tilde when capital loss has
+    # decreased to delta_tilde_k_h_eff), find the maximal allowable lambda that maintains positive consumption
+    if np.isnan(delta_c_h_max_):
+        if savings_s_h_ + delta_i_h_pds_ <= 0:
+            max_lambda_ = productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1)
+        elif savings_s_h_ + delta_i_h_pds_ > 0:
+            def lambda_func(lambda_h_):
+                alpha_ = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
+                xi_, _, _, _ = solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_,
+                                                          savings_s_h_, delta_i_h_pds_, delta_c_h_max_)
+                return alpha_ * xi_ - (productivity_pi_ * k_h_eff_ - 1e-5)
+
+            if np.sign(lambda_func(min_lambda_)) == np.sign(lambda_func(max_lambda_)):
+                max_lambda_ = max_lambda_
+            else:
+                max_lambda_ = optimize.brentq(lambda_func, min_lambda_, max_lambda_)
+
+    # check whether some lambda exists, such that consumption losses can be fully offset
+    if (savings_s_h_ + delta_i_h_pds_) > sigma_h_ * delta_k_h_eff_:
+        lambda_full_offset = 1 / ((savings_s_h_ + delta_i_h_pds_) / delta_k_h_eff_ - sigma_h_) * productivity_pi_
+        if lambda_full_offset < max_lambda_:
+            min_lambda_ = max(min_lambda_, lambda_full_offset)
+
+    if not min_lambda_ < lambda_h_init_ < max_lambda_:
+        lambda_h_init_ = (min_lambda_ + max_lambda_) / 2
+
+    return min_lambda_, max_lambda_, lambda_h_init_
 
 
 def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_,
@@ -479,24 +531,11 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
     """
     Optimize the lambda parameter
     """
-    # if no maximum consumption loss is defined (and thus, the option to wait until t_tilde when capital loss has
-    # decreased to delta_tilde_k_h_eff, find the maximal allowable lambda that maintains positive consumption
-    if np.isnan(delta_c_h_max_):
-        if savings_s_h_ + delta_i_h_pds_ <= 0:
-            max_lambda = productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1)
-        elif savings_s_h_ + delta_i_h_pds_ > 0:
-            def lambda_func(lambda_h_):
-                alpha_ = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
-                xi_, _, _, _ = solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_,
-                                                          savings_s_h_, delta_i_h_pds_, delta_c_h_max_)
-                return alpha_ * xi_ - (productivity_pi_ * k_h_eff_ - 1e-5)
-            if np.sign(lambda_func(min_lambda)) == np.sign(lambda_func(max_lambda)):
-                max_lambda = max_lambda
-            else:
-                max_lambda = optimize.brentq(lambda_func, min_lambda, max_lambda)
 
-    if not min_lambda < lambda_h_init < max_lambda:
-        lambda_h_init = (min_lambda + max_lambda) / 2
+    min_lambda, max_lambda, lambda_h_init = calc_lambda_bounds_for_optimization(
+        lambda_h_init, min_lambda, max_lambda, delta_c_h_max_, savings_s_h_, delta_i_h_pds_, sigma_h_, delta_k_h_eff_,
+        productivity_pi_, k_h_eff_
+    )
 
     res = optimize.minimize(
         fun=obj_func,
