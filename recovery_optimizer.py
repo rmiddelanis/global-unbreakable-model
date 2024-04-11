@@ -500,7 +500,7 @@ def calc_lambda_bounds_for_optimization(lambda_h_init_, min_lambda_, max_lambda_
     # decreased to delta_tilde_k_h_eff), find the maximal allowable lambda that maintains positive consumption
     if np.isnan(delta_c_h_max_):
         if savings_s_h_ + delta_i_h_pds_ <= 0:
-            max_lambda_ = productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1)
+            max_lambda_ = min(max_lambda_, productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1))
         elif savings_s_h_ + delta_i_h_pds_ > 0:
             def lambda_func(lambda_h_):
                 alpha_ = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
@@ -508,10 +508,8 @@ def calc_lambda_bounds_for_optimization(lambda_h_init_, min_lambda_, max_lambda_
                                                           savings_s_h_, delta_i_h_pds_, delta_c_h_max_)
                 return alpha_ * xi_ - (productivity_pi_ * k_h_eff_ - 1e-5)
 
-            if np.sign(lambda_func(min_lambda_)) == np.sign(lambda_func(max_lambda_)):
-                max_lambda_ = max_lambda_
-            else:
-                max_lambda_ = optimize.brentq(lambda_func, min_lambda_, max_lambda_)
+            if np.sign(lambda_func(min_lambda_)) != np.sign(lambda_func(max_lambda_)):
+                max_lambda_ = min(max_lambda_, optimize.brentq(lambda_func, min_lambda_, max_lambda_))
 
     # check whether some lambda exists, such that consumption losses can be fully offset
     if (savings_s_h_ + delta_i_h_pds_) > sigma_h_ * delta_k_h_eff_:
