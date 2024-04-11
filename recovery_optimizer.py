@@ -595,17 +595,22 @@ def optimize_lambda_wrapper(args, min_lambda, max_lambda):
     return index, res[0]
 
 
-def optimize_data(df, tolerance=1e-10, min_lambda=.05, max_lambda=100):
+def optimize_data(df_in, tolerance=1e-10, min_lambda=.05, max_lambda=100):
     """
     Optimize the lambda parameter for each row in the dataframe
     """
-    df = df.copy(deep=True)
+    df = df_in.copy(deep=True).drop_duplicates().reset_index(drop=True)
+    mapping = pd.Series(name='mapping', index=df_in.index, dtype=int)
+    for index, row in df_in.iterrows():
+        mapping.loc[index] = df.index[(df.fillna('nan') == row.fillna('nan')).all(axis=1)].item()
     df['tolerance'] = tolerance
     with multiprocessing.Pool() as pool:
         res = list(tqdm.tqdm(pool.imap(partial(optimize_lambda_wrapper, min_lambda=min_lambda, max_lambda=max_lambda),
                                        df.iterrows()), total=len(df)))
-    lambda_h_results = pd.Series(dict(res), name='lambda_h')
-    lambda_h_results.index.names = df.index.names
+    res = pd.Series(dict(res), name='lambda_h')
+    lambda_h_results = pd.Series(name='lambda_h', index=mapping.index)
+    for index, mapped_index in mapping.items():
+        lambda_h_results.loc[index] = res.loc[mapped_index]
     return lambda_h_results
 
 
