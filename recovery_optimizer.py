@@ -10,8 +10,6 @@ from scipy import integrate, optimize
 
 import matplotlib.pyplot as plt
 
-# import warnings
-# warnings.filterwarnings('error')
 
 def delta_k_h_eff_of_t(t_, t_tilde_, delta_k_h_eff_, lambda_h_, sigma_h_, delta_c_h_max_, productivity_pi_):
     """
@@ -485,8 +483,9 @@ def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity
     return -objective  # negative to transform into a minimization problem
 
 
-def calc_lambda_bounds_for_optimization(lambda_h_init_, min_lambda_, max_lambda_, delta_c_h_max_, savings_s_h_,
-                                        delta_i_h_pds_, sigma_h_, delta_k_h_eff_, productivity_pi_, k_h_eff_):
+def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                                        delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_,
+                                        delta_tax_sp_, obj_func, min_lambda_, max_lambda_):
     """
     Compute the bounds for the lambda parameter
     @param min_lambda_: the exogenous minimum lambda value, set by the user
@@ -517,22 +516,30 @@ def calc_lambda_bounds_for_optimization(lambda_h_init_, min_lambda_, max_lambda_
         if lambda_full_offset < max_lambda_:
             min_lambda_ = max(min_lambda_, lambda_full_offset)
 
-    if not min_lambda_ < lambda_h_init_ < max_lambda_:
-        lambda_h_init_ = (min_lambda_ + max_lambda_) / 2
+    init_candidates = np.linspace(min_lambda_ + .2 * (max_lambda_ - min_lambda_),
+                                  max_lambda_ - .2 * (max_lambda_ - min_lambda_), 10)
+    best_lambda_init = None
+    best_candicate_objective = None
+    for ic in init_candidates:
+        objective = obj_func(ic, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                                   delta_i_h_pds_, eta_, delta_tax_sp_, discount_rate_rho_, k_h_eff_, delta_c_h_max_)
+        if best_lambda_init is None or objective < best_candicate_objective:
+            best_lambda_init = ic
+            best_candicate_objective = objective
 
-    return min_lambda_, max_lambda_, lambda_h_init_
+    return min_lambda_, max_lambda_, best_lambda_init
 
 
 def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_,
-                    discount_rate_rho_, k_h_eff_, delta_c_h_max_, lambda_h_init, delta_tax_sp_=0,
+                    discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_=0,
                     obj_func=objective_func, tolerance=1e-10, min_lambda=0.05, max_lambda=100):
     """
     Optimize the lambda parameter
     """
 
     min_lambda, max_lambda, lambda_h_init = calc_lambda_bounds_for_optimization(
-        lambda_h_init, min_lambda, max_lambda, delta_c_h_max_, savings_s_h_, delta_i_h_pds_, sigma_h_, delta_k_h_eff_,
-        productivity_pi_, k_h_eff_
+        capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_, discount_rate_rho_,
+        k_h_eff_, delta_c_h_max_, delta_tax_sp_, obj_func, min_lambda, max_lambda
     )
 
     res = optimize.minimize(
@@ -541,9 +548,10 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
         bounds=[(min_lambda, max_lambda)],
         args=(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_,
               delta_tax_sp_, discount_rate_rho_, k_h_eff_, delta_c_h_max_),
-        method='SLSQP',
+        method='Nelder-Mead',
         tol=tolerance,
     )
+
     return res.x
 
 
@@ -583,7 +591,6 @@ def optimize_lambda_wrapper(args, min_lambda, max_lambda):
         eta_=row['eta'],
         discount_rate_rho_=row['discount_rate_rho'],
         k_h_eff_=row['k_h_eff'],
-        lambda_h_init=row['lambda_h_init'],
         delta_tax_sp_=row['delta_tax_sp'],
         delta_c_h_max_=row['delta_c_h_max'],
         tolerance=row['tolerance'],
@@ -593,7 +600,7 @@ def optimize_lambda_wrapper(args, min_lambda, max_lambda):
     return index, res[0]
 
 
-def optimize_data(df_in, tolerance=1e-10, min_lambda=.05, max_lambda=100):
+def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=100):
     """
     Optimize the lambda parameter for each row in the dataframe
     """
@@ -667,7 +674,7 @@ def make_plot(df, idx, capital_t):
     plt.tight_layout()
 
 
-def run_experiment(sigma_h, delta_c_h_max, tolerance=1e-6, lambda_h_init=1e-5, index=None,
+def run_experiment(sigma_h, delta_c_h_max, tolerance=1e-2, index=None,
                    capital_t=50, min_lambda=1e-10, max_lambda=6, liquidity_='data:average', ew_vul_reduction=0.2):
     vulnerability = pd.read_csv("./intermediate/scenarios/baseline/scenario__vulnerability_unadjusted.csv",
                                 index_col=['iso3', 'hazard', 'income_cat'])
@@ -681,7 +688,6 @@ def run_experiment(sigma_h, delta_c_h_max, tolerance=1e-6, lambda_h_init=1e-5, i
 
     data['capital_t'] = capital_t
     data['delta_tax_sp'] = 0  # neglect social protection and tax for optimization
-    data['lambda_h_init'] = lambda_h_init
     data['v_ew'] = data["v"] * (1 - ew_vul_reduction * data["ew"])
     data['delta_k_h_eff'] = data['v_ew'] * data['k_h_eff']
     data['delta_i_h_pds'] = 0
@@ -712,7 +718,7 @@ def run_experiment(sigma_h, delta_c_h_max, tolerance=1e-6, lambda_h_init=1e-5, i
         raise ValueError("Invalid liquidity inclusion option. Choose from 'liquid', 'illiquid', 'average'.")
 
     opt_data = data[['capital_t', 'sigma_h', 'delta_k_h_eff', 'productivity_pi', 'savings_s_h', 'delta_i_h_pds', 'eta',
-                     'delta_tax_sp', 'discount_rate_rho', 'k_h_eff', 'delta_c_h_max', 'lambda_h_init']]
+                     'delta_tax_sp', 'discount_rate_rho', 'k_h_eff', 'delta_c_h_max']]
     if index:
         opt_data = opt_data.loc[[index]]
     recovery_rates = optimize_data(opt_data, tolerance=tolerance, min_lambda=min_lambda, max_lambda=max_lambda)
@@ -735,8 +741,7 @@ if __name__ == '__main__':
     args.add_argument('--run', action='store_true')
     args.add_argument('--sigma_h', type=str, default='data:prv')
     args.add_argument('--delta_c_h_max', type=str, default='None')
-    args.add_argument('--tolerance', type=float, default=1e-6)
-    args.add_argument('--lambda_h_init', type=float, default=0.2)
+    args.add_argument('--tolerance', type=float, default=1e-2)
     args.add_argument('--idx', type=str, default=None)
     args.add_argument('--plot', action='store_true')
     args.add_argument('--capital_t', type=int, default=50)
@@ -748,7 +753,7 @@ if __name__ == '__main__':
         idx = tuple(args.idx.split('_'))
 
     if args.run:
-        results = run_experiment(args.sigma_h, args.delta_c_h_max, args.tolerance, args.lambda_h_init, idx,
+        results = run_experiment(args.sigma_h, args.delta_c_h_max, args.tolerance, idx,
                                  args.capital_t, liquidity_=args.liquidity)
         if args.plot:
             if idx is None:
@@ -759,7 +764,7 @@ if __name__ == '__main__':
         if not args.no_output and idx is None:
             results.to_csv(f"./optimization_experiments/{datetime.now().strftime('%Y-%m-%d_%H-%M')}__"
                            f"sigma_h_{args.sigma_h.replace(':', '-')}__delta_c_h_max{args.delta_c_h_max.replace(':', '-')}"
-                           f"__tolerance_{args.tolerance}__lambda_h_init_{args.lambda_h_init}__capital_t_{args.capital_t}"
+                           f"__tolerance_{args.tolerance}__capital_t_{args.capital_t}"
                            f"__liquidity_{args.liquidity.replace(':', '-')}.csv")
         elif not args.no_output:
             print("No output file created. Please remove the index selection to save the results.")
