@@ -13,7 +13,6 @@ import pandas as pd
 from lib import get_country_name_dicts, df_to_iso3
 
 from plotting import plot_map
-from wb_api_wrapper import get_wb_mrv
 
 
 # TODO: Note: compute_recovery_duration does not use the adjusted vulnerability. However, adjusted vulnerability is
@@ -80,8 +79,6 @@ def get_cat_info_and_tau_tax(wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_q
     return cat_info_, tau_tax_
 
 
-# TODO: discuss protection approach with Bramka
-# compare to gather_data_old.py: before, protection was simply set to rp=1, since no_protection==True
 def load_protection(index_, protection_data="FLOPROS", min_rp=1, hazard_types="Flood+Storm surge",
                     flopros_protection_file="FLOPROS/FLOPROS_protection_processed/flopros_protection_processed.csv",
                     protection_level_assumptions_file="WB_country_classification/protection_level_assumptions.csv",
@@ -156,21 +153,21 @@ def load_liquidity(force_recompute_=False, write_output_=True):
             2014: os.path.join(root_dir, 'inputs', 'FINDEX', 'WLD_2014_FINDEX_v01_M.csv'),
             2011: os.path.join(root_dir, 'inputs', 'FINDEX', 'WLD_2011_FINDEX_v02_M.csv'),
         }
-        liquidity = get_liquidity_from_findex(root_dir, findex_data_paths, write_output_=False)
+        liquidity_ = get_liquidity_from_findex(root_dir, findex_data_paths, write_output_=False)
         if write_output_:
-            liquidity.to_csv(os.path.join(root_dir, 'inputs', 'FINDEX', 'findex_liquidity.csv'))
+            liquidity_.to_csv(os.path.join(root_dir, 'inputs', 'FINDEX', 'findex_liquidity.csv'))
     else:
-        liquidity = pd.read_csv(os.path.join(root_dir, 'inputs', 'FINDEX', 'findex_liquidity.csv'),
+        liquidity_ = pd.read_csv(os.path.join(root_dir, 'inputs', 'FINDEX', 'findex_liquidity.csv'),
                                 index_col=['iso3', 'year', 'income_cat'])
-    liquidity = liquidity.iloc[liquidity.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
-    liquidity = liquidity.reset_index('year').drop(['year', 'country'], axis=1)
-    return liquidity
+    liquidity_ = liquidity_.iloc[liquidity_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
+    liquidity_ = liquidity_.reset_index('year').drop(['year', 'country'], axis=1)
+    return liquidity_[['liquidity_share', 'liquidity']].prod(axis=1).rename('liquidity')
 
 
-def calc_recovery_share_sigma(imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
-                              recovery_capital='private',
-                              # labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_unstats_labor_share_of_gdp.xlsx"):
-                              labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_Ourworldindata_labor-share-of-gdp.csv"):
+def calc_reconstruction_share_sigma(imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
+                                    reconstruction_capital_='prv',
+                                    # labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_unstats_labor_share_of_gdp.xlsx"):
+                                    labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_Ourworldindata_labor-share-of-gdp.csv"):
     imf_data = load_input_data(root_dir, imf_capital_data_file, sheet_name='Dataset')
     imf_data = imf_data.rename(columns={'isocode': 'iso3'}).set_index(['iso3'])[['year', 'kgov_n', 'kpriv_n', 'kppp_n']]
     imf_data['kpub_n'] = imf_data[['kgov_n', 'kppp_n']].sum(axis=1, skipna=True)
@@ -212,8 +209,10 @@ def calc_recovery_share_sigma(imf_capital_data_file="IMF_capital/IMFInvestmentan
     capital_shares['k_oth_share'] = capital_shares.k_oth_share.clip(lower=0)
     capital_shares['k_prv_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_oth_share
 
-    capital_shares['recovery_share_sigma:prv_oth'] = capital_shares.k_prv_share + capital_shares.k_oth_share
-    capital_shares['recovery_share_sigma:prv'] = capital_shares.k_prv_share
+    if reconstruction_capital_ == 'prv':
+        capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share
+    elif reconstruction_capital_ == 'prv_oth':
+        capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share + capital_shares.k_oth_share
 
     # if make_plots:
     #     for x, y in [('gdp_pc_pp', 'k_prv_share'), ('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_oth_share'),
@@ -227,7 +226,7 @@ def calc_recovery_share_sigma(imf_capital_data_file="IMF_capital/IMFInvestmentan
     #             plt.text(capital_shares[x][i], capital_shares[y][i], label, fontsize=10)
     #         plt.show()
 
-    return capital_shares[['recovery_share_sigma:prv', 'recovery_share_sigma:prv_oth']]
+    return capital_shares.reconstruction_share_sigma_h
 
 
 
@@ -673,6 +672,10 @@ def load_credit_ratings(tradingecon_ratings_path="credit_ratings/2023-12-13_trad
     return ratings.rating
 
 
+# def calc_delta_tax_pub():
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
     parser.add_argument('--use_flopros_protection', type=bool, default=True, help='Use FLOPROS for protection')
@@ -684,7 +687,7 @@ if __name__ == '__main__':
     parser.add_argument('--default_rp', type=str, default='default_rp', help='Default return period')
     parser.add_argument('--reconstruction_time', type=float, default=3.0, help='Reconstruction time')
     parser.add_argument('--reduction_vul', type=float, default=0.2, help='Reduction in vulnerability')
-    parser.add_argument('--income_elasticity', type=float, default=1.5, help='Income elasticity')
+    parser.add_argument('--income_elasticity_eta', type=float, default=1.5, help='Income elasticity')
     parser.add_argument('--discount_rate_rho', type=float, default=0.06, help='Discount rate')
     parser.add_argument('--shareable', type=float, default=0.8, help='Asset loss covered')
     parser.add_argument('--max_increased_spending', type=float, default=0.05, help='Maximum support')
@@ -696,6 +699,10 @@ if __name__ == '__main__':
                                                                              'instead of optimization.')
     parser.add_argument('--force_recompute', action='store_true', help='Force recomputation of recovery '
                                                                        'duration and liquidity.')
+    parser.add_argument('--reconstruction_capital', type=str, default='prv', help="Fraction of the reconstruction"
+                                                                                  " capital that needs to be paid for "
+                                                                                  "by households. Options: 'prv' / "
+                                                                                  "'prv_oth'.")
     args = parser.parse_args()
 
     use_flopros_protection = args.use_flopros_protection
@@ -703,7 +710,7 @@ if __name__ == '__main__':
     use_avg_pe = args.use_avg_pe
     default_rp = args.default_rp  # TODO: check if this can be removed
     reduction_vul = args.reduction_vul
-    income_elasticity = args.income_elasticity
+    income_elasticity_eta = args.income_elasticity_eta
     discount_rate_rho = args.discount_rate_rho
     shareable = args.shareable
     max_increased_spending = args.max_increased_spending
@@ -713,6 +720,7 @@ if __name__ == '__main__':
     default_reconstruction_time = args.reconstruction_time
     force_recompute = args.force_recompute
     include_pov_head = args.include_pov_head
+    reconstruction_capital = args.reconstruction_capital
 
     econ_scope = args.econ_scope
     event_level = [econ_scope, "hazard", "rp"]  # levels of index at which one event happens
@@ -825,21 +833,23 @@ if __name__ == '__main__':
         else:
             hazard_protection = load_protection(hazard_ratios.index, protection_data="country_income", min_rp=1)
 
-    recovery_share_sigma = calc_recovery_share_sigma(recovery_capital='private')
+    reconstruction_share_sigma = calc_reconstruction_share_sigma(reconstruction_capital_=reconstruction_capital)
+
+    delta_tax_pub = calc_delta_tax_pub()
 
     macro = wb_data_macro
     macro = macro.join(disaster_preparedness, how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
-    macro = macro.join(recovery_share_sigma, how='left')
+    macro = macro.join(reconstruction_share_sigma, how='left')
     macro = macro.join(pov_headcount.unstack('pov_line')[include_pov_head].rename(f"pov_rate_{include_pov_head}"),
                        how='left')
     # TODO: these global parameters should eventually be moved elsewhere and not stored in macro!
     macro['rho'] = discount_rate_rho
     macro['max_increased_spending'] = max_increased_spending
     macro['shareable'] = shareable
-    macro['income_elasticity'] = income_elasticity
+    macro['income_elasticity_eta'] = income_elasticity_eta
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)

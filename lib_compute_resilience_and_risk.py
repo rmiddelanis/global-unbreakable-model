@@ -2,8 +2,12 @@ import copy
 
 import numpy as np
 import pandas as pd
-from pandas_helper import broadcast_simple, concat_categories
+import tqdm
+
+from pandas_helper import concat_categories
 from lib_gather_data import average_over_rp
+
+from recovery_optimizer import optimize_data, recompute_with_tax, recompute_data_with_tax
 
 pd.set_option('display.width', 220)
 
@@ -54,12 +58,13 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     # cat_info_event_ia.loc[(cat_info_event_ia.affected_cat == 'na'), "dk"] = 0
 
     # "national" losses
-    macro_event_["dk"] = agg_to_event_level(cat_info_event_ia, "dk", event_level)
+    macro_event_["dk_ctry"] = agg_to_event_level(cat_info_event_ia, "dk", event_level)
 
+    # TODO: can no longer use macro_multiplier_Gamma due to the inclusion of savings. Need to handle time explicitly.
     # immediate consumption losses: direct capital losses plus losses through event-scale depression of transfers
     cat_info_event_ia["dc"] = (
             (1 - macro_event_["tau_tax"]) * cat_info_event_ia["dk"]
-            + cat_info_event_ia["gamma_SP"] * macro_event_["tau_tax"] * macro_event_["dk"]
+            + cat_info_event_ia["gamma_SP"] * macro_event_["tau_tax"] * macro_event_["dk_ctry"]
     )
 
     # NPV consumption losses accounting for reconstruction and productivity of capital (pre-response)
@@ -68,7 +73,7 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     return macro_event_, cat_info_event_ia
 
 
-def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats, poor_cats, option_fee="tax", option_t="data",
+def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats, poor_cat, option_fee="tax", option_t="data",
                        option_pds="unif_poor", option_b="data", loss_measure="dk", fraction_inside=1,
                        share_insured=.25):
     cat_info_event_iah = concat_categories(cat_info_event_ia, cat_info_event_ia, index=helped_cats)
@@ -82,7 +87,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
             macro_event=macro_event,
             cat_info_event_iah=cat_info_event_iah,
             event_level=event_level,
-            poor_categories=poor_cats,
+            poor_cat=poor_cat,
             option_t=option_t,
             option_pds=option_pds,
             option_b=option_b,
@@ -94,7 +99,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
     # special case of insurance that adds to existing default PDS
     else:
         # compute post disaster response with default PDS from data ONLY
-        m__, c__ = compute_response(macro_event, cat_info_event_iah, event_level, poor_categories=poor_cats, option_t="data", option_pds="unif_poor",
+        m__, c__ = compute_response(macro_event, cat_info_event_iah, event_level, poor_cat=poor_cat, option_t="data", option_pds="unif_poor",
                                     option_b="data", option_fee="tax", fraction_inside=1, loss_measure="dk")
         # change column name helped_cat to has_received_help_from_PDS_cat
         c__h = c__.rename(columns=dict(helped_cat="has_received_help_from_PDS_cat"))
@@ -103,9 +108,9 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
 
         # compute post disaster response with insurance ONLY
         macro_event, cat_info_event_iah = compute_response(macro_event.assign(shareable=share_insured), cats_event_iah_h,
-                                                       event_level, poor_categories=poor_cats, option_t=option_t, option_pds=option_pds,
-                                                       option_b=option_b, option_fee=option_fee,
-                                                       fraction_inside=fraction_inside, loss_measure=loss_measure)
+                                                           event_level, poor_cat=poor_cat, option_t=option_t, option_pds=option_pds,
+                                                           option_b=option_b, option_fee=option_fee,
+                                                           fraction_inside=fraction_inside, loss_measure=loss_measure)
 
         columns_to_add = ["need", "aid"]
         macro_event[columns_to_add] += m__[columns_to_add]
@@ -113,7 +118,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
     return macro_event, cat_info_event_iah
 
 
-def compute_response(macro_event, cat_info_event_iah, event_level, poor_categories, option_t="data", option_pds="unif_poor", option_b="data",
+def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, option_t="data", option_pds="unif_poor", option_b="data",
                      option_fee="tax", fraction_inside=1, loss_measure="dk"):
 
     """Computes aid received,  aid fee, and other stuff, from losses and PDS options on targeting, financing,
@@ -121,7 +126,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
     @param macro_event:
     @param cat_info_event_iah:
     @param event_level:
-    @param poor_categories: list of income categories to be considered poor
+    @param poor_cat: list of income categories to be considered poor
     @param option_t: Targeting error option. Changes how inclusion and exclusion errors are calculated. Values:
         "perfect": no targeting errors, "prop_nonpoor_lms": , "data": , "x33": , "incl": , "excl":
     @param option_pds: Post disaster support options. Values: "unif_poor", "no", "prop", "prop_nonpoor", "unif_poor_only"
@@ -193,6 +198,8 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
         cats_event_iah_pre_pds = cat_info_event_iah_.copy()
 
     # post disaster support (PDS) calculation depending on option_pds
+
+    # Step 1: Compute the help needed for all helped households to fulfill the policy
     # TODO make sure to avoid NaNs in help_needed and help_received when creating these columns
     if option_pds == "no":
         macro_event_["aid"] = 0
@@ -201,70 +208,58 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
         cat_info_event_iah_['help_received'] = 0
         option_b = 'no'
     elif option_pds == "unif_poor":
-        # Step 1: help_received for all helped hh = 80% of dk for poor, affected hh
-        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
-                # share of losses to be covered * (losses of helped, affected, poor households)
-                # TODO: check if this is correct: set help_needed only 'helped' households?! or rather all households
-                #  that are affected and poor?
-                macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                    & (cat_info_event_iah_.affected_cat == 'a')
-                                                                    & (cat_info_event_iah_.income_cat.isin(poor_categories)), loss_measure])
-        # cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_needed"] = 0
-        # TODO: check if this is correct; all households that do not need help should be set to 0
-        cat_info_event_iah_["help_needed"].fillna(0, inplace=True)
+        # help_received for all helped hh = 80% of dk for poor, affected hh
+        # share of losses to be covered * (losses of helped, affected, poor households)
+        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = macro_event_["shareable"] * cat_info_event_iah_.xs(('helped', 'a', 'q1'), level=('helped_cat', 'affected_cat', 'income_cat'))[loss_measure]
+        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_needed"] = 0
     elif option_pds == "unif_poor_only":
-        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
-                macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                & (cat_info_event_iah_.affected_cat == 'a')
-                                                                & (cat_info_event_iah_.income_cat.isin(poor_categories)), loss_measure])
-        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped')
-                            | (~cat_info_event_iah_.income_cat.isin(poor_categories)), "help_received"] = 0
-    elif option_pds == "prop_nonpoor":
-        if "has_received_help_from_PDS_cat" not in cat_info_event_iah_.columns:
-            cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
-                    macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                    & (cat_info_event_iah_.affected_cat == 'a')
-                                                                    & (~cat_info_event_iah_.income_cat.isin(poor_categories)), loss_measure])
-            cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped')
-                                | (cat_info_event_iah_.income_cat.isin(poor_categories)), "help_needed"] = 0
-        else:
-            cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
-                    macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                    & (cat_info_event_iah_.affected_cat == 'a')
-                                                                    & (~cat_info_event_iah_.income_cat.isin(poor_categories))
-                                                                    & (cat_info_event_iah_.has_received_help_from_PDS_cat == 'helped'), loss_measure])
-            cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped')
-                                | (cat_info_event_iah_.income_cat.isin(poor_categories)), "help_needed"] = 0
-    elif option_pds == "prop":
-        if "has_received_help_from_PDS_cat" not in cat_info_event_iah_.columns:
-            cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                & (cat_info_event_iah_.income_cat.isin(poor_categories)), "help_needed"] = (
-                    macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                    & (cat_info_event_iah_.affected_cat == 'a')
-                                                                    & (cat_info_event_iah_.income_cat.isin(poor_categories)), loss_measure])
-            cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                & (~cat_info_event_iah_.income_cat.isin(poor_categories)), "help_needed"] = (
-                    macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                    & (cat_info_event_iah_.affected_cat == 'a')
-                                                                    & (~cat_info_event_iah_.income_cat.isin(poor_categories)), loss_measure])
-            cat_info_event_iah_.loc[cat_info_event_iah_.helped_cat == 'not_helped', "help_needed"] = 0
-        else:
-            cat_info_event_iah_.loc[
-                (cat_info_event_iah_.helped_cat == 'helped') & (
-                            cat_info_event_iah_.income_cat.isin(poor_categories)), "help_needed"] = (
-                    macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                    & (cat_info_event_iah_.affected_cat == 'a')
-                                                                    & (cat_info_event_iah_.income_cat.isin(poor_categories))
-                                                                    & (cat_info_event_iah_.has_received_help_from_PDS_cat == 'helped'), loss_measure])
-            cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                & (~cat_info_event_iah_.income_cat.isin(poor_categories)), "help_needed"] = (
-                    macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
-                                                                    & (cat_info_event_iah_.affected_cat == 'a')
-                                                                    & (~cat_info_event_iah_.income_cat.isin(poor_categories))
-                                                                    & (cat_info_event_iah_.has_received_help_from_PDS_cat == 'helped'), loss_measure])
-            cat_info_event_iah_.loc[cat_info_event_iah_.helped_cat == 'not_helped', "help_needed"] = 0
-
-        # print(cat_info_event_iah_[['helped_cat','affected_cat','income_cat','help_needed','n']])
+        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped') & (cat_info_event_iah_.income_cat == poor_cat), "help_needed"] = macro_event_["shareable"] * cat_info_event_iah_.xs(('helped', 'a', 'q1'), level=('helped_cat', 'affected_cat', 'income_cat'))[loss_measure]
+        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped') | (~cat_info_event_iah_.income_cat == poor_cat), "help_received"] = 0
+    #TODO: for below PDS options, need to check whether assigned values for help_needed are correctly implemented
+    # elif option_pds == "prop_nonpoor":
+    #     if "has_received_help_from_PDS_cat" not in cat_info_event_iah_.columns:
+    #         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
+    #                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                                                                 & (cat_info_event_iah_.affected_cat == 'a')
+    #                                                                 & (~cat_info_event_iah_.income_cat.isin(poor_cat)), loss_measure])
+    #         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped')
+    #                             | (cat_info_event_iah_.income_cat.isin(poor_cat)), "help_needed"] = 0
+    #     else:
+    #         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = (
+    #                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                                                                 & (cat_info_event_iah_.affected_cat == 'a')
+    #                                                                 & (~cat_info_event_iah_.income_cat.isin(poor_cat))
+    #                                                                 & (cat_info_event_iah_.has_received_help_from_PDS_cat == 'helped'), loss_measure])
+    #         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped')
+    #                             | (cat_info_event_iah_.income_cat.isin(poor_cat)), "help_needed"] = 0
+    # elif option_pds == "prop":
+    #     if "has_received_help_from_PDS_cat" not in cat_info_event_iah_.columns:
+    #         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                             & (cat_info_event_iah_.income_cat.isin(poor_cat)), "help_needed"] = (
+    #                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                                                                 & (cat_info_event_iah_.affected_cat == 'a')
+    #                                                                 & (cat_info_event_iah_.income_cat.isin(poor_cat)), loss_measure])
+    #         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                             & (~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_needed"] = (
+    #                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                                                                 & (cat_info_event_iah_.affected_cat == 'a')
+    #                                                                 & (~cat_info_event_iah_.income_cat.isin(poor_cat)), loss_measure])
+    #         cat_info_event_iah_.loc[cat_info_event_iah_.helped_cat == 'not_helped', "help_needed"] = 0
+    #     else:
+    #         cat_info_event_iah_.loc[
+    #             (cat_info_event_iah_.helped_cat == 'helped') & (
+    #                         cat_info_event_iah_.income_cat.isin(poor_cat)), "help_needed"] = (
+    #                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                                                                 & (cat_info_event_iah_.affected_cat == 'a')
+    #                                                                 & (cat_info_event_iah_.income_cat.isin(poor_cat))
+    #                                                                 & (cat_info_event_iah_.has_received_help_from_PDS_cat == 'helped'), loss_measure])
+    #         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                             & (~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_needed"] = (
+    #                 macro_event_["shareable"] * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped')
+    #                                                                 & (cat_info_event_iah_.affected_cat == 'a')
+    #                                                                 & (~cat_info_event_iah_.income_cat.isin(poor_cat))
+    #                                                                 & (cat_info_event_iah_.has_received_help_from_PDS_cat == 'helped'), loss_measure])
+    #         cat_info_event_iah_.loc[cat_info_event_iah_.helped_cat == 'not_helped', "help_needed"] = 0
 
     # Step 2: total need (cost) for all helped hh = sum over help_needed for helped hh
     macro_event_["need"] = agg_to_event_level(cat_info_event_iah_, "help_needed", event_level)
@@ -306,18 +301,17 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
         # Step 4: help_received = unif_aid = aid/(N hh helped)
         macro_event_["unif_aid"] = (macro_event_["aid"] / (
             cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == "helped"), "n"].groupby(level=event_level).sum()
-        )).fillna(0)    # if division by 0 occurs, there are no helped households; thus, set to 0
-        # TODO: check if fillna(0) is necessary also for other options
+        )).fillna(0)  # division by zero is possible if no losses occur
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_received"] = macro_event_["unif_aid"]
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_received"] = 0
     elif option_pds == "unif_poor_only":
         macro_event_["unif_aid"] = macro_event_["aid"] / (
             cat_info_event_iah_.loc[
-                (cat_info_event_iah_.helped_cat == "helped") & (cat_info_event_iah_.income_cat.isin(poor_categories)), "n"].groupby(
+                (cat_info_event_iah_.helped_cat == "helped") & (cat_info_event_iah_.income_cat.isin(poor_cat)), "n"].groupby(
                 level=event_level).sum())
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_received"] = macro_event_["unif_aid"]
         cat_info_event_iah_.loc[
-            (cat_info_event_iah_.helped_cat == 'not_helped') | (~cat_info_event_iah_.income_cat.isin(poor_categories)), "help_received"] = 0
+            (cat_info_event_iah_.helped_cat == 'not_helped') | (~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_received"] = 0
     elif option_pds == "prop":
         cat_info_event_iah_["help_received"] = macro_event_["aid"] / macro_event_["need"] * cat_info_event_iah_["help_received"]
 
@@ -325,16 +319,16 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_categori
     if option_fee == "tax":
         # help_fee is the share of the total help provided, distributed proportionally to the hh's capital shares
         cat_info_event_iah_["help_fee"] = (fraction_inside * macro_event_["aid"] * cat_info_event_iah_["k"]
-                                       / agg_to_event_level(cat_info_event_iah_, "k", event_level))
+                                           / agg_to_event_level(cat_info_event_iah_, "k", event_level))
     elif option_fee == "insurance_premium":
         # TODO: this is never used, because the case option_fee == "insurance_premium" is handled in calculate_response
-        cat_info_event_iah_.loc[(cat_info_event_iah_.income_cat.isin(poor_categories)), "help_fee"] = fraction_inside * agg_to_event_level(
-            cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_categories)], 'help_received', event_level) / (cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_categories)].n.sum())
-        cat_info_event_iah_.loc[(~cat_info_event_iah_.income_cat.isin(poor_categories)), "help_fee"] = fraction_inside * agg_to_event_level(
-            cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_categories)], 'help_received', event_level) / (cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_categories)].n.sum())
+        cat_info_event_iah_.loc[(cat_info_event_iah_.income_cat.isin(poor_cat)), "help_fee"] = fraction_inside * agg_to_event_level(
+            cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_cat)], 'help_received', event_level) / (cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_cat)].n.sum())
+        cat_info_event_iah_.loc[(~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_fee"] = fraction_inside * agg_to_event_level(
+            cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_cat)], 'help_received', event_level) / (cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_cat)].n.sum())
         cat_info_event_iah_[['help_received', 'help_fee']] += cats_event_iah_pre_pds[['help_received', 'help_fee']]
 
-        cat_info_event_iah_.drop(['income_cat', 'helped_cat', 'affected_cat'], axis=1, inplace=True)
+    cat_info_event_iah_.drop(['income_cat', 'helped_cat', 'affected_cat'], axis=1, inplace=True)
     return macro_event_, cat_info_event_iah_
 
 
@@ -348,6 +342,83 @@ def compute_dW(macro_event, cat_info_event_iah_):
     return cat_info_event_iah_
 
 
+def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_max=np.nan):
+    opt_data = pd.merge(
+        macro_event.rename(columns={'avg_prod_k': 'productivity_pi', 'rho': 'discount_rate_rho',
+                                    'tau_tax': 'delta_tax_sp', 'income_elasticity_eta': 'eta',
+                                    'reconstruction_share_sigma_h': 'sigma_h'}),
+        cat_info_event_iah.rename(columns={'k': 'k_h_eff', 'dk': 'delta_k_h_eff', 'liquidity': 'savings_s_h',
+                                           'help_received': 'delta_i_h_pds'}),
+        left_index=True, right_index=True
+    )[['productivity_pi', 'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff', 'savings_s_h',
+       'sigma_h', 'delta_i_h_pds', 'delta_tax_sp']]
+    opt_data['capital_t'] = capital_t
+    opt_data['delta_c_h_max'] = delta_c_h_max
+    opt_data = opt_data.xs('a', level='affected_cat', drop_level=False).round(10)
+    recovery_rates_lambda = optimize_data(opt_data, tolerance=1e-2, min_lambda=.05, max_lambda=6)
+    return pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
+
+
+def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_level_, capital_t=50, delta_c_h_max=np.nan):
+    recovery_parameters = cat_info_event_iah.xs('a', level='affected_cat')[['n', 'dk', 'lambda_h']]
+    recovery_parameters['dk_abs'] = recovery_parameters['dk'] * recovery_parameters['n']
+    recovery_parameters.drop(['n', 'dk'], axis=1, inplace=True)
+    recovery_parameters['recovery_params'] = recovery_parameters[['dk_abs', 'lambda_h']].apply(tuple, axis=1)
+    recovery_parameters = recovery_parameters.groupby(level=event_level_).agg(list).recovery_params
+    recompute_data = pd.merge(cat_info_event_iah, macro_event, left_index=True, right_index=True, how='left')
+    recompute_data = recompute_data.rename(columns={'avg_prod_k': 'productivity_pi', 'rho': 'discount_rate_rho',
+                                                    'tau_tax': 'delta_tax_sp', 'income_elasticity_eta': 'eta',
+                                                    'reconstruction_share_sigma_h': 'sigma_h', 'k': 'k_h_eff',
+                                                    'dk': 'delta_k_h_eff', 'liquidity': 'savings_s_h',
+                                                    'help_received': 'delta_i_h_pds'})
+    recompute_data['capital_t'] = capital_t
+    recompute_data['delta_c_h_max'] = delta_c_h_max
+    recompute_data['social_protection_share_gamma_h'] = recompute_data['gamma_SP'] * recompute_data['n']
+
+    recompute_data = recompute_data[['capital_t', 'delta_c_h_max', 'social_protection_share_gamma_h', 'productivity_pi',
+                                     'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff',
+                                     'savings_s_h', 'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'lambda_h',
+                                     'diversified_share']]
+
+    recompute_data = pd.merge(recompute_data, recovery_parameters, left_index=True, right_index=True, how='left')
+
+    dw_ds_reco = recompute_data_with_tax(recompute_data)
+
+    cat_info_event_iah = pd.merge(cat_info_event_iah, dw_ds_reco, left_index=True, right_index=True, how='left')
+    cat_info_event_iah = pd.merge(cat_info_event_iah, recovery_parameters, left_index=True, right_index=True, how='left')
+
+    return cat_info_event_iah
+
+
+def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):
+    cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - macro_event['reconstruction_share_sigma_h'])
+    macro_event['delta_tax_pub'] = ((agg_to_event_level(cat_info_event_iah, 'dk_pub', event_level)
+                                     / agg_to_event_level(cat_info_event_iah, 'k', event_level))
+                                    / macro_event.avg_prod_k)
+    cat_info_event_iah['dW_long_term'] = (
+            cat_info_event_iah['c'] ** (-macro_event['income_elasticity_eta']) *
+            (cat_info_event_iah['dS_reco'] + cat_info_event_iah['help_fee'] +
+             cat_info_event_iah['c'] * macro_event['delta_tax_pub'] - cat_info_event_iah['help_received'])
+    )
+    return cat_info_event_iah
+
+
+def compute_dw_new(cat_info_event_iah, macro_event, event_level_, capital_t=50, delta_c_h_max=np.nan):
+    # compute the optimal recovery rates
+    cat_info_event_iah_ = optimize_recovery(macro_event, cat_info_event_iah, capital_t, delta_c_h_max)
+
+    # compute the welfare losses from destroyed assets, decreased transfers, and reconstruction
+    cat_info_event_iah_ = compute_dw_reco_and_used_savings(cat_info_event_iah_, macro_event, event_level_, capital_t,
+                                                           delta_c_h_max)
+
+    # compute the long-term welfare losses from public asset reconstruction costs, PDS costs, and used savings
+    cat_info_event_iah_ = compute_dw_long_term(cat_info_event_iah_, macro_event, event_level_)
+
+    # sum the welfare losses from reconstruction and long-term welfare losses
+    cat_info_event_iah_['dw'] = cat_info_event_iah_['dW_reco'] + cat_info_event_iah_['dW_long_term']
+    return cat_info_event_iah_
+
+
 def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_level, hazard_protection_, default_rp,
                    is_local_welfare=True, return_stats=True):
     # generate output df
@@ -355,7 +426,7 @@ def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_lev
 
     # pull 'aid' and 'dk' from macro_event
     out["average_aid_cost_pc"] = macro_event["aid"]
-    out["dk"] = macro_event["dk"]
+    out["dk"] = macro_event["dk_ctry"]
 
     # aggregate delta_W at event-level
     out["dw"] = agg_to_event_level(cat_info_event_iah, "dw", event_level)
@@ -365,7 +436,7 @@ def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_lev
 
     if return_stats:
         stats = np.setdiff1d(cat_info_event_iah.columns, event_level + ['helped_cat', 'affected_cat', 'income_cat',
-                                                                        'has_received_help_from_PDS_cat'])
+                                                                        'has_received_help_from_PDS_cat', 'recovery_params'])
         df_stats = agg_to_event_level(cat_info_event_iah, stats, event_level)
         print("stats are " + ",".join(stats))
         out[df_stats.columns] = df_stats
@@ -400,8 +471,8 @@ def calc_delta_welfare(micro, macro):
     and after (dc_npv_post) event. Line by line"""
     # computes welfare losses per category
     # as per eqs. 9-11 in the technical paper
-    dw = (welf(micro["c"] / macro["rho"], macro["income_elasticity"])
-          - welf(micro["c"] / macro["rho"] - micro["dc_npv_post"], macro["income_elasticity"]))
+    dw = (welf(micro["c"] / macro["rho"], macro["income_elasticity_eta"])
+          - welf(micro["c"] / macro["rho"] - micro["dc_npv_post"], macro["income_elasticity_eta"]))  # w(c_0) - w(c_h)
 
     return dw
 
@@ -419,16 +490,21 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
 
     # Expressing welfare losses in currency
     # discount rate
-    rho = df["rho"]
-    h = 1e-4
 
     # linearly approximated derivative of welfare with respect to NPV of future consumption
+    # NO LONGER USING NPV OF FUTURE CONSUMPTION WITH THE MODEL UPDATE!
+    # rho = df["rho"]
+    # h = 1e-4
+    # if is_local_welfare:
+    #     w_prime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elasticity_eta"])
+    #                - welf(df["gdp_pc_pp"] / rho - h, df["income_elasticity_eta"])) / (2 * h)
+    # else:
+    #     w_prime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elasticity_eta"])
+    #                - welf(df["gdp_pc_pp_nat"] / rho - h, df["income_elasticity_eta"])) / (2 * h)
     if is_local_welfare:
-        w_prime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elasticity"])
-                   - welf(df["gdp_pc_pp"] / rho - h, df["income_elasticity"])) / (2 * h)
+        w_prime = df["gdp_pc_pp"]**(-df["income_elasticity_eta"])
     else:
-        w_prime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elasticity"])
-                   - welf(df["gdp_pc_pp_nat"] / rho - h, df["income_elasticity"])) / (2 * h)
+        w_prime = df["gdp_pc_pp_nat"]**(-df["income_elasticity_eta"])
 
     # TODO: @Bramka why? assuming that in the reference case, capital loss equals consumption loss? The paper
     #  states that this would be the case for \mu = \rho
