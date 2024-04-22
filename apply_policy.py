@@ -28,5 +28,8 @@ def apply_policy(macro_, cat_info_, hazard_ratios_, policy_name=None, policy_opt
         fa_poor_new = hazard_ratios.loc[poor_sel, 'fa'] - policy_opt * total_exposure / hazard_ratios.loc[poor_sel, 'n']
         fa_poor_new = fa_poor_new.fillna(0).clip(lower=0)
         hazard_ratios.fa.update(fa_poor_new)
+    elif policy_name == 'no_liquidity':
+        desc = "No liquidity"
+        cat_info['liquidity'] = 0
 
     return macro, cat_info, hazard_ratios, policy_name, desc
