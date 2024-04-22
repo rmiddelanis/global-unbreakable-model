@@ -1,3 +1,5 @@
+import argparse
+
 from lib_compute_resilience_and_risk import *
 import os
 import warnings
@@ -6,29 +8,43 @@ import pandas as pd
 warnings.filterwarnings("always", category=UserWarning)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Script parameters')
+    parser.add_argument('--scenarios', type=str, default='baseline', help='Scenarios')
+    parser.add_argument('--option_fee', type=str, default='tax', help='Fee option to fund PDS.')
+    parser.add_argument('--option_pds', type=str, default='unif_poor', help='PDS option.')
+    # parser.add_argument('--discount_long_term', action='store_true', help='Discount long term welfare losses')
+    # parser.add_argument('--long_term_horizon', type=float, default=30,
+    #                     help='Horizon for long-term welfare losses. Only if discount_long_term is True.')
+
+    args = parser.parse_args()
+
     # define directory
     model = os.getcwd()  # get current directory
     input_dir = model + '/inputs/'  # get inputs data directory
     intermediate_dir = model + '/intermediate/'  # get outputs data directory
 
-    scenarios = os.listdir(os.path.join(intermediate_dir, 'scenarios'))
-    scenarios = [s for s in scenarios if os.path.isdir(os.path.join(intermediate_dir, 'scenarios', s))]
+    scenarios = args.scenarios
+    if scenarios == 'all':
+        scenarios = os.listdir(os.path.join(intermediate_dir, 'scenarios'))
+        scenarios = [s for s in scenarios if os.path.isdir(os.path.join(intermediate_dir, 'scenarios', s))]
+    else:
+        scenarios = scenarios.split('+')
 
-    # TODO: remove this later; only for testing purposes
-    scenarios = ['baseline']
+    # long_term_horizon = None
+    # if args.discount_long_term:
+    #     long_term_horizon = args.long_term_horizon
+
+    option_fee = args.option_fee
+    option_pds = args.option_pds
+    if option_fee == "insurance_premium":
+        option_b = 'unlimited'
+        option_t = 'perfect'
+    else:
+        option_b = 'data'
+        option_t = 'data'
 
     for scenario in scenarios:
         print(scenario)
-        option_fee = "tax"
-        option_pds = "unif_poor"
-
-        if option_fee == "insurance_premium":
-            option_b = 'unlimited'
-            option_t = 'perfect'
-        else:
-            option_b = 'data'
-            option_t = 'data'
-
         print(f'optionFee ={option_fee}, optionPDS ={option_pds}, optionB ={option_b}, optionT ={option_t}')
 
         # Options and parameters
@@ -55,6 +71,9 @@ if __name__ == '__main__':
         hazard_protection = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', scenario, "scenario__hazard_protection.csv"),
                                         index_col=[econ_scope, "hazard"])
 
+        # macro, cat_info, hazard_protection = macro.loc[['ZAF']], cat_info.loc[['ZAF']], hazard_protection.loc[['ZAF']]
+        # cat_info['liquidity'] = 0
+
         # compute
         # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
         macro_event, cat_info_event = reshape_input(
@@ -65,9 +84,9 @@ if __name__ == '__main__':
         )
 
         # TODO: remove this later; only for testing purposes
-        macro_event = macro_event.loc[['ISL']]
-        cat_info_event = cat_info_event.loc[['ISL']]
-        cat_info_event['liquidity'] = 0
+        # macro_event = macro_event.loc[['MOZ', 'BGD', 'ISL']]
+        # cat_info_event = cat_info_event.loc[['MOZ', 'BGD', 'ISL']]
+        # cat_info_event['liquidity'] = 0
 
         # calculate the potential damage to capital, and consumption
         # adds 'dk', 'dc', 'dc_npv_pre' to cat_info_event_ia, also adds aggregated 'dk' to macro_event
@@ -96,12 +115,13 @@ if __name__ == '__main__':
             share_insured=.25,
         )
 
-        cat_info_event_iah = compute_dw_new(
+        cat_info_event_iah, macro_event = compute_dw_new(
             cat_info_event_iah=cat_info_event_iah,
             macro_event=macro_event,
             event_level_=event_level,
             capital_t=20,
             delta_c_h_max=np.nan,
+            # long_term_horizon_=long_term_horizon,
         )
 
         # # compute welfare losses
@@ -124,6 +144,7 @@ if __name__ == '__main__':
             default_rp=default_rp,
             is_local_welfare=True,
             return_stats=True,
+            # long_term_horizon_=long_term_horizon,
         )
 
         if not os.path.exists(f'output/scenarios/{scenario}'):

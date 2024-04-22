@@ -378,7 +378,9 @@ def delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
     Compute the dynamic consumption loss
     """
     # no income loss from labor or social protection and transfers --> baseline case
-    if delta_k_h_eff_ == 0 and recovery_params_ is None:
+    if delta_k_h_eff_ == 0 and (recovery_params_ is None or np.all([rp[0] == 0 for rp in recovery_params_])):
+        if return_elements:
+            return t_ * 0, t_ * 0, t_ * 0, t_ * 0
         return t_ * 0
 
     if consumption_floor_xi_ == t_hat == t_tilde == delta_tilde_k_h_eff is None:
@@ -443,37 +445,32 @@ def delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
     return delta_i_h + delta_c_h_reco - delta_c_h_savings_pds
 
 
-def baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share=None):
+def baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share):
     """
     Compute the baseline consumption level
     """
-    if delta_tax_sp_ == 0:
-        diversified_share = 0
-    else:
-        if diversified_share is None:
-            raise ValueError("Diversified share must be provided when tax is not zero.")
-    return productivity_pi_ * (k_h_eff_ - delta_tax_sp_) / (1 - diversified_share)
+    return productivity_pi_ * k_h_eff_ * (1 - delta_tax_sp_) / (1 - diversified_share)
 
 
 def consumption_c_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_,
                        delta_i_h_pds_, k_h_eff_, delta_c_h_max_, recovery_params_, social_protection_share_gamma_h_,
                        diversified_share_, consumption_floor_xi_=None, t_hat=None, t_tilde=None,
-                       delta_tilde_k_h_eff=None, consumption_offset=None):
+                       delta_tilde_k_h_eff=None, consumption_offset=None, include_tax=False):
     """
     Compute the dynamic consumption level
     """
     consumption_loss = delta_c_h_of_t(
         t_=t_,
         productivity_pi_=productivity_pi_,
-        delta_tax_sp_=delta_tax_sp_,
+        delta_tax_sp_=delta_tax_sp_ if include_tax else 0,
         delta_k_h_eff_=delta_k_h_eff_,
         lambda_h_=lambda_h_,
         sigma_h_=sigma_h_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
         delta_c_h_max_=delta_c_h_max_,
-        recovery_params_=recovery_params_,
-        social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+        recovery_params_=recovery_params_ if include_tax else [(0, 0)],
+        social_protection_share_gamma_h_=social_protection_share_gamma_h_ if include_tax else 0,
         consumption_floor_xi_=consumption_floor_xi_,
         t_hat=t_hat,
         t_tilde=t_tilde,
@@ -498,11 +495,11 @@ def welfare_of_c(c_, eta_):
     return (c_ ** (1 - eta_) - 1) / (1 - eta_)
 
 
-def discounted_welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
-                              sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, delta_c_h_max_,
-                              recovery_params_, social_protection_share_gamma_h_, diversified_share_,
-                              consumption_floor_xi_=None, t_hat=None, t_tilde=None, delta_tilde_k_h_eff=None,
-                              consumption_offset=None):
+def welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
+                   sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, delta_c_h_max_,
+                   recovery_params_, social_protection_share_gamma_h_, diversified_share_,
+                   consumption_floor_xi_=None, t_hat=None, t_tilde=None, delta_tilde_k_h_eff=None,
+                   consumption_offset=None, discount=True, include_tax=False):
     """
     Compute the discounted time-dependent welfare
     """
@@ -525,15 +522,20 @@ def discounted_welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_ta
         t_tilde=t_tilde,
         delta_tilde_k_h_eff=delta_tilde_k_h_eff,
         consumption_offset=consumption_offset,
+        include_tax=include_tax,
     )
     assert (np.array(c_of_t) > 0).all()
-    return welfare_of_c(c_of_t, eta_=eta_) * np.exp(-discount_rate_rho_ * t_)
+    res = welfare_of_c(c_of_t, eta_=eta_)
+    if discount:
+        res = res * np.exp(-discount_rate_rho_ * t_)
+    return res
 
 
 def discounted_consumption_c_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
                                   sigma_h_, savings_s_h_, delta_i_h_pds_, _, k_h_eff_, delta_c_h_max_, recovery_params_,
                                   social_protection_share_gamma_h_, diversified_share_, consumption_floor_xi_=None,
-                                  t_hat=None, t_tilde=None, delta_tilde_k_h_eff=None, consumption_offset=None):
+                                  t_hat=None, t_tilde=None, delta_tilde_k_h_eff=None, consumption_offset=None,
+                                  include_tax=False):
     """ Compute the discounted consumption level """
     c_of_t = consumption_c_of_t(
         t_=t_,
@@ -554,6 +556,7 @@ def discounted_consumption_c_of_t(t_, discount_rate_rho_, productivity_pi_, delt
         t_tilde=t_tilde,
         delta_tilde_k_h_eff=delta_tilde_k_h_eff,
         consumption_offset=consumption_offset,
+        include_tax=include_tax,
     )
     return c_of_t * np.exp(-discount_rate_rho_ * t_)
 
@@ -563,17 +566,18 @@ def aggregate_welfare_w_of_c_of_capital_t(capital_t_, discount_rate_rho_, produc
                                           eta_, k_h_eff_, delta_c_h_max_, recovery_params_,
                                           social_protection_share_gamma_h_, diversified_share_,
                                           consumption_floor_xi_=None, t_hat=None, t_tilde=None,
-                                          delta_tilde_k_h_eff=None, consumption_offset=None, agg_approach='PHL_paper'):
+                                          delta_tilde_k_h_eff=None, consumption_offset=None, agg_approach='PHL_paper',
+                                          include_tax=False):
     """
     Compute the time-aggregate welfare function
     """
     args = (discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
             sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, delta_c_h_max_, recovery_params_,
             social_protection_share_gamma_h_, diversified_share_, consumption_floor_xi_, t_hat, t_tilde,
-            delta_tilde_k_h_eff, consumption_offset)
+            delta_tilde_k_h_eff, consumption_offset, True, include_tax)
     if agg_approach == 'PHL_paper':
         # aggregate welfare approach taken in the Philippines paper
-        w_agg = integrate.quad(discounted_welfare_w_of_t, 0, capital_t_, args=args, limit=50)[0]
+        w_agg = integrate.quad(welfare_w_of_t, 0, capital_t_, args=args, limit=50)[0]
     elif agg_approach == 'UB_technical_paper':
         # aggregate welfare approach taken in the original Unbreakable technical paper
         w_agg = welfare_of_c(integrate.quad(discounted_consumption_c_of_t, 0, capital_t_, args=args, limit=50)[0], eta_)
@@ -662,6 +666,7 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         t_tilde=t_tilde,
         delta_tilde_k_h_eff=delta_tilde_k_h_eff,
         consumption_offset=consumption_offset,
+        include_tax=True
     )
     w_disaster = aggregate_welfare_w_of_c_of_capital_t(
         capital_t_=capital_t_,
@@ -685,6 +690,7 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         t_tilde=t_tilde,
         delta_tilde_k_h_eff=delta_tilde_k_h_eff,
         consumption_offset=consumption_offset,
+        include_tax=True
     )
 
     return w_baseline - w_disaster, used_liquidity
@@ -695,23 +701,27 @@ def recompute_with_tax_wrapper(recompute_args):
     Wrapper for recompute_with_tax
     """
     index, row = recompute_args
-    return recompute_with_tax(
-        capital_t_=row['capital_t'],
-        discount_rate_rho_=row['discount_rate_rho'],
-        productivity_pi_=row['productivity_pi'],
-        delta_tax_sp_=row['delta_tax_sp'],
-        delta_k_h_eff_=row['delta_k_h_eff'],
-        lambda_h_=row['lambda_h'],
-        sigma_h_=row['sigma_h'],
-        savings_s_h_=row['savings_s_h'],
-        delta_i_h_pds_=row['delta_i_h_pds'],
-        eta_=row['eta'],
-        k_h_eff_=row['k_h_eff'],
-        delta_c_h_max_=row['delta_c_h_max'],
-        diversified_share_=row['diversified_share'],
-        recovery_params_=row['recovery_params'],
-        social_protection_share_gamma_h_=row['social_protection_share_gamma_h'],
-    )
+    try:
+        return recompute_with_tax(
+            capital_t_=row['capital_t'],
+            discount_rate_rho_=row['discount_rate_rho'],
+            productivity_pi_=row['productivity_pi'],
+            delta_tax_sp_=row['delta_tax_sp'],
+            delta_k_h_eff_=row['delta_k_h_eff'],
+            lambda_h_=row['lambda_h'],
+            sigma_h_=row['sigma_h'],
+            savings_s_h_=row['savings_s_h'],
+            delta_i_h_pds_=row['delta_i_h_pds'],
+            eta_=row['eta'],
+            k_h_eff_=row['k_h_eff'],
+            delta_c_h_max_=row['delta_c_h_max'],
+            diversified_share_=row['diversified_share'],
+            recovery_params_=row['recovery_params'],
+            social_protection_share_gamma_h_=row['social_protection_share_gamma_h'],
+        )
+    except Exception as e:
+        print(f"Error in row {index}: {e}")
+        raise e
 
 
 def recompute_data_with_tax(df_in):
@@ -756,6 +766,7 @@ def compute_delta_welfare_dw_reco(capital_t_, discount_rate_rho_, productivity_p
         social_protection_share_gamma_h_=None,
         agg_approach='PHL_paper',
         diversified_share_=diversified_share_,
+        include_tax=True
     )
     w_disaster = aggregate_welfare_w_of_c_of_capital_t(
         capital_t_=capital_t_,
@@ -774,6 +785,7 @@ def compute_delta_welfare_dw_reco(capital_t_, discount_rate_rho_, productivity_p
         social_protection_share_gamma_h_=social_protection_share_gamma_h_,
         agg_approach='PHL_paper',
         diversified_share_=diversified_share_,
+        include_tax=True
     )
 
     return w_baseline - w_disaster
@@ -878,7 +890,7 @@ def calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_,
 
 
 def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_):
+                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_):
     """
     Objective function to be minimized
     """
@@ -893,15 +905,16 @@ def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity
         delta_k_h_eff_=delta_k_h_eff_,
         productivity_pi_=productivity_pi_,
         eta_=eta_,
-        delta_tax_sp_=0,  # tax, social protection and transfers are neglected for the optimization
+        delta_tax_sp_=delta_tax_sp_,
         discount_rate_rho_=discount_rate_rho_,
         k_h_eff_=k_h_eff_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
         delta_c_h_max_=delta_c_h_max_,
-        recovery_params_=[(0, 0)],  # without tax, no recovery parameters are needed
-        social_protection_share_gamma_h_=0,  # without tax, no incsocial protection share is needed
-        diversified_share_=0,  # without tax, diversified income is 0
+        recovery_params_=[(0, 0)],  # for optimization, no recovery parameters are needed
+        social_protection_share_gamma_h_=0,  # for optimization, no social protection share is needed
+        diversified_share_=diversified_share_,
+        include_tax=False
     )
 
     # for the optimization, include leftover savings, s.th. not the first but the fastest recovery path is chosen where
@@ -913,7 +926,7 @@ def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity
 
 def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
                                         delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_,
-                                        obj_func, min_lambda_, max_lambda_):
+                                        delta_tax_sp_, diversified_share_, min_lambda_, max_lambda_):
     """
     Compute the bounds for the lambda parameter
     """
@@ -923,31 +936,56 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
     # if no maximum consumption loss is defined (and thus, the option to wait until t_tilde when capital loss has
     # decreased to delta_tilde_k_h_eff), find the maximal allowable lambda that maintains positive consumption
     if np.isnan(delta_c_h_max_):
+        c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
         if savings_s_h_ + delta_i_h_pds_ <= 0:
-            max_lambda_ = min(max_lambda_, productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1))
+            if c_baseline < calc_alpha(0, sigma_h_, delta_k_h_eff_, productivity_pi_):
+                # there is no lambda that maintains positive consumption
+                print(f"Optimization not possible for capital_t={capital_t_}, sigma_h={sigma_h_}, "
+                      f"delta_k_h_eff={delta_k_h_eff_}, productivity_pi={productivity_pi_}, savings_s_h={savings_s_h_}, "
+                      f"delta_i_h_pds={delta_i_h_pds_}, eta={eta_}, discount_rate_rho={discount_rate_rho_}, "
+                      f"k_h_eff={k_h_eff_}, delta_c_h_max={delta_c_h_max_}, delta_tax_sp={delta_tax_sp_}, "
+                      f"diversified_share={diversified_share_}. No lambda exists that maintains positive consumption.")
+                return np.nan, np.nan, np.nan
+            # max_lambda_ = min(max_lambda_, productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1))
+            max_lambda_ = min(max_lambda_, 1 / sigma_h_ * (c_baseline / delta_k_h_eff_ - productivity_pi_))
         elif savings_s_h_ + delta_i_h_pds_ > 0:
             def lambda_func(lambda_h_):
                 alpha_ = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
                 xi_, _, _, _ = solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_,
-                                                          savings_s_h_, delta_i_h_pds_, delta_c_h_max_, 0, None, None)
-                return alpha_ * xi_ - (productivity_pi_ * k_h_eff_ - 1e-5)
+                                                          savings_s_h_, delta_i_h_pds_, delta_c_h_max_, 0, None, 0)
+                return alpha_ * xi_ - (c_baseline - 1e-5)  # alpha * xi must be smaller than the baseline consumption
 
             if np.sign(lambda_func(min_lambda_)) != np.sign(lambda_func(max_lambda_)):
-                max_lambda_ = min(max_lambda_, optimize.brentq(lambda_func, min_lambda_, max_lambda_))
+                opt_lambda = optimize.brentq(lambda_func, min_lambda_, max_lambda_)
+                if lambda_func(opt_lambda - 1e-5) < lambda_func(opt_lambda + 1e-5):
+                    max_lambda_ = min(max_lambda_, opt_lambda)
+                else:
+                    min_lambda_ = max(min_lambda_, opt_lambda)
+            elif lambda_func(1e-5) > 0:
+                # there is no lambda that maintains positive consumption
+                print(f"Optimization not possible for capital_t={capital_t_}, sigma_h={sigma_h_}, "
+                      f"delta_k_h_eff={delta_k_h_eff_}, productivity_pi={productivity_pi_}, savings_s_h={savings_s_h_}, "
+                      f"delta_i_h_pds={delta_i_h_pds_}, eta={eta_}, discount_rate_rho={discount_rate_rho_}, "
+                      f"k_h_eff={k_h_eff_}, delta_c_h_max={delta_c_h_max_}, delta_tax_sp={delta_tax_sp_}, "
+                      f"diversified_share={diversified_share_}. No lambda exists that maintains positive consumption.")
+                return np.nan, np.nan, np.nan
 
     # check whether some lambda exists, such that consumption losses can be fully offset
     if (savings_s_h_ + delta_i_h_pds_) > sigma_h_ * delta_k_h_eff_:
         lambda_full_offset = 1 / ((savings_s_h_ + delta_i_h_pds_) / delta_k_h_eff_ - sigma_h_) * productivity_pi_
         if lambda_full_offset < max_lambda_:
             min_lambda_ = max(min_lambda_, lambda_full_offset)
+            # print("min_lambda_ adjusted to:", min_lambda_)
+
 
     init_candidates = np.linspace(min_lambda_ + .2 * (max_lambda_ - min_lambda_),
                                   max_lambda_ - .2 * (max_lambda_ - min_lambda_), 10)
     best_lambda_init = None
     best_candicate_objective = None
     for ic in init_candidates:
-        objective = obj_func(ic, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                             delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_)
+        objective = objective_func(ic, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_,
+                                   diversified_share_)
         if best_lambda_init is None or objective < best_candicate_objective:
             best_lambda_init = ic
             best_candicate_objective = objective
@@ -956,23 +994,26 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
 
 
 def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_,
-                    discount_rate_rho_, k_h_eff_, delta_c_h_max_, obj_func=objective_func, tolerance=1e-10,
-                    min_lambda=0.05, max_lambda=100):
+                    discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_,
+                    tolerance=1e-10, min_lambda=0.05, max_lambda=100):
     """
     Optimize the lambda parameter
     """
 
     min_lambda, max_lambda, lambda_h_init = calc_lambda_bounds_for_optimization(
         capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_, discount_rate_rho_,
-        k_h_eff_, delta_c_h_max_, obj_func, min_lambda, max_lambda
+        k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_, min_lambda, max_lambda
     )
 
+    if np.isnan(min_lambda) or np.isnan(max_lambda) or np.isnan(lambda_h_init):
+        return [np.nan]
+
     res = optimize.minimize(
-        fun=obj_func,
+        fun=objective_func,
         x0=np.array(lambda_h_init),
         bounds=[(min_lambda, max_lambda)],
         args=(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_,
-              discount_rate_rho_, k_h_eff_, delta_c_h_max_),
+              discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_),
         method='Nelder-Mead',
         tol=tolerance,
     )
@@ -982,21 +1023,27 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
 
 def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
     index, row = opt_args
-    res = optimize_lambda(
-        capital_t_=row['capital_t'],
-        sigma_h_=row['sigma_h'],
-        delta_k_h_eff_=row['delta_k_h_eff'],
-        productivity_pi_=row['productivity_pi'],
-        savings_s_h_=row['savings_s_h'],
-        delta_i_h_pds_=row['delta_i_h_pds'],
-        eta_=row['eta'],
-        discount_rate_rho_=row['discount_rate_rho'],
-        k_h_eff_=row['k_h_eff'],
-        delta_c_h_max_=row['delta_c_h_max'],
-        tolerance=row['tolerance'],
-        min_lambda=min_lambda,
-        max_lambda=max_lambda,
-    )
+    try:
+        res = optimize_lambda(
+            capital_t_=row['capital_t'],
+            sigma_h_=row['sigma_h'],
+            delta_k_h_eff_=row['delta_k_h_eff'],
+            productivity_pi_=row['productivity_pi'],
+            savings_s_h_=row['savings_s_h'],
+            delta_i_h_pds_=row['delta_i_h_pds'],
+            eta_=row['eta'],
+            discount_rate_rho_=row['discount_rate_rho'],
+            k_h_eff_=row['k_h_eff'],
+            delta_c_h_max_=row['delta_c_h_max'],
+            tolerance=row['tolerance'],
+            delta_tax_sp_=row['delta_tax_sp'],
+            diversified_share_=row['diversified_share'],
+            min_lambda=min_lambda,
+            max_lambda=max_lambda,
+        )
+    except Exception as e:
+        print(f"Error in row {index}: {e}")
+        raise e
     return index, res[0]
 
 

@@ -3,11 +3,12 @@ import copy
 import numpy as np
 import pandas as pd
 import tqdm
+from scipy import integrate
 
 from pandas_helper import concat_categories
 from lib_gather_data import average_over_rp
 
-from recovery_optimizer import optimize_data, recompute_with_tax, recompute_data_with_tax
+from recovery_optimizer import optimize_data, recompute_data_with_tax
 
 pd.set_option('display.width', 220)
 
@@ -351,11 +352,16 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_m
                                            'help_received': 'delta_i_h_pds'}),
         left_index=True, right_index=True
     )[['productivity_pi', 'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff', 'savings_s_h',
-       'sigma_h', 'delta_i_h_pds', 'delta_tax_sp']]
+       'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'diversified_share']]
     opt_data['capital_t'] = capital_t
     opt_data['delta_c_h_max'] = delta_c_h_max
     opt_data = opt_data.xs('a', level='affected_cat', drop_level=False).round(10)
-    recovery_rates_lambda = optimize_data(opt_data, tolerance=1e-2, min_lambda=.05, max_lambda=6)
+    recovery_rates_lambda = optimize_data(
+        df_in=opt_data,
+        tolerance=1e-2,
+        min_lambda=.05,
+        max_lambda=6,
+    )
     return pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
 
 
@@ -390,37 +396,55 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
     return cat_info_event_iah
 
 
-def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):
+def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):#, long_term_horizon_=None):
     cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - macro_event['reconstruction_share_sigma_h'])
     macro_event['delta_tax_pub'] = ((agg_to_event_level(cat_info_event_iah, 'dk_pub', event_level)
                                      / agg_to_event_level(cat_info_event_iah, 'k', event_level))
                                     / macro_event.avg_prod_k)
-    cat_info_event_iah['dW_long_term'] = (
-            cat_info_event_iah['c'] ** (-macro_event['income_elasticity_eta']) *
-            (cat_info_event_iah['dS_reco'] + cat_info_event_iah['help_fee'] +
-             cat_info_event_iah['c'] * macro_event['delta_tax_pub'] - cat_info_event_iah['help_received'])
+    # macro_event['delta_tax_pub'] = (agg_to_event_level(cat_info_event_iah, 'dk_pub', event_level)
+    #                                 / agg_to_event_level(cat_info_event_iah, 'k', event_level))
+    cat_info_event_iah['dc_long_term'] = (
+            cat_info_event_iah['dS_reco'] + cat_info_event_iah['help_fee'] + cat_info_event_iah['c']
+            * macro_event['delta_tax_pub'] - cat_info_event_iah['help_received']
     )
-    return cat_info_event_iah
+    cat_info_event_iah['dW_long_term'] = cat_info_event_iah['c'] ** (-macro_event['income_elasticity_eta']) * \
+                                         cat_info_event_iah['dc_long_term']
+    # if long_term_horizon_ is None:
+    #     cat_info_event_iah['dW_long_term'] = cat_info_event_iah['c'] ** (-macro_event['income_elasticity_eta']) * cat_info_event_iah['dc_long_term']
+    # else:
+    #     merged = pd.merge(cat_info_event_iah, macro_event, left_index=True, right_index=True, how='left')
+    #     cat_info_event_iah['dW_long_term'] = merged.apply(lambda x: calc_delta_welfare_discounted(x['c'], x['dc_long_term'] / long_term_horizon_, x['rho'], x['income_elasticity_eta'], long_term_horizon_), axis=1)
+    return cat_info_event_iah, macro_event
 
 
 def compute_dw_new(cat_info_event_iah, macro_event, event_level_, capital_t=50, delta_c_h_max=np.nan):
     # compute the optimal recovery rates
-    cat_info_event_iah_ = optimize_recovery(macro_event, cat_info_event_iah, capital_t, delta_c_h_max)
+    cat_info_event_iah_ = optimize_recovery(
+        macro_event=macro_event,
+        cat_info_event_iah=cat_info_event_iah,
+        capital_t=capital_t,
+        delta_c_h_max=delta_c_h_max,
+    )
+    failed_optimizations = cat_info_event_iah_[cat_info_event_iah_['lambda_h'].isna()].xs('a', level='affected_cat').index.droplevel(['rp', 'helped_cat', 'income_cat']).unique()
+    if len(failed_optimizations) > 0:
+        print(f"Failed to optimize recovery rates for {failed_optimizations}. Dropping entries.")
+        cat_info_event_iah_ = cat_info_event_iah_.drop(failed_optimizations)
+
 
     # compute the welfare losses from destroyed assets, decreased transfers, and reconstruction
     cat_info_event_iah_ = compute_dw_reco_and_used_savings(cat_info_event_iah_, macro_event, event_level_, capital_t,
                                                            delta_c_h_max)
 
     # compute the long-term welfare losses from public asset reconstruction costs, PDS costs, and used savings
-    cat_info_event_iah_ = compute_dw_long_term(cat_info_event_iah_, macro_event, event_level_)
+    cat_info_event_iah_, macro_event_ = compute_dw_long_term(cat_info_event_iah_, macro_event, event_level_)#, long_term_horizon_)
 
     # sum the welfare losses from reconstruction and long-term welfare losses
     cat_info_event_iah_['dw'] = cat_info_event_iah_['dW_reco'] + cat_info_event_iah_['dW_long_term']
-    return cat_info_event_iah_
+    return cat_info_event_iah_, macro_event_
 
 
 def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_level, hazard_protection_, default_rp,
-                   is_local_welfare=True, return_stats=True):
+                   is_local_welfare=True, return_stats=True):#, long_term_horizon_=None):
     # generate output df
     out = pd.DataFrame(index=macro_event.index)
 
@@ -455,7 +479,7 @@ def prepare_output(macro, macro_event, cat_info_event_iah, econ_scope, event_lev
     out = pd.concat((macro, out), axis=1)
 
     # computes socio-economic capacity and risk at economy level
-    out = calc_risk_and_resilience_from_k_w(df=out, is_local_welfare=is_local_welfare)
+    out = calc_risk_and_resilience_from_k_w(df=out, is_local_welfare=is_local_welfare)#, long_term_horizon_=long_term_horizon_)
 
     return out
 
@@ -477,13 +501,27 @@ def calc_delta_welfare(micro, macro):
     return dw
 
 
-def welf(c, elast):
+def welf(c, elast, marginal=False):
     """"Welfare function"""
-    y = (c ** (1 - elast) - 1) / (1 - elast)
+    if not marginal:
+        y = (c ** (1 - elast) - 1) / (1 - elast)
+    else:
+        y = c ** (-elast)
     return y
 
 
-def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
+def discounted_w_of_t(t_, c_baseline_, delta_c_, elast, rho, marginal=False):
+    return welf(c_baseline_ - delta_c_, elast, marginal) * np.exp(-rho * t_)
+
+
+def calc_delta_welfare_discounted(c_0, delta_c, rho, eta, t_max):
+    """Computes discounted welfare loss from consumption before (c_0) and after (delta_c) event"""
+    w_baseline = integrate.quad(discounted_w_of_t, args=(c_0, 0, eta, rho), a=0, b=t_max)[0]
+    w_disaster = integrate.quad(discounted_w_of_t, args=(c_0, delta_c, eta, rho), a=0, b=t_max)[0]
+    return w_baseline - w_disaster
+
+
+def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):#, long_term_horizon_=None):
     """Computes risk and resilience from dk, dw and protection.
     Line by line: multiple return periods or hazard is transparent to this function"""
     df = df.copy()
@@ -491,6 +529,7 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
     # Expressing welfare losses in currency
     # discount rate
 
+    # TODO: changed the definition of w_prime according to PHL paper
     # linearly approximated derivative of welfare with respect to NPV of future consumption
     # NO LONGER USING NPV OF FUTURE CONSUMPTION WITH THE MODEL UPDATE!
     # rho = df["rho"]
@@ -506,9 +545,12 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):
     else:
         w_prime = df["gdp_pc_pp_nat"]**(-df["income_elasticity_eta"])
 
-    # TODO: @Bramka why? assuming that in the reference case, capital loss equals consumption loss? The paper
-    #  states that this would be the case for \mu = \rho
     d_w_ref = w_prime * df["dk"]
+
+    # if long_term_horizon_ is None:
+    #     d_w_ref = w_prime * df["dk"]
+    # else:
+    #     d_w_ref = df.apply(lambda x: calc_delta_welfare_discounted(x['gdp_pc_pp'], x['dk'], x['rho'], x['income_elasticity_eta'], long_term_horizon_), axis=1)
 
     # expected welfare loss (per family and total)
     # TODO: @Bramka why does division by w prime result in a currency value?
