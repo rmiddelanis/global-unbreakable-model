@@ -14,6 +14,8 @@ from lib import get_country_name_dicts, df_to_iso3
 
 from plotting import plot_map
 
+from wb_api_wrapper import get_wb_mrv
+
 
 # TODO: Note: compute_recovery_duration does not use the adjusted vulnerability. However, adjusted vulnerability is
 #  hazard specific, so it cannot be used for computing recovery duration.
@@ -672,8 +674,31 @@ def load_credit_ratings(tradingecon_ratings_path="credit_ratings/2023-12-13_trad
     return ratings.rating
 
 
-# def calc_delta_tax_pub():
-
+def load_disaster_preparedness_data(include_hfa_data=True, guess_missing_countries=True,
+                                    income_groups_file="WB_country_classification/country_classification.xlsx"):
+    disaster_preparedness_ = load_wrp_data("WRP/lrf_wrp_2021_full_data.csv.zip", root_dir,
+                                           plot_coverage_map=True)
+    if include_hfa_data:
+        # read HFA data
+        hfa_data = load_hfa_data()
+        # merge HFA and WRP data: mean of the two data sets where both are available
+        disaster_preparedness_['ew'] = pd.concat((hfa_data['ew'], disaster_preparedness_['ew']), axis=1).mean(axis=1)
+        disaster_preparedness_['prepare_scaleup'] = pd.concat(
+            (hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1
+        ).mean(axis=1)
+        disaster_preparedness_ = pd.merge(disaster_preparedness_, hfa_data.finance_pre, left_index=True, right_index=True, how='outer')
+    if guess_missing_countries:
+        income_groups = load_input_data(root_dir, income_groups_file, header=0)[["Code", "Region", "Income group"]]
+        income_groups = income_groups.dropna().rename({'Code': 'iso3'}, axis=1)
+        income_groups = income_groups.set_index('iso3').squeeze()
+        income_groups.loc['VEN'] = ['Latin America & Caribbean', 'Upper middle income']
+        print("Manually setting region and income group for VEN to 'LAC' and 'UM'.")
+        merged = pd.merge(disaster_preparedness_, income_groups, left_index=True, right_index=True, how='outer')
+        fill_values = merged.groupby(['Region', 'Income group']).mean()
+        fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Income group').mean())
+        merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Income group'])] if not x[['Region', 'Income group']].isna().any() else x, axis=1))
+        disaster_preparedness_ = merged[['prepare_scaleup', 'ew', 'finance_pre']]
+    return disaster_preparedness_.dropna()
 
 
 if __name__ == '__main__':
@@ -751,22 +776,15 @@ if __name__ == '__main__':
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
-    # read HFA data
-    # hfa_data = load_hfa_data()
-    # TODO: WRP data contains about 30 countries less than HFA data
-    wrp_data = load_wrp_data("WRP/lrf_wrp_2021_full_data.csv.zip", root_dir, plot_coverage_map=True)
-
-    # merge HFA and WRP data: take the mean of the two data sets where both are available (i.e., ew + prepare_scaleup)
-    disaster_preparedness = wrp_data.copy()
-    # disaster_preparedness['ew'] = pd.concat((hfa_data['ew'], wrp_data['ew']), axis=1).mean(axis=1)
-    # disaster_preparedness['prepare_scaleup'] = pd.concat((hfa_data['prepare_scaleup'], wrp_data['prepare_scaleup']), axis=1).mean(axis=1)
+    disaster_preparedness = load_disaster_preparedness_data(include_hfa_data=True, guess_missing_countries=True)
 
     # read credit ratings
     credit_ratings = load_credit_ratings(plot_coverage_map=True)
 
     # compute country borrowing ability
-    # borrowing_ability = compute_borrowing_ability(credit_ratings, disaster_preparedness.finance_pre)
-    borrowing_ability = compute_borrowing_ability(credit_ratings, plot_coverage_map=True)
+    borrowing_ability = compute_borrowing_ability(credit_ratings, disaster_preparedness.finance_pre,
+                                                  plot_coverage_map=True)
+    # borrowing_ability = compute_borrowing_ability(credit_ratings, plot_coverage_map=True)
 
     # load average productivity of capital
     avg_prod_k = gather_capital_data(root_dir, plot_coverage_map=True).avg_prod_k
@@ -835,8 +853,6 @@ if __name__ == '__main__':
 
     reconstruction_share_sigma = calc_reconstruction_share_sigma(reconstruction_capital_=reconstruction_capital)
 
-    delta_tax_pub = calc_delta_tax_pub()
-
     macro = wb_data_macro
     macro = macro.join(disaster_preparedness, how='left')
     macro = macro.join(borrowing_ability, how='left')
@@ -873,7 +889,7 @@ if __name__ == '__main__':
     # TODO: check that different policies still work
     # for pol_str, pol_opt in [[None, None], ['bbb_complete', 1], ['borrow_abi', 2], ['unif_poor', None], ['bbb_incl', 1],
     #                          ['bbb_fast', 1], ['bbb_fast', 2], ['bbb_fast', 4], ['bbb_fast', 5], ['bbb_50yrstand', 1]]:
-    for pol_name, pol_opt in [[None, None], ['reduce_poor_exposure', 0.05]]:
+    for pol_name, pol_opt in [[None, None], ['reduce_poor_exposure', 0.05], ['no_liquidity', None]]:
         # apply policy
         scenario_macro, scenario_cat_info, scenario_hazard_ratios, pol_name, pol_desc = apply_policy(
             macro_=macro.copy(deep=True),
