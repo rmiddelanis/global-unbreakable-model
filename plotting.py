@@ -1,3 +1,4 @@
+import argparse
 import itertools
 
 import matplotlib.pyplot as plt
@@ -98,7 +99,7 @@ def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap=
 
 
 def plot_scatter(data, x_vars, y_vars, exclude_countries=None, reg_degrees=None, name_dict=None, outfile=None,
-                 xlim=None, ylim=None, plot_unit_line=False):
+                 xlim=None, ylim=None, plot_unit_line=False, annotate=None):
     if isinstance(data, str):
         data = pd.read_csv(data)
     elif not isinstance(data, pd.DataFrame):
@@ -141,7 +142,17 @@ def plot_scatter(data, x_vars, y_vars, exclude_countries=None, reg_degrees=None,
         axs = [axs]
 
     for x_var, y_var, ax, reg_degree in zip(x_vars, y_vars, axs, reg_degrees):
-        ax.scatter(data[x_var], data[y_var])
+        data_ = data.dropna(subset=[x_var, y_var])
+        ax.scatter(data_[x_var], data_[y_var], alpha=.65, lw=0)
+        if annotate:
+            if annotate == 'all':
+                for i, row in data_[['iso3']].iterrows():
+                    txt = row.iso3
+                    ax.annotate(txt, (data_[x_var].loc[i], data_[y_var].loc[i]))
+            else:
+                for i, row in data_[data_.iso3.isin(annotate)][['iso3']].iterrows():
+                    txt = row.iso3
+                    ax.annotate(txt, (data_.loc[i, x_var], data_.loc[i, y_var]))
 
         if reg_degree:
             if isinstance(reg_degree, str):
@@ -151,21 +162,22 @@ def plot_scatter(data, x_vars, y_vars, exclude_countries=None, reg_degrees=None,
 
             for d_idx, (degree, color) in enumerate(zip(reg_degree, ['red', 'blue', 'green', 'orange', 'purple'])):
                 # Fit a polynomial to the data
-                p = polyfit(data[x_var], data[y_var], degree)
-                x_line = np.linspace(min(data[x_var]), max(data[x_var]), 100)
+                p = polyfit(data_[x_var], data_[y_var], degree)
+                x_line = np.linspace(min(data_[x_var]), max(data_[x_var]), 100)
                 y_line = polyval(x_line, p)
                 ax.plot(x_line, y_line, color=color)
 
                 # Calculate the R-squared value
-                y_pred = polyval(data[x_var], p)
-                r_squared = r2_score(data[y_var], y_pred)
+                y_pred = polyval(data_[x_var], p)
+                r_squared = r2_score(data_[y_var], y_pred)
                 ax.text(0.1, 0.9 - .05 * d_idx, r'$R^2 = $ {:.3f}'.format(r_squared), transform=ax.transAxes,
                         color=color)
 
         format_axis(ax, x_name=x_var, y_name=y_var, name_mapping=name_dict, xlim=xlim.get(x_var), ylim=ylim.get(y_var))
 
         if plot_unit_line:
-            ax.axline([0, 0], slope=1, ls='--', c='k', lw=.5)
+            ax.axline([0, 0], slope=1, ls='--', c='k', lw=.5, label='y=x')
+            ax.legend()
 
     plt.tight_layout()
     if outfile:
@@ -173,15 +185,15 @@ def plot_scatter(data, x_vars, y_vars, exclude_countries=None, reg_degrees=None,
     plt.show(block=False)
 
 
-def plot_hbar(data_path, variables, comparison_data_path=None, norm=None, how='abs', head=15, outfile=None,
+def plot_hbar(data, variables, comparison_data=None, norm=None, how='abs', head=15, outfile=None,
               name_dict=None, unit=None, precision=None):
     if isinstance(variables, str):
         variables = [variables]
     if precision is None:
         precision = 2
-    data = pd.read_csv(data_path)
-    if comparison_data_path is not None:
-        comparison_data = pd.read_csv(comparison_data_path)
+    # data = pd.read_csv(data_path)
+    if comparison_data is not None:
+        # comparison_data = pd.read_csv(comparison_data_path)
         data = pd.merge(data, comparison_data, on='iso3', suffixes=('', '_comp'))
         for variable in variables:
             if how == 'abs':
@@ -208,10 +220,10 @@ def plot_hbar(data_path, variables, comparison_data_path=None, norm=None, how='a
 
     if unit == 'millions':
         data[variables] = data[variables] / 1e6
-        xlabel = f'{xlabel} (millions USD)'
+        xlabel = f'{xlabel} (m USD)'
     elif unit == 'billions':
         data[variables] = data[variables] / 1e9
-        xlabel = f'{xlabel} (billions USD)'
+        xlabel = f'{xlabel} (bn USD)'
 
     fig, ax = plt.subplots(1, 1, figsize=(4, 6))
     bars = data[variables[::-1]].rename(columns=name_dict).plot(kind='barh', ax=ax, legend=False, width=.8)
@@ -265,9 +277,48 @@ def fancy_scatter_matrix(data, reg_degree=1):
     plt.show(block=False)
 
 
+def plot_liqudity_impact_scatter(with_liquidity, without_liquidity, outfile=None):
+    if isinstance(with_liquidity, str):
+        with_liquidity = pd.read_csv(with_liquidity)
+    if isinstance(without_liquidity, str):
+        without_liquidity = pd.read_csv(without_liquidity)
+    fig, ax = plt.subplots()
+    ax.scatter(without_liquidity.resilience, with_liquidity.resilience, s=without_liquidity.gdp_pc_pp / 800, lw=0,
+               alpha=0.45, label='GDP per capita')
+    x_lim, y_lim = ax.get_xlim(), ax.get_ylim()
+    ax.axline([0, 0], slope=1, ls='--', c='k', label='y=x', alpha=0.5)
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+    ax.set_xlabel('Resilience without liquid savings')
+    ax.set_ylabel('Resilience with liquid savings')
+    ax.set_title('The impact of liquid savings on resilience')
+    ax.legend()
+    plt.tight_layout()
+    plt.show(block=False)
+    if outfile:
+        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+
+
 if __name__ == '__main__':
-    results_path = './output/scenarios/baseline/results_tax_unif_poor.csv'
-    pov_reduction_results_path = "./output/scenarios/reduce_poor_exposure/results_tax_unif_poor.csv"
+    parser = argparse.ArgumentParser(description='Script parameters')
+    parser.add_argument('--baseline_path', type=str, default='')
+    parser.add_argument('--pov_reduction_results_path', type=str, default='')
+    parser.add_argument('--no_liquidity_path', type=str, default='')
+    args = parser.parse_args()
+
+    baseline_data = pd.read_csv('./output/scenarios/baseline/results_tax_unif_poor.csv')
+    pov_reduction_results_data = pd.read_csv("./output/scenarios/reduce_poor_exposure/results_tax_unif_poor.csv")
+    no_liquidity_data = pd.read_csv("./output/scenarios/no_liquidity/results_tax_unif_poor.csv")
+
+    if args.baseline_path != '':
+        baseline_data = pd.read_csv(args.baseline_path + "/results_tax_unif_poor.csv")
+    if args.pov_reduction_results_path != '':
+        pov_reduction_results_data = pd.read_csv(args.pov_reduction_results_path + "/results_tax_unif_poor.csv")
+    if args.no_liquidity_path != '':
+        no_liquidity_data = pd.read_csv(args.no_liquidity_path + "/results_tax_unif_poor.csv")
+
+    for d in [baseline_data, pov_reduction_results_data, no_liquidity_data]:
+        d[['resilience', 'risk', 'risk_to_assets']] *= 100
     name_dict = {
         'resilience': 'socio-economic resilience (%)',
         'risk': 'risk to well-being (% of GDP)',
@@ -278,7 +329,7 @@ if __name__ == '__main__':
     }
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts("./")
     plot_map(
-        data=results_path,
+        data=baseline_data,
         variables=['resilience', 'risk', 'risk_to_assets'],
         # bins_list={'resilience': [25, 51, 59, 65, 72, 81], 'risk': [.3, .5, .8, 1.5, 6.55],
         #            'risk_to_assets': [.2, .3, .5, .9, 4.5]},
@@ -287,17 +338,24 @@ if __name__ == '__main__':
         outfile="./figures/resilience-wellbeing_risk-asset_risk_map.pdf",
     )
     plot_scatter(
-        data=results_path,
+        data=baseline_data,
         x_vars=['gdp_pc_pp', 'gdp_pc_pp', 'gdp_pc_pp'],
         y_vars=['resilience', 'risk', 'risk_to_assets'],
         reg_degrees={'resilience': [1, 2], 'risk': [1, 2], 'risk_to_assets': [1, 2]},
         name_dict=name_dict,
-        ylim={'resilience': (0, .65)},
+        # ylim={'resilience': (0, .65)},
         outfile="./figures/GDP_vs-resilience-wellbeing_risk-asset_risk_scatter.pdf",
+        annotate=['HTI', 'LAO', 'HND', 'TJK', 'GRC', 'MMR', 'URK', 'ECU', 'BTN', 'IRL', 'LUX', 'UKR', 'IRN', 'GEO'],
+        # annotate='all',
+    )
+    plot_liqudity_impact_scatter(
+        with_liquidity=baseline_data,
+        without_liquidity=no_liquidity_data,
+        outfile="./figures/liquidity_impact_on_resilience_scatter.pdf",
     )
     plot_hbar(
-        data_path=results_path,
-        comparison_data_path=pov_reduction_results_path,
+        data=baseline_data,
+        comparison_data=pov_reduction_results_data,
         variables=["dWtot_currency", "dk_tot"],
         how='abs',
         unit='millions',
@@ -306,16 +364,16 @@ if __name__ == '__main__':
         outfile="./figures/dW-dk_comparison_abs.pdf",
     )
     plot_hbar(
-        data_path=results_path,
-        comparison_data_path=pov_reduction_results_path,
+        data=baseline_data,
+        comparison_data=pov_reduction_results_data,
         variables=["dWtot_currency", "dk_tot"],
         how='rel',
         name_dict=name_dict,
         outfile="./figures/dW-dk_comparison_rel.pdf",
     )
     plot_hbar(
-        data_path=results_path,
-        comparison_data_path=None,
+        data=baseline_data,
+        comparison_data=None,
         variables=["dWtot_currency", "dk_tot"],
         unit='billions',
         precision=0,
@@ -323,21 +381,24 @@ if __name__ == '__main__':
         outfile="./figures/dW-dk_abs.pdf",
     )
     plot_hbar(
-        data_path=results_path,
-        comparison_data_path=None,
+        data=baseline_data,
+        comparison_data=None,
         variables=["dWtot_currency", "dk_tot"],
         norm='GDP',
         name_dict=name_dict,
         outfile="./figures/dW-dk_GDP_rel.pdf",
     )
     old_results_path = "./__legacy_structure/output/original_output/results_tax_unif_poor_.csv"
-    old_new_data = pd.merge(pd.read_csv(results_path).set_index('iso3'),
-                            df_to_iso3(pd.read_csv(old_results_path), 'country').set_index('iso3'),
+    old_results_data = pd.read_csv(old_results_path)
+    old_results_data[['resilience', 'risk', 'risk_to_assets']] *= 100
+    old_new_data = pd.merge(baseline_data.set_index('iso3'),
+                            df_to_iso3(old_results_data, 'country').set_index('iso3'),
                             left_index=True, right_index=True, suffixes=('_new', '_old'))
     plot_scatter(
-        data=old_new_data,
+        data=old_new_data.reset_index(),
         x_vars=['resilience_old', 'risk_old', 'risk_to_assets_old'],
         y_vars=['resilience_new', 'risk_new', 'risk_to_assets_new'],
         outfile="./figures/old_new_comparison.pdf",
         plot_unit_line=True,
+        annotate='all',
     )
