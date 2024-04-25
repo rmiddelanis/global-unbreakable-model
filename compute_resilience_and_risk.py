@@ -4,6 +4,7 @@ from lib_compute_resilience_and_risk import *
 import os
 import warnings
 import pandas as pd
+import time
 
 warnings.filterwarnings("always", category=UserWarning)
 
@@ -12,6 +13,7 @@ if __name__ == '__main__':
     parser.add_argument('--scenarios', type=str, default='baseline', help='Scenarios')
     parser.add_argument('--option_fee', type=str, default='tax', help='Fee option to fund PDS.')
     parser.add_argument('--option_pds', type=str, default='unif_poor', help='PDS option.')
+    parser.add_argument('--simulation_name', type=str, default='', help='Name of the simluation.')
     # parser.add_argument('--discount_long_term', action='store_true', help='Discount long term welfare losses')
     # parser.add_argument('--long_term_horizon', type=float, default=30,
     #                     help='Horizon for long-term welfare losses. Only if discount_long_term is True.')
@@ -83,11 +85,6 @@ if __name__ == '__main__':
             event_level=event_level,
         )
 
-        # TODO: remove this later; only for testing purposes
-        # macro_event = macro_event.loc[['MOZ', 'BGD', 'ISL']]
-        # cat_info_event = cat_info_event.loc[['MOZ', 'BGD', 'ISL']]
-        # cat_info_event['liquidity'] = 0
-
         # calculate the potential damage to capital, and consumption
         # adds 'dk', 'dc', 'dc_npv_pre' to cat_info_event_ia, also adds aggregated 'dk' to macro_event
         macro_event, cat_info_event_ia = compute_dK(
@@ -110,7 +107,7 @@ if __name__ == '__main__':
             option_t=option_t,
             option_pds=option_pds,
             option_b=option_b,
-            loss_measure="dk",
+            loss_measure="dk_reco",
             fraction_inside=1,
             share_insured=.25,
         )
@@ -147,17 +144,22 @@ if __name__ == '__main__':
             # long_term_horizon_=long_term_horizon,
         )
 
-        if not os.path.exists(f'output/scenarios/{scenario}'):
-            os.makedirs(f'output/scenarios/{scenario}')
+        date_time_string = time.strftime("%Y-%m-%d_%H-%M_")
+        folder_name = f'output/scenarios/{date_time_string + scenario}'
+        if args.simulation_name != '':
+            folder_name = folder_name = folder_name + f'_{args.simulation_name}'
+
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
 
         # save macro_event
-        macro_event.to_csv(f'output/scenarios/{scenario}/macro_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
+        macro_event.to_csv(folder_name + '/macro_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
                            header=True)
 
         # save cat_info_event_iah
-        cat_info_event_iah.to_csv(f'output/scenarios/{scenario}/iah_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
+        cat_info_event_iah.to_csv(folder_name + '/iah_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
                                   header=True)
 
         # Save results
-        results.to_csv(f'output/scenarios/{scenario}/results_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
+        results.to_csv(folder_name + '/results_' + option_fee + '_' + option_pds + '.csv', encoding="utf-8",
                        header=True)

@@ -612,37 +612,37 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
 
 
     # determine the used savings
-    dt = 1 / 365
-    t_ = np.arange(0, capital_t_ + dt, dt)
-    d_savings_pds = delta_c_h_of_t(t_=t_, productivity_pi_=productivity_pi_, delta_tax_sp_=delta_tax_sp_,
-                                   delta_k_h_eff_=delta_k_h_eff_, lambda_h_=lambda_h_, sigma_h_=sigma_h_,
-                                   savings_s_h_=savings_s_h_, delta_i_h_pds_=delta_i_h_pds_,
-                                   delta_c_h_max_=delta_c_h_max_, recovery_params_=recovery_params_,
-                                   social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-                                   return_elements=True)[3]
-    used_liquidity = integrate.trapz(d_savings_pds, t_)
+    # dt = 1 / 365
+    # t_ = np.arange(0, capital_t_ + dt, dt)
+    # d_savings_pds = delta_c_h_of_t(t_=t_, productivity_pi_=productivity_pi_, delta_tax_sp_=delta_tax_sp_,
+    #                                delta_k_h_eff_=delta_k_h_eff_, lambda_h_=lambda_h_, sigma_h_=sigma_h_,
+    #                                savings_s_h_=savings_s_h_, delta_i_h_pds_=delta_i_h_pds_,
+    #                                delta_c_h_max_=delta_c_h_max_, recovery_params_=recovery_params_,
+    #                                social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+    #                                return_elements=True)[3]
+    # used_liquidity = integrate.trapz(d_savings_pds, t_)
 
-    # def used_liquidity_func(t_):
-    #     return delta_c_h_of_t(
-    #         t_=t_,
-    #         productivity_pi_=productivity_pi_,
-    #         delta_tax_sp_=delta_tax_sp_,
-    #         delta_k_h_eff_=delta_k_h_eff_,
-    #         lambda_h_=lambda_h_,
-    #         sigma_h_=sigma_h_,
-    #         savings_s_h_=savings_s_h_,
-    #         delta_i_h_pds_=delta_i_h_pds_,
-    #         delta_c_h_max_=delta_c_h_max_,
-    #         recovery_params_=recovery_params_,
-    #         social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-    #         return_elements=True,
-    #         consumption_floor_xi_=consumption_floor_xi_,
-    #         t_hat=t_hat,
-    #         t_tilde=t_tilde,
-    #         delta_tilde_k_h_eff=delta_tilde_k_h_eff,
-    #         consumption_offset=consumption_offset,
-    #     )[3]
-    # used_liquidity = integrate.quad(used_liquidity_func, 0, capital_t_, limit=50)[0]
+    def used_liquidity_func(t_):
+        return delta_c_h_of_t(
+            t_=t_,
+            productivity_pi_=productivity_pi_,
+            delta_tax_sp_=delta_tax_sp_,
+            delta_k_h_eff_=delta_k_h_eff_,
+            lambda_h_=lambda_h_,
+            sigma_h_=sigma_h_,
+            savings_s_h_=savings_s_h_,
+            delta_i_h_pds_=delta_i_h_pds_,
+            delta_c_h_max_=delta_c_h_max_,
+            recovery_params_=recovery_params_,
+            social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+            return_elements=True,
+            consumption_floor_xi_=consumption_floor_xi_,
+            t_hat=t_hat,
+            t_tilde=t_tilde,
+            delta_tilde_k_h_eff=delta_tilde_k_h_eff,
+            consumption_offset=consumption_offset,
+        )[3]
+    used_liquidity = integrate.quad(used_liquidity_func, 0, capital_t_, limit=50)[0]
 
     w_baseline = aggregate_welfare_w_of_c_of_capital_t(
         capital_t_=capital_t_,
@@ -977,7 +977,6 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
             min_lambda_ = max(min_lambda_, lambda_full_offset)
             # print("min_lambda_ adjusted to:", min_lambda_)
 
-
     init_candidates = np.linspace(min_lambda_ + .2 * (max_lambda_ - min_lambda_),
                                   max_lambda_ - .2 * (max_lambda_ - min_lambda_), 10)
     best_lambda_init = None
@@ -1045,7 +1044,6 @@ def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
         print(f"Error in row {index}: {e}")
         raise e
     return index, res[0]
-
 
 
 def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6):

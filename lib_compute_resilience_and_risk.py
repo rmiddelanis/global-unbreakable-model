@@ -54,6 +54,7 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
 
     # capital losses and total capital losses
     cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
+    cat_info_event_ia["dk_reco"] = cat_info_event_ia["dk"] * macro_event_["reconstruction_share_sigma_h"]  # capital to be reconstructed at the expense of the households
 
     cat_info_event_ia.loc[pd.IndexSlice[:, :, :, :, 'na'], "dk"] = 0
     # cat_info_event_ia.loc[(cat_info_event_ia.affected_cat == 'na'), "dk"] = 0
@@ -75,7 +76,7 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
 
 
 def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats, poor_cat, option_fee="tax", option_t="data",
-                       option_pds="unif_poor", option_b="data", loss_measure="dk", fraction_inside=1,
+                       option_pds="unif_poor", option_b="data", loss_measure="dk_reco", fraction_inside=1,
                        share_insured=.25):
     cat_info_event_iah = concat_categories(cat_info_event_ia, cat_info_event_ia, index=helped_cats)
     # cat_info_event_iah = cat_info_event_iah.reset_index(['income_cat', 'affected_cat', 'helped_cat']).sort_index()
@@ -101,7 +102,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
     else:
         # compute post disaster response with default PDS from data ONLY
         m__, c__ = compute_response(macro_event, cat_info_event_iah, event_level, poor_cat=poor_cat, option_t="data", option_pds="unif_poor",
-                                    option_b="data", option_fee="tax", fraction_inside=1, loss_measure="dk")
+                                    option_b="data", option_fee="tax", fraction_inside=1, loss_measure="dk_reco")
         # change column name helped_cat to has_received_help_from_PDS_cat
         c__h = c__.rename(columns=dict(helped_cat="has_received_help_from_PDS_cat"))
 
@@ -120,7 +121,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
 
 
 def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, option_t="data", option_pds="unif_poor", option_b="data",
-                     option_fee="tax", fraction_inside=1, loss_measure="dk"):
+                     option_fee="tax", fraction_inside=1, loss_measure="dk_reco"):
 
     """Computes aid received,  aid fee, and other stuff, from losses and PDS options on targeting, financing,
     and dimensioning of the help. Returns copies of macro_event and cats_event_iah updated with stuff.
@@ -155,6 +156,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
         macro_event_["error_incl"] = 0
         macro_event_["error_excl"] = 1 - 25 / 80  # 25% of pop chosen among top 80 DO receive the aid
     elif option_t == "data":
+        # TODO: inclusion error can become negative, which results in negative n!!!
         macro_event_["error_incl"] = ((1 - macro_event_["prepare_scaleup"]) / 2 * macro_event_["fa"]
                                       / (1 - macro_event_["fa"]))  # as in equation 16 of the paper
         macro_event_["error_excl"] = (1 - macro_event_["prepare_scaleup"]) / 2  # as in equation 16 of the paper
@@ -425,11 +427,10 @@ def compute_dw_new(cat_info_event_iah, macro_event, event_level_, capital_t=50, 
         capital_t=capital_t,
         delta_c_h_max=delta_c_h_max,
     )
-    failed_optimizations = cat_info_event_iah_[cat_info_event_iah_['lambda_h'].isna()].xs('a', level='affected_cat').index.droplevel(['rp', 'helped_cat', 'income_cat']).unique()
-    if len(failed_optimizations) > 0:
+    if cat_info_event_iah_.xs('a', level='affected_cat').lambda_h.isna().any():
+        failed_optimizations = cat_info_event_iah_[cat_info_event_iah_['lambda_h'].isna()].xs('a', level='affected_cat').index.droplevel(['rp', 'helped_cat', 'income_cat']).unique()
         print(f"Failed to optimize recovery rates for {failed_optimizations}. Dropping entries.")
         cat_info_event_iah_ = cat_info_event_iah_.drop(failed_optimizations)
-
 
     # compute the welfare losses from destroyed assets, decreased transfers, and reconstruction
     cat_info_event_iah_ = compute_dw_reco_and_used_savings(cat_info_event_iah_, macro_event, event_level_, capital_t,

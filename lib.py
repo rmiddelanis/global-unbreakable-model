@@ -55,7 +55,7 @@ def get_country_name_dicts(root_dir):
     return any_to_wb, iso3_to_wb, iso2_iso3
 
 
-def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
+def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
     if 'iso3' in df_:
         raise Exception("iso3 column already exists")
 
@@ -63,21 +63,28 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
         # hard coded country names:
         hard_coded = {
             'congo, dem. rep.': 'COD',
+            'congo, democratic republic': 'COD',
             'democratic republic of the congo': 'COD',
             'congo, rep.': 'COG',
             'congo brazzaville': 'COG',
             'congo, republic of the': 'COG',
             'cape verde': 'CPV',
+            'côte d’ivoire': 'CIV',
+            'côte d\'ivoire': 'CIV',
             'hong kong sar, china': 'HKG',
             'china, hong kong special administrative region': 'HKG',
             'hong kong, china': 'HKG',
             'macao sar, china': 'MAC',
             'china, macao special administrative region': 'MAC',
             'macau, china': 'MAC',
+            'macao, china': 'MAC',
+            'taiwan, china': 'TWN',
             'korea, rep.': 'KOR',
+            'republic of korea': 'KOR',
             'korea, south': 'KOR',
             "korea, dem. people's rep.": 'PRK',
             'korea, dem. rep.': 'PRK',
+            'korea (the democratic people\'s republic of)': 'PRK',
             'st. vincent and the grenadines': 'VCT',
             'st. vincent ': 'VCT',
             'swaziland': 'SWZ',
@@ -150,6 +157,6 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=False):
 
     df = df_.copy()
     df['iso3'] = df[column_name_].apply(lambda x: get_iso3(x))
-    if df.iso3.isna().any():
+    if df.iso3.isna().any() and verbose_:
         print(f"Warning: ISO3 could not be found for {len(df[df.iso3.isna()].country.unique())} countries.")
     return df

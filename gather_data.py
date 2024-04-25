@@ -168,8 +168,8 @@ def load_liquidity(force_recompute_=False, write_output_=True):
 
 def calc_reconstruction_share_sigma(imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
                                     reconstruction_capital_='prv',
-                                    # labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_unstats_labor_share_of_gdp.xlsx"):
-                                    labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_Ourworldindata_labor-share-of-gdp.csv"):
+                                    labor_share_data_file="ILO_labor_share_of_GDP/LAP_2GDP_NOC_RT_A-filtered-2024-04-23.csv"):
+                                    # labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_Ourworldindata_labor-share-of-gdp.csv"):
     imf_data = load_input_data(root_dir, imf_capital_data_file, sheet_name='Dataset')
     imf_data = imf_data.rename(columns={'isocode': 'iso3'}).set_index(['iso3'])[['year', 'kgov_n', 'kpriv_n', 'kppp_n']]
     imf_data['kpub_n'] = imf_data[['kgov_n', 'kppp_n']].sum(axis=1, skipna=True)
@@ -178,55 +178,94 @@ def calc_reconstruction_share_sigma(imf_capital_data_file="IMF_capital/IMFInvest
     imf_data = imf_data.iloc[imf_data.reset_index().groupby('iso3').year.idxmax()].drop('year', axis=1)
     imf_data['k_pub_share_kappa'] = imf_data['kpub_n'] / (imf_data['knonpub_n'] + imf_data['kpub_n'])
 
-    if "2024-04-10_unstats_labor_share_of_gdp.xlsx" in labor_share_data_file:
-        labor_share_of_gdp = load_input_data(root_dir, labor_share_data_file, sheet_name=1)
-        labor_share_of_gdp = labor_share_of_gdp.rename(columns={'GeoAreaName': 'country', 'Value': 'SL_EMP_GTOTL',
-                                                                'Time_Detail': 'year'})
-        labor_share_of_gdp = labor_share_of_gdp[['country', 'year', 'SL_EMP_GTOTL']]
-        labor_share_of_gdp.replace('Netherlands (Kingdom of the)', 'Netherlands', inplace=True)
-    elif "2024-04-10_Ourworldindata_labor-share-of-gdp.csv" in labor_share_data_file:
-        labor_share_of_gdp = load_input_data(root_dir, labor_share_data_file)
-        labor_share_of_gdp = labor_share_of_gdp.rename(
-            columns={'Code': 'iso3', '10.4.1 - Labour share of GDP (%) - SL_EMP_GTOTL': 'SL_EMP_GTOTL',
-                     'Entity': 'country', 'Year': 'year'}
-        )[['country', 'year', 'SL_EMP_GTOTL']]
-    else:
-        raise ValueError(f"Unknown labor_share_data_file: {labor_share_data_file}")
+    # if "2024-04-10_unstats_labor_share_of_gdp.xlsx" in labor_share_data_file:
+    #     labor_share_of_gdp = load_input_data(root_dir, labor_share_data_file, sheet_name=1)
+    #     labor_share_of_gdp = labor_share_of_gdp.rename(columns={'GeoAreaName': 'country', 'Value': 'SL_EMP_GTOTL',
+    #                                                             'Time_Detail': 'year'})
+    #     labor_share_of_gdp = labor_share_of_gdp[['country', 'year', 'SL_EMP_GTOTL']]
+    #     labor_share_of_gdp.replace('Netherlands (Kingdom of the)', 'Netherlands', inplace=True)
+    # elif "2024-04-10_Ourworldindata_labor-share-of-gdp.csv" in labor_share_data_file:
+    #     labor_share_of_gdp = load_input_data(root_dir, labor_share_data_file)
+    #     labor_share_of_gdp = labor_share_of_gdp.rename(
+    #         columns={'Code': 'iso3', '10.4.1 - Labour share of GDP (%) - SL_EMP_GTOTL': 'SL_EMP_GTOTL',
+    #                  'Entity': 'country', 'Year': 'year'}
+    #     )[['country', 'year', 'SL_EMP_GTOTL']]
+    # else:
+    #     raise ValueError(f"Unknown labor_share_data_file: {labor_share_data_file}")
+    # labor_share_of_gdp.SL_EMP_GTOTL = labor_share_of_gdp.SL_EMP_GTOTL / 100
+    # labor_share_of_gdp = labor_share_of_gdp.loc[labor_share_of_gdp.groupby('country').year.idxmax()]
+    # labor_share_of_gdp.replace('Democratic Republic of Congo', 'Congo, Democratic Republic of the', inplace=True)
+    # labor_share_of_gdp = labor_share_of_gdp.set_index('country')['SL_EMP_GTOTL']
 
-    labor_share_of_gdp.SL_EMP_GTOTL = labor_share_of_gdp.SL_EMP_GTOTL / 100
-    labor_share_of_gdp = labor_share_of_gdp.loc[labor_share_of_gdp.groupby('country').year.idxmax()]
-    labor_share_of_gdp.replace('Democratic Republic of Congo', 'Congo, Democratic Republic of the', inplace=True)
-    labor_share_of_gdp = labor_share_of_gdp.set_index('country')['SL_EMP_GTOTL']
+    labor_share_of_gdp = load_input_data(root_dir, labor_share_data_file)
+    labor_share_of_gdp = labor_share_of_gdp.rename({'ref_area.label': 'country'}, axis=1).set_index('country').obs_value
+    labor_share_of_gdp = labor_share_of_gdp.rename('labor_share_of_gdp') / 100
+    labor_share_of_gdp.drop(['MENA', 'Central Africa'], inplace=True)
 
     capital_share = (1 - labor_share_of_gdp).rename('capital_elasticity_alpha')
-    capital_share = df_to_iso3(capital_share.reset_index(), 'country', any_to_wb)
+    capital_share = df_to_iso3(capital_share.reset_index(), 'country', any_to_wb, verbose_=False)
     capital_share = capital_share.dropna().set_index('iso3')['capital_elasticity_alpha']
 
+    self_employment = get_wb_mrv('SL.EMP.SELF.ZS', 'self_employment') / 100
+    self_employment = df_to_iso3(self_employment.reset_index(), 'country', any_to_wb, verbose_=False).dropna(subset='iso3')
+    self_employment = self_employment.set_index('iso3').drop('country', axis=1).squeeze()
+
     capital_shares = pd.merge(capital_share, imf_data.k_pub_share_kappa, left_index=True, right_index=True, how='inner')
+    capital_shares = pd.merge(capital_shares, self_employment, left_index=True, right_index=True, how='inner')
+
     capital_shares['k_pub_share'] = capital_shares.k_pub_share_kappa
-    capital_shares['k_prv_share'] = (capital_shares.k_pub_share_kappa * (1 / capital_shares.capital_elasticity_alpha - 1))
-    capital_shares['k_oth_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_prv_share
+    # capital_shares['k_prv_share'] = (capital_shares.k_pub_share_kappa * (1 / capital_shares.capital_elasticity_alpha - 1))
+    # capital_shares['k_oth_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_prv_share
+    denominator = capital_shares.capital_elasticity_alpha + capital_shares.self_employment * (1 - capital_shares.capital_elasticity_alpha)
+    capital_shares['k_oth_share'] = capital_shares.capital_elasticity_alpha * (1 - capital_shares.k_pub_share_kappa) / denominator
+    capital_shares['k_prv_share'] = (1 - capital_shares.k_pub_share_kappa) * capital_shares.self_employment * (1 - capital_shares.capital_elasticity_alpha) / denominator
 
     # some countries have negative values for k_oth_share
-    capital_shares['k_oth_share'] = capital_shares.k_oth_share.clip(lower=0)
-    capital_shares['k_prv_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_oth_share
+    # capital_shares['k_oth_share'] = capital_shares.k_oth_share.clip(lower=0)
+    # capital_shares['k_prv_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_oth_share
 
     if reconstruction_capital_ == 'prv':
         capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share
     elif reconstruction_capital_ == 'prv_oth':
         capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share + capital_shares.k_oth_share
 
+
     # if make_plots:
-    #     for x, y in [('gdp_pc_pp', 'k_prv_share'), ('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_oth_share'),
-    #                  ('capital_elasticity_alpha', 'k_prv_share'), ('capital_elasticity_alpha', 'k_pub_share'),
-    #                  ('capital_elasticity_alpha', 'k_oth_share'), ('k_pub_share_kappa', 'k_prv_share'),
-    #                  ('k_pub_share_kappa', 'k_pub_share'), ('k_pub_share_kappa', 'k_oth_share'),
-    #                  ('k_pub_share_kappa', 'capital_elasticity_alpha'), ('gdp_pc_pp', 'recovery_share_sigma')]:
-    #         fig, ax = plt.subplots()
-    #         capital_shares.plot.scatter(x=x, y=y, marker='o', ax=ax)
+    # capital_shares *= 100
+    #     fig, axs = plt.subplots(ncols=3, figsize=(12, 4.5), sharex=True, sharey=True)
+    #     gdp = capital_shares.gdp_pc_pp / 1000
+    #     for ax, (x, y), name in zip(axs, [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_prv_share'),
+    #                                       ('gdp_pc_pp', 'k_oth_share')],
+    #                                 [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
+    #         if x == 'gdp_pc_pp':
+    #             x_ = gdp
+    #         else:
+    #             x_ = capital_shares[x]
+    #         ax.scatter(x_, capital_shares[y], marker='o')
     #         for i, label in enumerate(capital_shares.index):
-    #             plt.text(capital_shares[x][i], capital_shares[y][i], label, fontsize=10)
-    #         plt.show()
+    #             ax.text(x_[i], capital_shares[y][i], label, fontsize=10)
+    #             ax.set_xlabel('GDP per capita / $1,000')
+    #             ax.set_title(name)
+    #         axs[0].set_ylabel('share (%)')
+    #     plt.tight_layout()
+    #     plt.show(block=False);
+    #     plt.draw()
+    #
+    #     fig, axs = plt.subplots(ncols=3, figsize=(12, 4.5), sharex=True, sharey=True)
+    #     for ax, (x, y), name in zip(axs, [('self_employment', 'k_pub_share'),
+    #                                       ('self_employment', 'k_prv_share'),
+    #                                       ('self_employment', 'k_oth_share')],
+    #                                 [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
+    #         x_ = capital_shares[x]
+    #         ax.scatter(x_, capital_shares[y], marker='o')
+    #         for i, label in enumerate(capital_shares.index):
+    #             ax.text(x_[i], capital_shares[y][i], label, fontsize=10)
+    #             ax.set_xlabel('self employment rate (%)')
+    #             ax.set_title(name)
+    #         axs[0].set_ylabel('share (%)')
+    #     plt.tight_layout()
+    #     plt.show(block=False)
+    #     plt.draw()
 
     return capital_shares.reconstruction_share_sigma_h
 
@@ -641,7 +680,7 @@ def load_credit_ratings(tradingecon_ratings_path="credit_ratings/2023-12-13_trad
     cia_ratings = cia_ratings[cia_ratings.country != 'European Union']
 
     # change country name to iso3
-    cia_ratings = df_to_iso3(cia_ratings, "country", any_to_wb)
+    cia_ratings = df_to_iso3(cia_ratings, "country", any_to_wb, verbose_=False)
     cia_ratings = cia_ratings.set_index(["iso3", "agency"]).drop("country", axis=1).squeeze().unstack('agency')
 
     # merge ratings
