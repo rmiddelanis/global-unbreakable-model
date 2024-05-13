@@ -28,10 +28,9 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level):
     #                           right_index=True)
     # cat_info_event = broadcast_simple(cat_info, event_level_index).reset_index().set_index(event_level + ["income_cat"])
     # cat_info_event[['fa', 'v_ew', 'macro_multiplier_Gamma']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew', 'macro_multiplier_Gamma']]
-    cat_info_event = pd.merge(hazard_ratios[['fa', 'v_ew', 'macro_multiplier_Gamma']], cat_info, left_index=True,
+    cat_info_event = pd.merge(hazard_ratios[['fa', 'v_ew']], cat_info, left_index=True,
                               right_index=True)
     cat_info_event = cat_info_event.reorder_levels(event_level + ["income_cat"]).sort_index()
-    print("pulling ['fa', 'v_ew', 'macro_multiplier_Gamma'] into cat_info_event from hazard_ratios")
 
     return macro_event, cat_info_event
 
@@ -61,16 +60,6 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
 
     # "national" losses
     macro_event_["dk_ctry"] = agg_to_event_level(cat_info_event_ia, "dk", event_level)
-
-    # TODO: can no longer use macro_multiplier_Gamma due to the inclusion of savings. Need to handle time explicitly.
-    # immediate consumption losses: direct capital losses plus losses through event-scale depression of transfers
-    cat_info_event_ia["dc"] = (
-            (1 - macro_event_["tau_tax"]) * cat_info_event_ia["dk"]
-            + cat_info_event_ia["gamma_SP"] * macro_event_["tau_tax"] * macro_event_["dk_ctry"]
-    )
-
-    # NPV consumption losses accounting for reconstruction and productivity of capital (pre-response)
-    cat_info_event_ia["dc_npv_pre"] = cat_info_event_ia[["dc", "macro_multiplier_Gamma"]].product(axis=1)
 
     return macro_event_, cat_info_event_ia
 
@@ -194,8 +183,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
     # print(cat_info_event_iah_.n.groupby(level=event_level).sum())
 
     # Step 0: define max_aid
-    macro_event_["max_aid"] = (macro_event_["max_increased_spending"] * macro_event_["borrowing_ability"]
-                               * macro_event_["gdp_pc_pp"])
+    macro_event_["max_aid"] = macro_event_["max_increased_spending"] * macro_event_["gdp_pc_pp"]
 
     if option_fee == 'insurance_premium':
         cats_event_iah_pre_pds = cat_info_event_iah_.copy()
@@ -270,9 +258,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
     # actual aid reduced by capacity
     if option_b == "data":
         # Step 3: total need (cost) for all helped hh clipped at max_aid
-        macro_event_["aid"] = (macro_event_["need"]
-                               * macro_event_["prepare_scaleup"]
-                               * macro_event_["borrowing_ability"]).clip(upper=macro_event_["max_aid"])
+        macro_event_["aid"] = macro_event_["need"].clip(upper=macro_event_["max_aid"] * macro_event_["borrowing_ability"])
     elif option_b == "unif_poor":
         macro_event_["aid"] = macro_event_["need"].clip(upper=macro_event_["max_aid"])
     elif option_b == "max01":
