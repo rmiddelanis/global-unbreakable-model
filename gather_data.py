@@ -627,9 +627,10 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
     return ratings.rating
 
 
-def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True, guess_missing_countries=True, ew_year=2018,
+def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True, guess_missing_countries=True, ew_year=2018, ew_decade=None,
                                     income_groups_file="WB_country_classification/country_classification.xlsx",
-                                    forecast_accuracy_file="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country.csv"):
+                                    forecast_accuracy_file_yearly="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_yearly.csv",
+                                    forecast_accuracy_file_decadal="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_decadal.csv"):
     disaster_preparedness_ = load_wrp_data(any_to_wb_, "WRP/lrf_wrp_2021_full_data.csv.zip", root_dir_,
                                            plot_coverage_map=True)
     if include_hfa_data:
@@ -652,10 +653,18 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Income group').mean())
         merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Income group'])] if not x[['Region', 'Income group']].isna().any() else x, axis=1))
         disaster_preparedness_ = merged[disaster_preparedness_.columns]
-    forecast_accuracy = load_input_data(root_dir_, forecast_accuracy_file, index_col=[0, 1]).squeeze()
-    if ew_year not in forecast_accuracy.index.get_level_values('year'):
-        raise ValueError(f"Forecast accuracy data not available for year {ew_year}.")
-    ew_factor = forecast_accuracy.xs(ew_year, level='year') / forecast_accuracy.xs(forecast_accuracy.index.get_level_values('year').max(), level='year')
+    if ew_year is not None and ew_decade=='':
+        forecast_accuracy = load_input_data(root_dir_, forecast_accuracy_file_yearly, index_col=[0, 1]).squeeze()
+        if ew_year not in forecast_accuracy.index.get_level_values('year'):
+            raise ValueError(f"Forecast accuracy data not available for year {ew_year}.")
+        ew_factor = forecast_accuracy.xs(ew_year, level='year') / forecast_accuracy.xs(forecast_accuracy.index.get_level_values('year').max(), level='year')
+    elif ew_year is None and ew_decade != '':
+        forecast_accuracy = load_input_data(root_dir_, forecast_accuracy_file_decadal, index_col=[0, 1]).squeeze()
+        if ew_decade not in forecast_accuracy.index.get_level_values('decade'):
+            raise ValueError(f"Forecast accuracy data not available for decade {ew_decade}.")
+        ew_factor = forecast_accuracy.xs(ew_decade, level='decade') / forecast_accuracy.xs('2011-2020', level='decade')
+    else:
+        raise ValueError("Exactly one of ew_year or ew_decade must be set.")
     disaster_preparedness_['ew'] = disaster_preparedness_['ew'] * ew_factor
     return disaster_preparedness_.dropna()
 
@@ -663,7 +672,7 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
 def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp_, reduction_vul_,
                 income_elasticity_eta_, discount_rate_rho_, shareable_, max_increased_spending_, fa_threshold_,
                 axfin_impact_, no_optimized_recovery_, default_reconstruction_time_, force_recompute_,
-                include_pov_head_, reconstruction_capital_, climate_scenario_, ew_year_, econ_scope_, event_level_,
+                include_pov_head_, reconstruction_capital_, climate_scenario_, ew_year_, ew_decade_, econ_scope_, event_level_,
                 root_dir_, input_dir_, intermediate_dir_, pol_opt_):
 
     # if the intermediate directory doesn't exist, create one
@@ -694,6 +703,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         include_hfa_data=True,
         guess_missing_countries=True,
         ew_year=ew_year_,
+        ew_decade=ew_decade_,
     )
 
     # read credit ratings
@@ -820,7 +830,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
             policy_opt=pol_opt
         )
 
-        outpath = os.path.join(intermediate_dir_, 'scenarios', climate_scenario_, pol_name + f"_EW-{ew_year_}").replace(' ', '_')
+        outpath = os.path.join(intermediate_dir_, 'scenarios', climate_scenario_, pol_name + f"_EW-{ew_year_ if ew_decade_ is None else ew_decade_}").replace(' ', '_')
         if not os.path.exists(outpath):
             os.makedirs(outpath)
 
@@ -919,6 +929,7 @@ if __name__ == '__main__':
                                                                                   "by households. Options: 'prv' / "
                                                                                   "'prv_oth'.")
     parser.add_argument('--ew_year', type=int, default=2018, help='Year of early warning data')
+    parser.add_argument('--ew_decade', type=str, default='', help='Decade of early warning data')
     parser.add_argument('--pol_opt', type=str, default='', help='Policy selection')
     parser.add_argument('--do_not_execute', action='store_true', help='Do not execute the script. '
                                                                       'Only load the parameters.')
@@ -943,7 +954,8 @@ if __name__ == '__main__':
             include_pov_head_=args.include_pov_head,
             reconstruction_capital_=args.reconstruction_capital,
             climate_scenario_=args.climate_scenario,
-            ew_year_=args.ew_year,
+            ew_year_=args.ew_year if args.ew_year != -1 else None,
+            ew_decade_=args.ew_decade,
             econ_scope_=args.econ_scope,
             event_level_=[args.econ_scope, "hazard", "rp"],  # levels of index at which one event happens,
             root_dir_=args.root_dir,
