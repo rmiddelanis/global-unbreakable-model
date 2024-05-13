@@ -8,7 +8,8 @@ from pandas_helper import load_input_data
 from plotting import plot_map
 
 
-def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True, plot_coverage_map=False):
+def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True, plot_coverage_map=False,
+                           climate_scenario='Existing climate'):
     """
     Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
     country, hazard, and return period. GIR data contains data for hazards Tropical cyclone, Tsunami, Flood (riverine),
@@ -61,7 +62,7 @@ def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp
     # TODO: West Sahara (ESH)
 
     # drop SSP scenarios
-    gir_data = gir_data[gir_data.climate_scenario == 'Existing climate'].drop('climate_scenario', axis=1)
+    gir_data = gir_data[gir_data.climate_scenario == climate_scenario].drop('climate_scenario', axis=1)
 
     # drop Loss exceedance curve
     gir_data = gir_data[gir_data.risk_metric_abbr.isin(['PML', 'AAL'])].drop('risk_metric', axis=1)
