@@ -469,11 +469,6 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
                       cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
                       * agg_to_economy_level(cat_info_, "k", econ_scope_))
 
-    # Calculation of macroeconomic resilience (Gamma in the technical paper)
-    # \Gamma = (\mu + 3/N) / (\rho + 3/N)
-    hazard_ratios_["macro_multiplier_Gamma"] = ((macro_["avg_prod_k"] + hazard_ratios_["recovery_rate"]) /
-                                           (macro_["rho"] + hazard_ratios_["recovery_rate"]))
-
     hazard_ratios_["v_ew"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
     hazard_ratios_.drop(['ew', 'v'], inplace=True, axis=1)
 
