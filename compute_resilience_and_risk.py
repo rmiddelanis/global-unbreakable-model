@@ -9,7 +9,7 @@ import time
 warnings.filterwarnings("always", category=UserWarning)
 
 
-def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation_name_, exclude_hazards_):
+def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation_name_, exclude_hazards_, countries_):
     print(scenario_)
     print(f'optionFee ={option_fee_}, optionPDS ={option_pds_}, optionB ={option_b}, optionT ={option_t}')
 
@@ -22,7 +22,6 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
     poor_cat = 'q1'
 
     # read data
-
     # macro-economic country economic data
     macro = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', climate_scenario_, scenario_, "scenario__macro.csv"),
                         index_col=econ_scope)
@@ -46,8 +45,12 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         hazard_protection = hazard_protection[
             ~hazard_protection.index.get_level_values('hazard').isin(exclude_hazards_.split('+'))]
 
-    # macro, cat_info, hazard_protection = macro.loc[['ZAF']], cat_info.loc[['ZAF']], hazard_protection.loc[['ZAF']]
-    # cat_info['liquidity'] = 0
+    if len(countries_) > 0:
+        countries = countries_.split('+')
+        macro = macro.loc[countries]
+        cat_info = cat_info.loc[countries]
+        hazard_ratios = hazard_ratios.loc[countries]
+        hazard_protection = hazard_protection.loc[countries]
 
     # compute
     # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
@@ -91,15 +94,7 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         event_level_=event_level,
         capital_t=20,
         delta_c_h_max=np.nan,
-        # long_term_horizon_=long_term_horizon,
     )
-
-    # # compute welfare losses
-    # # adds 'dc_npv_post', 'dw' to cat_info_event_iah
-    # cat_info_event_iah = compute_dW(
-    #     macro_event=macro_event,
-    #     cat_info_event_iah_=cat_info_event_iah,
-    # )
 
     # aggregate to event-level (ie no more income_cat, helped_cat, affected_cat, n)
     # Computes results
@@ -145,6 +140,7 @@ if __name__ == '__main__':
     parser.add_argument('--climate_scenario', type=str, help='Climate scenario from CDRI GIRI report.')
     parser.add_argument('--scenarios', type=str, default='baselineEW-2018', help='Scenarios')
     parser.add_argument('--option_fee', type=str, default='tax', help='Fee option to fund PDS.')
+    parser.add_argument('--countries', type=str, default='', help='Select countries for the analysis. Use + to separate countries. If empty, all countries are selected.')
     parser.add_argument('--option_pds', type=str, default='unif_poor', help='PDS option.')
     parser.add_argument('--simulation_name', type=str, default='', help='Name of the simluation.')
     parser.add_argument('--exclude_hazard', type=str, default='', help='Exclude hazards from analysis.')
@@ -170,10 +166,6 @@ if __name__ == '__main__':
     else:
         scenarios = scenarios.split('+')
 
-    # long_term_horizon = None
-    # if args.discount_long_term:
-    #     long_term_horizon = args.long_term_horizon
-
     option_fee = args.option_fee
     option_pds = args.option_pds
     if option_fee == "insurance_premium":
@@ -191,5 +183,6 @@ if __name__ == '__main__':
                 option_fee_=option_fee,
                 option_pds_=option_pds,
                 simulation_name_=args.simulation_name,
-                exclude_hazards_=exclude_hazards
+                exclude_hazards_=exclude_hazards,
+                countries_=args.countries,
             )
