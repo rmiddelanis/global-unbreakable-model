@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from lib_gather_data import average_over_rp
+from lib_prepare_scenario import average_over_rp
 from pandas_helper import load_input_data
 from plotting import plot_map
 

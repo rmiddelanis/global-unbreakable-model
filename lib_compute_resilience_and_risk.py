@@ -2,11 +2,10 @@ import copy
 
 import numpy as np
 import pandas as pd
-import tqdm
 from scipy import integrate
 
 from pandas_helper import concat_categories
-from lib_gather_data import average_over_rp
+from lib_prepare_scenario import average_over_rp
 
 from recovery_optimizer import optimize_data, recompute_data_with_tax
 
@@ -14,20 +13,10 @@ pd.set_option('display.width', 220)
 
 
 def reshape_input(macro, cat_info, hazard_ratios, event_level):
-    # FORMATING
-    # gets the event level index
-    # index composed on countries, hazards and rps.^
-    # event_level_index = hazard_ratios.reset_index().set_index(event_level).index
-
     # Broadcast macro to event level
     macro_event = pd.merge(macro, hazard_ratios.iloc[:, 0].unstack('income_cat'), left_index=True, right_index=True)[macro.columns]
     macro_event = macro_event.reorder_levels(event_level).sort_index()
-    # macro_event = broadcast_simple(macro, event_level_index)
 
-    # cat_info_event = pd.merge(cat_info, hazard_ratios[['fa', 'v_ew', 'macro_multiplier_Gamma']], left_index=True,
-    #                           right_index=True)
-    # cat_info_event = broadcast_simple(cat_info, event_level_index).reset_index().set_index(event_level + ["income_cat"])
-    # cat_info_event[['fa', 'v_ew', 'macro_multiplier_Gamma']] = hazard_ratios.reset_index().set_index(cat_info_event.index.names)[['fa', 'v_ew', 'macro_multiplier_Gamma']]
     cat_info_event = pd.merge(hazard_ratios[['fa', 'v_ew']], cat_info, left_index=True,
                               right_index=True)
     cat_info_event = cat_info_event.reorder_levels(event_level + ["income_cat"]).sort_index()
@@ -44,12 +33,6 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     n_affected = cat_info_event_["n"] * cat_info_event_.fa
     n_not_affected = cat_info_event_["n"] * (1 - cat_info_event_.fa)
     cat_info_event_ia["n"] = concat_categories(n_affected, n_not_affected, index=affected_cats)
-
-    # de_index so can access cats as columns and index is still event
-    # cat_info_event_ia = cat_info_event_ia.reset_index(["income_cat", "affected_cat"]).sort_index()
-
-    # moved computation of actual vunlerability to (lib_)gather_data --> recompute_after_policy_change
-    # cat_info_event_ia["v_ew"] = cat_info_event_ia["v"] * (1 - macro_event_["pi"] * cat_info_event_ia["ew"])
 
     # capital losses and total capital losses
     cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
@@ -68,7 +51,6 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
                        option_pds="unif_poor", option_b="data", loss_measure="dk_reco", fraction_inside=1,
                        share_insured=.25):
     cat_info_event_iah = concat_categories(cat_info_event_ia, cat_info_event_ia, index=helped_cats)
-    # cat_info_event_iah = cat_info_event_iah.reset_index(['income_cat', 'affected_cat', 'helped_cat']).sort_index()
     cat_info_event_iah["help_received"] = 0.0
     cat_info_event_iah["help_fee"] = 0.0
 
@@ -173,12 +155,6 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
     cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped') & (cat_info_event_iah_.affected_cat == 'na'), "n"] *= (
             1 - macro_event_["error_incl"])
 
-    # TODO: add 'helped_cat' and 'affected_cat' to index and use IndexSlice indexing as in the commented section below
-    # cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, :, ['a'], ['helped']], "n"] *= (1 - macro_event_["error_excl"])
-    # cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, :, ['a'], ['not_helped']], "n"] *= macro_event_["error_excl"]
-    # cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, :, ['na'], ['helped']], "n"] *= macro_event_["error_incl"]
-    # cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, :, ['na'], ['not_helped']], "n"] *= (1 - macro_event_["error_incl"])
-
     # !!!! n is one again from here.
     # print(cat_info_event_iah_.n.groupby(level=event_level).sum())
 
@@ -191,7 +167,6 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
     # post disaster support (PDS) calculation depending on option_pds
 
     # Step 1: Compute the help needed for all helped households to fulfill the policy
-    # TODO make sure to avoid NaNs in help_needed and help_received when creating these columns
     if option_pds == "no":
         macro_event_["aid"] = 0
         macro_event_['need'] = 0
@@ -321,16 +296,6 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
     return macro_event_, cat_info_event_iah_
 
 
-def compute_dW(macro_event, cat_info_event_iah_):
-    # compute post-support consumption losses including help received and help fee paid
-    cat_info_event_iah_["dc_npv_post"] = (cat_info_event_iah_["dc_npv_pre"]
-                                          - cat_info_event_iah_["help_received"]
-                                          + cat_info_event_iah_["help_fee"])
-    cat_info_event_iah_["dw"] = calc_delta_welfare(cat_info_event_iah_, macro_event)
-
-    return cat_info_event_iah_
-
-
 # TODO: add docstring (explain parameters)
 def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_max=np.nan, num_cores=None):
     opt_data = pd.merge(
@@ -401,7 +366,7 @@ def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):#, long_t
     return cat_info_event_iah, macro_event
 
 
-def compute_dw_new(cat_info_event_iah, macro_event, event_level_, capital_t=50, delta_c_h_max=np.nan, num_cores=None):
+def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, delta_c_h_max=np.nan, num_cores=None):
     # compute the optimal recovery rates
     cat_info_event_iah_ = optimize_recovery(
         macro_event=macro_event,
@@ -474,56 +439,15 @@ def agg_to_event_level(df, seriesname, event_level):
     return (df[seriesname].T * df["n"]).T.groupby(level=event_level).sum()
 
 
-def calc_delta_welfare(micro, macro):
-    """welfare cost from consumption before (c)
-    and after (dc_npv_post) event. Line by line"""
-    # computes welfare losses per category
-    # as per eqs. 9-11 in the technical paper
-    dw = (welf(micro["c"] / macro["rho"], macro["income_elasticity_eta"])
-          - welf(micro["c"] / macro["rho"] - micro["dc_npv_post"], macro["income_elasticity_eta"]))  # w(c_0) - w(c_h)
-
-    return dw
-
-
-def welf(c, elast, marginal=False):
-    """"Welfare function"""
-    if not marginal:
-        y = (c ** (1 - elast) - 1) / (1 - elast)
-    else:
-        y = c ** (-elast)
-    return y
-
-
-def discounted_w_of_t(t_, c_baseline_, delta_c_, elast, rho, marginal=False):
-    return welf(c_baseline_ - delta_c_, elast, marginal) * np.exp(-rho * t_)
-
-
-def calc_delta_welfare_discounted(c_0, delta_c, rho, eta, t_max):
-    """Computes discounted welfare loss from consumption before (c_0) and after (delta_c) event"""
-    w_baseline = integrate.quad(discounted_w_of_t, args=(c_0, 0, eta, rho), a=0, b=t_max)[0]
-    w_disaster = integrate.quad(discounted_w_of_t, args=(c_0, delta_c, eta, rho), a=0, b=t_max)[0]
-    return w_baseline - w_disaster
-
-
 def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):#, long_term_horizon_=None):
     """Computes risk and resilience from dk, dw and protection.
     Line by line: multiple return periods or hazard is transparent to this function"""
     df = df.copy()
 
     # Expressing welfare losses in currency
-    # discount rate
 
-    # TODO: changed the definition of w_prime according to PHL paper
     # linearly approximated derivative of welfare with respect to NPV of future consumption
-    # NO LONGER USING NPV OF FUTURE CONSUMPTION WITH THE MODEL UPDATE!
-    # rho = df["rho"]
-    # h = 1e-4
-    # if is_local_welfare:
-    #     w_prime = (welf(df["gdp_pc_pp"] / rho + h, df["income_elasticity_eta"])
-    #                - welf(df["gdp_pc_pp"] / rho - h, df["income_elasticity_eta"])) / (2 * h)
-    # else:
-    #     w_prime = (welf(df["gdp_pc_pp_nat"] / rho + h, df["income_elasticity_eta"])
-    #                - welf(df["gdp_pc_pp_nat"] / rho - h, df["income_elasticity_eta"])) / (2 * h)
+    # Note: no longer using NPV of consupmtion with the model update!
     if is_local_welfare:
         w_prime = df["gdp_pc_pp"]**(-df["income_elasticity_eta"])
     else:
@@ -531,14 +455,7 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):#, long_term_ho
 
     d_w_ref = w_prime * df["dk"]
 
-    # if long_term_horizon_ is None:
-    #     d_w_ref = w_prime * df["dk"]
-    # else:
-    #     d_w_ref = df.apply(lambda x: calc_delta_welfare_discounted(x['gdp_pc_pp'], x['dk'], x['rho'], x['income_elasticity_eta'], long_term_horizon_), axis=1)
-
-    # expected welfare loss (per family and total)
-    # TODO: @Bramka why does division by w prime result in a currency value?
-    # this is to compute consumption equivalent of welfare loss!
+    # expected welfare loss (per household and total)
     df["dWpc_currency"] = df["dw"] / w_prime
     df["dWtot_currency"] = df["dWpc_currency"] * df["pop"]
 
@@ -546,11 +463,9 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):#, long_term_ho
     df["risk"] = df["dWpc_currency"] / df["gdp_pc_pp"]
 
     # socio-economic resilience
-    # TODO: @Bramka in the paper, socio-econ. resilience = asset losses / welfare losses
     df["resilience"] = d_w_ref / df["dw"]
 
     # risk to assets
-    # TODO: @Bramka this is the same as dk / gdp_pc_pp!
     df["risk_to_assets"] = df.resilience * df.risk
 
     return df

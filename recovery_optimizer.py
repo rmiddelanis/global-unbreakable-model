@@ -73,53 +73,6 @@ def delta_k_h_eff_of_t_limit_regime(t_, delta_k_h_eff_, sigma_h_, delta_c_h_max_
     return delta_k_h_eff_ - factor * (np.exp(productivity_pi_ / sigma_h_ * t_) - 1)
 
 
-def delta_k_h_nonprv_of_t(t_, delta_k_h_eff_, lambda_h_, sigma_h_):
-    """
-    Compute the dynamic non-private capital loss
-    """
-    return (1 - sigma_h_) * delta_k_h_eff_ * np.exp(-lambda_h_ * t_)
-
-
-def delta_k_h_prv_of_t(t_, delta_k_h_eff_, lambda_h_, sigma_h_, t_tilde_, delta_c_h_max_, productivity_pi_):
-    """
-    Compute the dynamic private capital loss
-    """
-    to_float = False
-    if isinstance(t_, (float, int)):
-        to_float = True
-        t_ = np.array([t_])
-    if t_tilde_ != 0:
-        limit_regime = delta_k_h_prv_of_t_limit_regime(t_[t_ < t_tilde_], delta_k_h_eff_, lambda_h_, sigma_h_,
-                                                       delta_c_h_max_, productivity_pi_)
-        exp_regime = delta_k_h_prv_of_t_exp_regime(t_[t_ >= t_tilde_], delta_k_h_eff_, lambda_h_, t_tilde_, sigma_h_,
-                                                   delta_c_h_max_, productivity_pi_)
-        res = np.concatenate([limit_regime, exp_regime])
-    else:
-        res = delta_k_h_prv_of_t_exp_regime(t_, delta_k_h_eff_, lambda_h_, t_tilde_, sigma_h_, delta_c_h_max_,
-                                            productivity_pi_)
-    if to_float:
-        return res.item()
-    else:
-        return res
-
-
-def delta_k_h_prv_of_t_limit_regime(t_, delta_k_h_eff_, lambda_h_, sigma_h_, delta_c_h_max_, productivity_pi_):
-    """
-    Compute the dynamic private capital loss
-    """
-    return sigma_h_ * delta_k_h_eff_ - cum_delta_c_h_reco_of_t_limit_regime(t_, delta_c_h_max_, sigma_h_,
-                                                                            productivity_pi_, delta_k_h_eff_, lambda_h_)
-
-
-def delta_k_h_prv_of_t_exp_regime(t_, delta_k_h_eff_, lambda_h_, t_tilde_, sigma_h_, delta_c_h_max_, productivity_pi_):
-    """
-    Compute the dynamic private capital loss in the normal exponential recovery regime
-    """
-    delta_tilde_k_h_prv = calc_delta_tilde_k_h_prv(delta_k_h_eff_, sigma_h_, t_tilde_, delta_c_h_max_, productivity_pi_,
-                                                   lambda_h_)
-    return delta_tilde_k_h_prv * np.exp(-lambda_h_ * (t_ - t_tilde_))
-
-
 def delta_i_h_lab_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, t_tilde_, sigma_h_,
                        delta_c_h_max_):
     """
@@ -245,13 +198,6 @@ def delta_c_h_reco_of_t_limit_regime(t_, delta_c_h_max_, sigma_h_, productivity_
 
     beta = delta_c_h_max_ - productivity_pi_ * delta_k_h_eff_
     return beta * np.exp(productivity_pi_ / sigma_h_ * t_)
-
-
-def calc_delta_tilde_k_h_prv(delta_k_h_eff_, sigma_h_, t_tilde_, delta_c_h_max_, productivity_pi_, lambda_h_):
-    if t_tilde_ == 0:
-        return delta_k_h_eff_ * sigma_h_
-    return delta_k_h_eff_ * sigma_h_ - cum_delta_c_h_reco_of_t_limit_regime(t_tilde_, delta_c_h_max_, sigma_h_,
-                                                                            productivity_pi_, delta_k_h_eff_, lambda_h_)
 
 
 def delta_c_h_reco_of_t_exp_regime(t_, delta_tilde_k_h_eff_, lambda_h_, t_tilde_, sigma_h_):
@@ -610,18 +556,7 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
     else:
         consumption_offset = np.nan
 
-
     # determine the used savings
-    # dt = 1 / 365
-    # t_ = np.arange(0, capital_t_ + dt, dt)
-    # d_savings_pds = delta_c_h_of_t(t_=t_, productivity_pi_=productivity_pi_, delta_tax_sp_=delta_tax_sp_,
-    #                                delta_k_h_eff_=delta_k_h_eff_, lambda_h_=lambda_h_, sigma_h_=sigma_h_,
-    #                                savings_s_h_=savings_s_h_, delta_i_h_pds_=delta_i_h_pds_,
-    #                                delta_c_h_max_=delta_c_h_max_, recovery_params_=recovery_params_,
-    #                                social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-    #                                return_elements=True)[3]
-    # used_liquidity = integrate.trapz(d_savings_pds, t_)
-
     def used_liquidity_func(t_):
         return delta_c_h_of_t(
             t_=t_,
@@ -732,7 +667,7 @@ def recompute_data_with_tax(df_in, num_cores=None):
         res = list(tqdm.tqdm(pool.imap(recompute_with_tax_wrapper, df_in.iterrows()), total=len(df_in),
                              desc='Recomputing actual welfare loss and used liquidity'))
     res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco'], index=df_in.index)
-    return res  #recomputed_data
+    return res
 
 
 def compute_delta_welfare_dw_reco(capital_t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_,
@@ -1050,67 +985,10 @@ def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6, num_cores
     with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(partial(optimize_lambda_wrapper, min_lambda=min_lambda, max_lambda=max_lambda),
                                        opt_data.iterrows()), total=len(opt_data), desc='Optimizing recovery'))
-    # res = []
-    # for opt_args in tqdm.tqdm(opt_data.iterrows()):
-    #     res.append(partial(optimize_lambda_wrapper, min_lambda=min_lambda, max_lambda=max_lambda)(opt_args))
     res = pd.Series(dict(res), name='lambda_h')
     # map back to original index
     lambda_h_results = pd.merge(df, res, left_on='mapping', right_index=True, how='left').lambda_h
     return lambda_h_results
-
-
-def make_plot(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_,
-              delta_i_h_pds_, delta_c_h_max_, recovery_params_, social_protection_share_gamma_h_, diversified_share_,
-              consumption_floor_xi_, t_hat_, t_tilde_, delta_tilde_k_h_eff_, consumption_offset_, title=None):
-    """
-    Make a plot of the consumption and capital losses over time
-    """
-
-    fig, axs = plt.subplots(nrows=2, sharex=True, figsize=(7, 5))
-
-    t_ = np.linspace(0, t_max, 1000)
-    if t_tilde_ is not None and t_tilde_ not in t_:
-        t_ = np.array(sorted(list(t_) + [t_tilde_]))
-    if t_hat_ is not None and t_hat_ not in t_:
-        t_ = np.array(sorted(list(t_) + [t_hat_]))
-    if t_hat_ is not None and t_tilde_ is not None and t_hat_ + t_tilde_ not in t_:
-        t_ = np.array(sorted(list(t_) + [t_hat_ + t_tilde_]))
-    c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
-    di_h_lab, di_h_sp, dc_reco, dc_savings_pds = delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
-                                                                sigma_h_, savings_s_h_, delta_i_h_pds_, delta_c_h_max_,
-                                                                recovery_params_, social_protection_share_gamma_h_,
-                                                                consumption_floor_xi_, t_hat_, t_tilde_,
-                                                                delta_tilde_k_h_eff_, consumption_offset_,
-                                                                True)
-    di_h = di_h_lab + di_h_sp
-    axs[0].fill_between(t_, c_baseline, c_baseline - di_h_sp, color='red', alpha=0.75, label='Transfers loss', lw=0)
-    axs[0].fill_between(t_, c_baseline - di_h_sp, c_baseline - di_h, color='red', alpha=0.5,
-                       label='Income loss', lw=0)
-    axs[0].fill_between(t_, c_baseline - di_h, c_baseline - (di_h + dc_reco), color='red', alpha=0.25,
-                        label='Reconstruction loss', lw=0)
-    axs[0].fill_between(t_[dc_savings_pds != 0], (c_baseline - (di_h + dc_reco) + dc_savings_pds)[dc_savings_pds != 0],
-                       (c_baseline - (di_h + dc_reco))[dc_savings_pds != 0], facecolor='none', lw=0, hatch='XXX',
-                        edgecolor='grey', label='Liquid savings and PDS')
-    axs[0].plot(t_, c_baseline - di_h - dc_reco + dc_savings_pds, color='black', label='Consumption')
-
-    dk_eff = delta_k_h_eff_of_t(t_, 0, delta_k_h_eff_, lambda_h_, sigma_h_, delta_c_h_max_, productivity_pi_)
-    axs[1].fill_between(t_, 0, dk_eff, color='red', alpha=0.5, label='Effective capital loss')
-    axs[1].plot(t_, dk_eff, color='black', label='Effective capital loss')
-
-    # if t_tilde_ != 0:
-    #     axs[0].axvline(t_tilde_, color='black', linestyle='dotted', lw=1, label=r'$\tilde{t}$')
-    #     axs[1].axvline(t_tilde_, color='black', linestyle='dotted', lw=1)
-    # if t_hat_ != 0:
-    #     axs[0].axvline(t_hat_ + t_tilde_, color='black', linestyle='--', lw=1, label=r'$\hat{t}$')
-    #     axs[1].axvline(t_hat_ + t_tilde_, color='black', linestyle='--', lw=1)
-    axs[1].set_xlabel('Time [y]')
-    axs[0].set_ylabel(r'Consumption $c(t)$')
-    axs[1].set_ylabel(r'Capital loss $\Delta k(t)$')
-    if title is not None:
-        fig.suptitle(title)
-    for ax in axs:
-        ax.legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
-    plt.tight_layout()
 
 
 def run_experiment(sigma_h, delta_c_h_max, tolerance=1e-2, index=None,
@@ -1178,7 +1056,6 @@ if __name__ == '__main__':
     args.add_argument('--delta_c_h_max', type=str, default='None')
     args.add_argument('--tolerance', type=float, default=1e-2)
     args.add_argument('--idx', type=str, default=None)
-    args.add_argument('--plot', action='store_true')
     args.add_argument('--capital_t', type=int, default=50)
     args.add_argument('--no_output', action='store_true')
     args.add_argument('--liquidity', type=str, default='data:average')
@@ -1190,11 +1067,6 @@ if __name__ == '__main__':
     if args.run:
         results = run_experiment(args.sigma_h, args.delta_c_h_max, args.tolerance, idx,
                                  args.capital_t, liquidity_=args.liquidity)
-        if args.plot:
-            if idx is None:
-                raise ValueError("Please provide an index to plot.")
-            make_plot(results, idx, 15)
-            plt.show()
 
         if not args.no_output and idx is None:
             results.to_csv(f"./optimization_experiments/{datetime.now().strftime('%Y-%m-%d_%H-%M')}__"

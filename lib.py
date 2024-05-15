@@ -16,13 +16,6 @@ def get_country_name_dicts(root_dir):
     iso2_iso3 = load_input_data(root_dir, "country_name_mappings/names_to_iso.csv",
                                 usecols=["iso2", "iso3"]).drop_duplicates().set_index("iso2").squeeze()
 
-    # TODO: do we want to aggregate these regions into FRA / GBR or keep them individually?
-    # iso3_to_wb = pd.concat((
-    #     iso3_to_wb,
-    #     pd.Series(index=['GUF', 'GLP', 'MTQ', 'MYT', 'REU'], data=iso3_to_wb['FRA']),
-    #     pd.Series(index=['FLK', 'GIB', 'MSR'], data=iso3_to_wb['GBR'])
-    # ))
-
     # rename PWT countries to WB names:
     any_to_wb.loc["Côte d'Ivoire"] = "Cote d'Ivoire"
     any_to_wb.loc["Côte d’Ivoire"] = "Cote d'Ivoire"

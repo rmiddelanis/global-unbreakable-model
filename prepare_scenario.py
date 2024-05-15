@@ -766,8 +766,8 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     hazard_protection = hazard_protection.loc[common_regions]
 
     if pol_opt_ == '':
-        pol_names = [None, 'reduce_poor_exposure', 'reduce_total_exposure', 'no_liquidity', 'reduce_ew', 'increase_ew_to_max', 'set_ew', 'set_ew']
-        pol_opt_params = [None, 0.05, 0.05, None, 0.6, None, 1, 0]
+        pol_names = [None]
+        pol_opt_params = [None]
     else:
         pol_name = pol_opt_.split('+')[0]
         if pol_name == 'None':
@@ -885,7 +885,7 @@ if __name__ == '__main__':
                                                                                   "'prv_oth'.")
     parser.add_argument('--ew_year', type=int, default=2018, help='Year of early warning data')
     parser.add_argument('--ew_decade', type=str, default='', help='Decade of early warning data')
-    parser.add_argument('--pol_opt', type=str, default='', help='Policy selection')
+    parser.add_argument('--pol_opt', type=str, default='None+None', help='Policy selection')
     parser.add_argument('--do_not_execute', action='store_true', help='Do not execute the script. '
                                                                       'Only load the parameters.')
     args = parser.parse_args()

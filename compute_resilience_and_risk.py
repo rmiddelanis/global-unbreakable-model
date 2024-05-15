@@ -89,7 +89,7 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         share_insured=.25,
     )
 
-    cat_info_event_iah, macro_event = compute_dw_new(
+    cat_info_event_iah, macro_event = compute_dw(
         cat_info_event_iah=cat_info_event_iah,
         macro_event=macro_event,
         event_level_=event_level,
@@ -111,7 +111,6 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         default_rp=default_rp,
         is_local_welfare=True,
         return_stats=True,
-        # long_term_horizon_=long_term_horizon,
     )
 
     date_time_string = time.strftime("%Y-%m-%d_%H-%M_")

@@ -151,9 +151,6 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
                     outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', 'coverage_social.png'))
 
     # financial inclusion
-    # axfin = download_cat_info(name='axfin', id_q1='fin17a.t.d.7', id_q2='fin17a.t.d.7', id_q3='fin17a.t.d.8',
-    #                           id_q4='fin17a.t.d.8', id_q5='fin17a.t.d.8', most_recent_value=True, upper_bound=100,
-    #                           lower_bound=0) / 100
     axfin = load_input_data(root_dir, "FINDEX/findex_axfin.csv", index_col=[0, 1, 2]).squeeze()
     axfin = get_most_recent_value(axfin)
     cat_info_df = clean_merge_update(cat_info_df, axfin, any_to_wb)
@@ -163,14 +160,8 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
                     cmap='PuRd_r', show_legend=False, show=False,
                     outfile=os.path.join(root_dir, 'figures', '__input_country_coverage_maps', 'wb_data', 'coverage_axfin.png'))
 
-
     # FROM HERE: FILL MISSING VALUES IN ASPIRE DATA
     if use_additional_data and use_legacy_additions:
-        # GDP per capita from google (GDP per capita plays no role in the indicator. only usefull to plot the data)
-        # TODO: what about Syria?!
-        # macro_df.loc["Syrian Arab Republic", "gdp_pc_pp"] = 5100 / 10700 * 10405.
-
-        # for SIDS, manual addition from online research
         # TODO: these data are not fit for five income categories yet; generally, using *_p for q1 and social_r for q2-5
         manual_additions_sids = load_input_data(root_dir=root_dir, filename='sids_missing_data_manual_input.csv',
                                                 index_col='country')
@@ -189,7 +180,6 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
         ).stack().rename('income_share')
         cat_info_df = clean_merge_update(cat_info_df, manual_additions_sids_shares, any_to_wb)
 
-
         # Social transfer Data from EUsilc (European Union Survey of Income and Living Conditions) and other countries.
         # TODO: update SILC data? keep it at all?
         # XXX: there is data from ASPIRE in social_ratios. Use fillna instead to update df.
@@ -203,7 +193,6 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
                                  silc_file.social_r.rename('q3'), silc_file.social_r.rename('q4'),
                                  silc_file.social_r.rename('q5')], axis=1).stack().rename('social')
         cat_info_df = clean_merge_update(cat_info_df, silc_social, any_to_wb)
-
 
         # shows the country where social_p and social_r are not all NaN.
         where = cat_info_df.social.unstack('income_cat').dropna(how='all').isna().sum(axis=1).apply(
@@ -227,7 +216,7 @@ def download_wb_data(root_dir, include_remitances=True, use_additional_data=Fals
     cat_info_df = cat_info_df[~cat_info_df.iso3.isna()].set_index(['iso3', 'income_cat']).drop('country', axis=1)
     cat_info_df.dropna(how="all", inplace=True)
 
-    # TODO: legacy additions are not formatted to ISO3; therefore, they cannot be added after the df_to_iso3 function
+    # legacy additions are not formatted to ISO3; therefore, they cannot be added after the df_to_iso3 function
     if use_additional_data and not use_legacy_additions:
         guessed_social = load_input_data(root_dir, "social_share_regression/social_predicted.csv",
                                          index_col=[0, 1]).squeeze()
