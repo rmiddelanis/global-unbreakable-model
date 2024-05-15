@@ -3,11 +3,12 @@
 import argparse
 from gather_findex_data import get_liquidity_from_findex
 from gather_gir_data import load_gir_hazard_losses
-from lib_gather_data import *
+from lib_prepare_scenario import *
 from apply_policy import *
 import pandas as pd
 from lib import get_country_name_dicts, df_to_iso3
 from wb_api_wrapper import get_wb_mrv
+from plotting import plot_map
 
 
 def get_cat_info_and_tau_tax(econ_scope, wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_):
@@ -396,13 +397,13 @@ def compute_borrowing_ability(root_dir_, credit_ratings_, finance_preparedness_=
 def load_hfa_data(root_dir_):
     # HFA (Hyogo Framework for Action) data to assess the role of early warning system
     # 2015 hfa
-    hfa15 = load_input_data(root_dir_, "HFA_all_2013_2015.csv")
+    hfa15 = load_input_data(root_dir_, "HFA/HFA_all_2013_2015.csv")
     hfa15 = hfa15.set_index('ISO 3')
     # READ THE LAST HFA DATA
-    hfa_newest = load_input_data(root_dir_, "HFA_all_2011_2013.csv")
+    hfa_newest = load_input_data(root_dir_, "HFA/HFA_all_2011_2013.csv")
     hfa_newest = hfa_newest.set_index('ISO 3')
     # READ THE PREVIOUS HFA DATA
-    hfa_previous = load_input_data(root_dir_, "HFA_all_2009_2011.csv")
+    hfa_previous = load_input_data(root_dir_, "HFA/HFA_all_2009_2011.csv")
     hfa_previous = hfa_previous.set_index('ISO 3')
     # most recent values... if no 2011-2013 reporting, we use 2009-2011
 
@@ -676,7 +677,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     # borrowing_ability = compute_borrowing_ability(credit_ratings, plot_coverage_map=True)
 
     # load average productivity of capital
-    avg_prod_k = gather_capital_data(root_dir_, plot_coverage_map=True).avg_prod_k
+    avg_prod_k = gather_capital_data(root_dir_, plot_map=plot_map).avg_prod_k
 
     # load building vulnerability classification and compute vulnerability per income class
     vulnerability = load_vulnerability_data(
