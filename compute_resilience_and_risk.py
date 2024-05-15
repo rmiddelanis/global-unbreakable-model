@@ -9,7 +9,8 @@ import time
 warnings.filterwarnings("always", category=UserWarning)
 
 
-def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation_name_, exclude_hazards_, countries_):
+def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation_name_, exclude_hazards_, countries_,
+              num_cores_):
     print(scenario_)
     print(f'optionFee ={option_fee_}, optionPDS ={option_pds_}, optionB ={option_b}, optionT ={option_t}')
 
@@ -94,6 +95,7 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         event_level_=event_level,
         capital_t=20,
         delta_c_h_max=np.nan,
+        num_cores=num_cores_,
     )
 
     # aggregate to event-level (ie no more income_cat, helped_cat, affected_cat, n)
@@ -144,6 +146,7 @@ if __name__ == '__main__':
     parser.add_argument('--option_pds', type=str, default='unif_poor', help='PDS option.')
     parser.add_argument('--simulation_name', type=str, default='', help='Name of the simluation.')
     parser.add_argument('--exclude_hazard', type=str, default='', help='Exclude hazards from analysis.')
+    parser.add_argument('--num_cores', type=int, default=0, help='Number of cores to use for the optimization.')
     parser.add_argument('--do_not_execute', action='store_true', help='Do not execute the model.')
 
     args = parser.parse_args()
@@ -185,4 +188,5 @@ if __name__ == '__main__':
                 simulation_name_=args.simulation_name,
                 exclude_hazards_=exclude_hazards,
                 countries_=args.countries,
+                num_cores_=args.num_cores if args.num_cores > 0 else None,
             )

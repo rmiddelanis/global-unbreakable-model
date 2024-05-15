@@ -724,22 +724,14 @@ def recompute_with_tax_wrapper(recompute_args):
         raise e
 
 
-def recompute_data_with_tax(df_in):
+def recompute_data_with_tax(df_in, num_cores=None):
     """
     Recompute the final change in welfare, including tax, social protection, and transfers.
     """
-    # df = df_in.copy()
-    # recovery_parameters = recovery_parameters.to_frame()
-    # recovery_parameters['reco_params_mapping'] = np.arange(len(recovery_parameters))
-    # df = pd.merge(df, recovery_parameters.reco_params_mapping, left_index=True, right_index=True, how='left')
-    # df['mapping'] = df.fillna(0).groupby(df.columns.tolist()).ngroup()
-    # recompute_data = df.set_index('mapping', drop=True).drop_duplicates()
-    # recompute_data = pd.merge(recompute_data, recovery_parameters, left_on='reco_params_mapping', right_on='reco_params_mapping', how='left').drop('reco_params_mapping', axis=1)
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(recompute_with_tax_wrapper, df_in.iterrows()), total=len(df_in),
                              desc='Recomputing actual welfare loss and used liquidity'))
     res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco'], index=df_in.index)
-    # recomputed_data = pd.merge(df, res, left_on='mapping', right_index=True, how='left')
     return res  #recomputed_data
 
 
@@ -1046,7 +1038,7 @@ def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
     return index, res[0]
 
 
-def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6):
+def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6, num_cores=None):
     """
     Optimize the lambda parameter for each row in the dataframe
     """
@@ -1055,7 +1047,7 @@ def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6):
     df['mapping'] = df.fillna(0).groupby(df.columns.tolist()).ngroup()
     opt_data = df.set_index('mapping', drop=True).drop_duplicates()
     opt_data['tolerance'] = tolerance
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(partial(optimize_lambda_wrapper, min_lambda=min_lambda, max_lambda=max_lambda),
                                        opt_data.iterrows()), total=len(opt_data), desc='Optimizing recovery'))
     # res = []
@@ -1098,7 +1090,7 @@ def make_plot(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_eff_, 
                         label='Reconstruction loss', lw=0)
     axs[0].fill_between(t_[dc_savings_pds != 0], (c_baseline - (di_h + dc_reco) + dc_savings_pds)[dc_savings_pds != 0],
                        (c_baseline - (di_h + dc_reco))[dc_savings_pds != 0], facecolor='none', lw=0, hatch='XXX',
-                        edgecolor='grey', label='Savings and PDS')
+                        edgecolor='grey', label='Liquid savings and PDS')
     axs[0].plot(t_, c_baseline - di_h - dc_reco + dc_savings_pds, color='black', label='Consumption')
 
     dk_eff = delta_k_h_eff_of_t(t_, 0, delta_k_h_eff_, lambda_h_, sigma_h_, delta_c_h_max_, productivity_pi_)
