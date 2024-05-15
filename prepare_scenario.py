@@ -12,11 +12,6 @@ from wb_api_wrapper import get_wb_mrv
 
 def get_cat_info_and_tau_tax(econ_scope, wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_):
     cat_info_ = wb_data_cat_info_.copy(deep=True)
-
-    # TODO: diversified_share is again recomputed in recompute_after_policy_change()
-    # TODO: new variable 'diversified_share' instead of changing 'social' --> need to adjust in the rest of the model
-    # from the Paper: "We assume that the fraction of income that is diversified increases by 10% for people who have
-    # bank accounts
     cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
 
     cat_info_['n'] = 1 / n_quantiles_
@@ -37,7 +32,6 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
                     protection_level_assumptions_file="WB_country_classification/protection_level_assumptions.csv",
                     income_groups_file="WB_country_classification/country_classification.xlsx",
                     income_groups_file_historical="WB_country_classification/country_classification_historical.xlsx"):
-    # TODO: use FLOPROS V1 for protection; try to infer missing countries from FLOPROS based on GDP-protection correlation
     if 'rp' in index_.names:
         index_ = index_.droplevel('rp').drop_duplicates()
     if 'income_cat' in index_.names:
@@ -46,17 +40,11 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     if protection_data in ['FLOPROS', 'country_income']:
         if protection_data == 'FLOPROS':
             prot_data = load_input_data(root_dir_, flopros_protection_file, index_col=0)
-            # prot_data = df_to_iso3(prot_data, 'country', any_to_wb)
-            # prot_data = prot_data[~prot_data.iso3.isna()]
-            # set ISO3 country codes and average over duplicates (for West Bank and Gaza Strip, which are both assigned to
-            # ISO3 code PSE)
             prot_data = prot_data.drop('country', axis=1).set_index('iso3')
             prot_data.rename({'MerL_Riv': 'Flood', 'MerL_Co': 'Storm surge'}, axis=1, inplace=True)
         elif protection_data == 'country_income':  # assumed a function of the country's income group
-            # note: "protection_level_assumptions.csv" can be found in orig_inputs.
             prot_assumptions = load_input_data(root_dir_, protection_level_assumptions_file,
                                                index_col="Income group").squeeze()
-            # prot_data = load_input_data(root_dir, income_groups_file, header=4, index_col=3)["Income group"].dropna()
             prot_data = load_input_data(root_dir_, income_groups_file, header=0)[["Code", "Income group"]]
             prot_data = prot_data.dropna(how='all').rename({'Code': 'iso3', 'Income group': 'protection'}, axis=1)
             prot_data = prot_data.set_index('iso3').squeeze()
@@ -82,8 +70,6 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
             raise ValueError(f"Unknown value for protection_data: {protection_data}")
         prot_data = prot_data.stack()
         prot_data.index.names = ['iso3', 'hazard']
-        # prot_data = pd.concat([prot_data] * 5, keys=[f"q{q}" for q in range(1, 6)], names=['income_cat'])
-        # prot_data = prot_data.reset_index().set_index(['iso3', 'hazard', 'income_cat']).squeeze().sort_index()
         prot_data.name = 'protection'
         prot.loc[np.intersect1d(prot_data.index, prot.index)] = prot_data
     elif protection_data == 'None':
@@ -92,9 +78,6 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
         raise ValueError(f"Unknown value for protection_data: {protection_data}")
     if min_rp is not None:
         prot.loc[prot < min_rp] = min_rp
-    # res = pd.merge(hazard_ratios_, prot, left_index=True, right_index=True, how='left').reset_index('rp')
-    # res.protection = res.protection > res.rp
-    # res = res.set_index('rp', append=True).swaplevel(2, 3).sort_index()
     return prot
 
 
@@ -120,7 +103,6 @@ def load_liquidity(root_dir_, force_recompute_=False, write_output_=True):
 def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
                                     reconstruction_capital_='prv',
                                     labor_share_data_file="ILO_labor_share_of_GDP/LAP_2GDP_NOC_RT_A-filtered-2024-04-23.csv"):
-                                    # labor_share_data_file="SDG_Labor_share_of_GDP/2024-04-10_Ourworldindata_labor-share-of-gdp.csv"):
     imf_data = load_input_data(root_dir_, imf_capital_data_file, sheet_name='Dataset')
     imf_data = imf_data.rename(columns={'isocode': 'iso3'}).set_index(['iso3'])[['year', 'kgov_n', 'kpriv_n', 'kppp_n']]
     imf_data['kpub_n'] = imf_data[['kgov_n', 'kppp_n']].sum(axis=1, skipna=True)
@@ -146,21 +128,14 @@ def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, imf_capital_data_file
     capital_shares = pd.merge(capital_shares, self_employment, left_index=True, right_index=True, how='inner')
 
     capital_shares['k_pub_share'] = capital_shares.k_pub_share_kappa
-    # capital_shares['k_prv_share'] = (capital_shares.k_pub_share_kappa * (1 / capital_shares.capital_elasticity_alpha - 1))
-    # capital_shares['k_oth_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_prv_share
     denominator = capital_shares.capital_elasticity_alpha + capital_shares.self_employment * (1 - capital_shares.capital_elasticity_alpha)
     capital_shares['k_oth_share'] = capital_shares.capital_elasticity_alpha * (1 - capital_shares.k_pub_share_kappa) / denominator
     capital_shares['k_prv_share'] = (1 - capital_shares.k_pub_share_kappa) * capital_shares.self_employment * (1 - capital_shares.capital_elasticity_alpha) / denominator
-
-    # some countries have negative values for k_oth_share
-    # capital_shares['k_oth_share'] = capital_shares.k_oth_share.clip(lower=0)
-    # capital_shares['k_prv_share'] = 1 - capital_shares.k_pub_share - capital_shares.k_oth_share
 
     if reconstruction_capital_ == 'prv':
         capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share
     elif reconstruction_capital_ == 'prv_oth':
         capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share + capital_shares.k_oth_share
-
 
     # if make_plots:
     # capital_shares *= 100
@@ -212,11 +187,8 @@ def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthqu
     return ew_per_hazard_
 
 
-def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population_data_=None,  # n_quantiles_, poor_categories_,
-                                peb_data_path="PEB/exposure_bias_per_quintile.csv",
-                                # peb_povmaps_filepath_="PEB_flood_povmaps.xlsx",
-                                # peb_deltares_filepath_="PEB_wb_deltares.csv", peb_hazards_="Flood+Storm surge"
-                                ):
+def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population_data_=None,
+                                peb_data_path="PEB/exposure_bias_per_quintile.csv"):
     bias = load_input_data(root_dir_, peb_data_path, index_col=[0, 1, 2]).squeeze()
     missing_index = pd.MultiIndex.from_tuples(
         np.setdiff1d(exposure_fa_.index.droplevel('rp').unique(), bias.index.unique()), names=bias.index.names)
@@ -242,14 +214,6 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population
 
     exposure_fa_with_peb_ = (exposure_fa_ * bias).swaplevel('rp', 'income_cat').sort_index().rename(exposure_fa_.name)
 
-    # selects just flood and surge
-    # peb_hazards_ = peb_hazards_.split("+")
-
-    # exposure_fa_with_peb_.loc[:, peb_hazards_, :, poor_categories_] *= (1 + peb)
-    # nonpoor_categories = exposure_fa_with_peb_.index.get_level_values('income_cat').unique().drop(poor_categories_)
-    # # (1 / n_quantiles_) = poverty_headcount
-    # exposure_fa_with_peb_.loc[:, peb_hazards_, :, nonpoor_categories] *= ((1 - (1 / n_quantiles_) * (1 + peb))
-    #                                                             / (1 - (1 / n_quantiles_)))
     return exposure_fa_with_peb_
 
 
@@ -372,7 +336,6 @@ def load_vulnerability_data(
             vuln_distr.fillna(vuln_distr.mean(axis=0), inplace=True)
         vuln_distr.columns.name = 'income_cat'
         vuln_distr = vuln_distr.stack().rename('v_rel').sort_index()
-        # vuln_distr = vuln_distr.loc[vulnerability_.index.get_level_values('iso3').unique()]
 
         # compute vulnerability per income quintile as the product of national-level vulnerability and the relative
         # vulnerability distribution
@@ -432,7 +395,6 @@ def compute_borrowing_ability(root_dir_, credit_ratings_, finance_preparedness_=
 
 def load_hfa_data(root_dir_):
     # HFA (Hyogo Framework for Action) data to assess the role of early warning system
-    # TODO: check Côte d'Ivoire naming in HFA
     # 2015 hfa
     hfa15 = load_input_data(root_dir_, "HFA_all_2013_2015.csv")
     hfa15 = hfa15.set_index('ISO 3')
@@ -653,7 +615,7 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Income group').mean())
         merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Income group'])] if not x[['Region', 'Income group']].isna().any() else x, axis=1))
         disaster_preparedness_ = merged[disaster_preparedness_.columns]
-    if ew_year is not None and ew_decade=='':
+    if ew_year is not None and ew_decade == '':
         forecast_accuracy = load_input_data(root_dir_, forecast_accuracy_file_yearly, index_col=[0, 1]).squeeze()
         if ew_year not in forecast_accuracy.index.get_level_values('year'):
             raise ValueError(f"Forecast accuracy data not available for year {ew_year}.")
@@ -691,7 +653,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     plot_map(pd.Series(index=wb_data_cat_info.index.get_level_values('iso3').unique(), data=1, name='iso3').rename('coverage wb_data_cat_info'), cmap='PuRd_r',
              show_legend=False, show=False, outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps',
                                                                 'coverage_wb_data_cat_info.png'))
-
 
     pov_headcount = load_input_data(root_dir_, "PEB/pov_headcount.csv", index_col=[0, 1]).squeeze()
 
@@ -746,8 +707,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     exposure_fa_with_peb = apply_poverty_exposure_bias(root_dir_, exposure_fa, use_avg_pe_, wb_data_macro['pop'])
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
-    # (Earthquake)
-    # early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index)
+    # (Earthquake and Tsunami)
     early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa_with_peb.index, disaster_preparedness.ew)
 
     # concatenate exposure, vulnerability and early warning into one dataframe
@@ -780,7 +740,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     macro = macro.join(reconstruction_share_sigma, how='left')
     macro = macro.join(pov_headcount.unstack('pov_line')[include_pov_head_].rename(f"pov_rate_{include_pov_head_}"),
                        how='left')
-    # TODO: these global parameters should eventually be moved elsewhere and not stored in macro!
     macro['rho'] = discount_rate_rho_
     macro['max_increased_spending'] = max_increased_spending_
     macro['shareable'] = shareable_
@@ -807,7 +766,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
 
     if pol_opt_ == '':
         pol_names = [None, 'reduce_poor_exposure', 'reduce_total_exposure', 'no_liquidity', 'reduce_ew', 'increase_ew_to_max', 'set_ew', 'set_ew']
-        pol_opts = [None, 0.05, 0.05, None, 0.6, None, 1, 0]
+        pol_opt_params = [None, 0.05, 0.05, None, 0.6, None, 1, 0]
     else:
         pol_name = pol_opt_.split('+')[0]
         if pol_name == 'None':
@@ -816,11 +775,11 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
             pol_names = [pol_name]
         pol_opt = pol_opt_.split('+')[1]
         if pol_opt == 'None':
-            pol_opts = [None]
+            pol_opt_params = [None]
         else:
-            pol_opts = [float(pol_opt)]
+            pol_opt_params = [float(pol_opt)]
 
-    for pol_name, pol_opt in zip(pol_names, pol_opts):
+    for pol_name, pol_opt in zip(pol_names, pol_opt_params):
         # apply policy
         scenario_macro, scenario_cat_info, scenario_hazard_ratios, pol_name, pol_desc = apply_policy(
             macro_=macro.copy(deep=True),
@@ -833,10 +792,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         outpath = os.path.join(intermediate_dir_, 'scenarios', climate_scenario_, pol_name + f"_EW-{ew_year_ if ew_decade_ == '' else ew_decade_}").replace(' ', '_')
         if not os.path.exists(outpath):
             os.makedirs(outpath)
-
-        # TODO: ideally, all variables that are computed in gather_data.py should be computed in
-        #  recomputed_after_policy_change(); before, only input data should be loaded to avoid double computation and
-        #  recomputation errors.
 
         scenario_macro_rec, scenario_cat_info_rec, scenario_hazard_ratios_rec = recompute_after_policy_change(
             macro_=scenario_macro,
@@ -851,7 +806,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         # Save all data
         print(scenario_macro_rec.shape[0], 'countries in analysis')
 
-        # TODO: should save vulenrability_per_income_cat_adjusted instead of vulnerability here!
         # save vulnerability by country and income category
         vulnerability.to_csv(
             os.path.join(outpath, "scenario__vulnerability_unadjusted.csv"),
@@ -916,7 +870,7 @@ if __name__ == '__main__':
     parser.add_argument('--discount_rate_rho', type=float, default=0.06, help='Discount rate')
     parser.add_argument('--shareable', type=float, default=0.8, help='Asset loss covered')
     parser.add_argument('--max_increased_spending', type=float, default=0.05, help='Maximum support')
-    parser.add_argument('--fa_threshold', type=float, default=2/3, help='FA threshold')  # setting to 2/3 s.th. inclusion error can never be negative
+    parser.add_argument('--fa_threshold', type=float, default=2/3, help='FA threshold')  # setting to 2/3 s.th. inclusion error can never greater than 1
     parser.add_argument('--axfin_impact', type=float, default=0.1, help='Increase of the fraction of diversified '
                                                                         'income through financial inclusion')
     parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
