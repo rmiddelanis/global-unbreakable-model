@@ -74,13 +74,6 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
 
 
 def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
-    # TODO: for the years 2017 and 2021, the variable 'fin17a' can be used to exactly reproduce the World Bank
-    #  indicators fin17a.t.d.7 and fin17a.t.d.8 ('The percentage of respondents who report saving or setting aside
-    #  any money at a bank or another type of financial institution in the past year, richest 60% (% ages 15+)').
-    #  However, these indicators include additional data for the years 2014 and 2011, which do not exactly match
-    #  the FINDEX data for questions q18a and q13a, respectively. Yet, the differences are small for those countries
-    #  without data for 2017 and 2021. Check later!
-
     # fin17a (2021): "Saved using an account at a financial institution"
     # fin17a (2017): "In the PAST 12 MONTHS, have you, personally, saved or set aside any money by using an
     #                   account at a bank or another type of formal financial institution (This can include
@@ -98,7 +91,7 @@ def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
         question_ids_=question_ids,
         root_dir_=root_dir_,
         varname_='axfin',
-    )
+    ).drop('FINDEX_wave', axis=1)
 
     # Replace the values in the 'axfin' column based on the FINDEX codebook
     # 1 if the respondent saved or set aside any money (value=1)
@@ -170,73 +163,10 @@ def get_liquidity_from_findex(root_dir_, findex_data_paths_, write_output_=False
     liquidity_data = df_to_iso3(liquidity_data.reset_index('country'), 'country', any_to_wb, False)
     liquidity_data = liquidity_data.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat'])
 
-    # # calculate the average liquidity
-    # # TODO: Taiwan is missing in the GNI data
-    # liquidity_data = liquidity_shares.to_frame()
-    # liquidity_data['n'] = .2
-    # liquidity_data['liquid'] = liquidity_data[['liquidity_share', 'n']].prod(axis=1)
-    # liquidity_data['not_liquid'] = liquidity_data.n - liquidity_data.liquid
-    # liquidity_data = liquidity_data[['liquid', 'not_liquid']].stack().rename('n')
-    # liquidity_data.index.names = ['country', 'year', 'income_cat', 'is_liquid']
-
-    # # merge with GNI data
-    # liquidity_data = pd.merge(liquidity_data, (gni / 20).rename('liquidity'), left_index=True, right_index=True,
-    #                           how='left').dropna()
-    # liquidity_data.loc[pd.IndexSlice[:, :, :, 'not_liquid'], 'liquidity'] = 0
-    #
-    # # calculate the average liquidity per quintile
-    # l_avg = (liquidity_data.prod(axis=1).groupby(['country', 'year', 'income_cat']).sum()
-    #          / liquidity_data.groupby(['country', 'year', 'income_cat']).n.sum()).rename('liquidity').to_frame()
-    # l_avg['is_liquid'] = 'tot'
-    # l_avg = l_avg.set_index('is_liquid', append=True)
-    # l_avg['n'] = .2
-    #
-    # liquidity_data = pd.concat((liquidity_data, l_avg), axis=0).sort_index()
-
     if write_output_:
         liquidity_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_liquidity.csv'))
 
     return liquidity_data
-
-
-def compute_average_liquidity(findex_liquidity):
-    # TODO: for now, simply using the latest data available, assuming that the liquidity of the population is constant
-    #  wrt 1/20 of the GNI over time.
-    l_f = (gni.loc[gni.index.max()].rename('GNI') / 20).rename('L_F')
-    x_f = 1 - findex_liquidity.iloc[findex_liquidity.reset_index().groupby(['country', 'income_cat']).year.idxmax()]
-    x_f = x_f.droplevel('year').rename('X_F').sort_index()
-
-    # merge
-    data = pd.merge(x_f, l_f, left_index=True, right_index=True, how='left').dropna()
-
-    if 'GDP' in l_max:
-        if l_max == 'GDP':
-            factor = 1
-        elif l_max != 'GDP' and '*' in l_max:
-            factor = float(l_max.split('*')[0])
-        else:
-            raise ValueError(f"Unknown l_max: {l_max}")
-        wb_data_macro = load_input_data(root_dir, "WB_socio_economic_data/wb_data_macro.csv")
-        wb_data_cat_info = load_input_data(root_dir, "WB_socio_economic_data/wb_data_cat_info.csv")
-        wb_data_macro['country'] = wb_data_macro.iso3.apply(lambda c: iso3_to_wb.loc[c] if c in iso3_to_wb else np.nan)
-        wb_data = pd.merge(wb_data_macro, wb_data_cat_info, on='iso3', how='left').set_index(['country', 'income_cat'])
-        wb_data['n'] = .2
-        income_pc = (wb_data.gdp_pc_pp * wb_data.income_share / wb_data.n).rename('L_max')
-        data = pd.merge(data, income_pc * factor, left_index=True, right_index=True, how='left')
-
-    # assuming a distribution for the share of people X that have less liquidity than L_F of the form
-    # X(L) = aL / (bL + c)
-    # with the constraint that X(0) = 0, X(L_F) = X_F, and X(L_max) = 1
-    # solving for parameters a, b, and c yields
-    a = data.X_F * (data.L_F - data.L_max)
-    b = data.L_F - data.L_max * data.X_F
-    c = data.L_max * data.L_F * (data.X_F - 1)
-
-    # the average liquidity is then obtained by rewriting X(L) to L(X) and integrating from 0 to 1;
-    # this integral is given by
-    data['L_avg'] = c / b * (a / b * (np.log((a / b).abs()) - np.log(((b - a) / b).abs())) - 1)
-
-    return data.L_avg.dropna()
 
 
 if __name__ == "__main__":
