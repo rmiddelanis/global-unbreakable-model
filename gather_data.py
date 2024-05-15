@@ -830,7 +830,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
             policy_opt=pol_opt
         )
 
-        outpath = os.path.join(intermediate_dir_, 'scenarios', climate_scenario_, pol_name + f"_EW-{ew_year_ if ew_decade_ is None else ew_decade_}").replace(' ', '_')
+        outpath = os.path.join(intermediate_dir_, 'scenarios', climate_scenario_, pol_name + f"_EW-{ew_year_ if ew_decade_ == '' else ew_decade_}").replace(' ', '_')
         if not os.path.exists(outpath):
             os.makedirs(outpath)
 
