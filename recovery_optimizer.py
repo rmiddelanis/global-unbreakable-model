@@ -666,7 +666,7 @@ def recompute_data_with_tax(df_in, num_cores=None):
     with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(recompute_with_tax_wrapper, df_in.iterrows()), total=len(df_in),
                              desc='Recomputing actual welfare loss and used liquidity'))
-    res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco'], index=df_in.index)
+    res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS'], index=df_in.index)
     return res
 
 

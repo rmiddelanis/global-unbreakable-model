@@ -69,6 +69,7 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         cat_info_event=cat_info_event,
         event_level=event_level,
         affected_cats=affected_cats,
+        hazard_protection=hazard_protection,
     )
 
     # calculate the post-disaster response
@@ -124,22 +125,22 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         os.makedirs(folder_name)
 
     # save macro_event
-    macro_event.to_csv(folder_name + '/macro_' + option_fee_ + '_' + option_pds_ + '.csv', encoding="utf-8",
+    macro_event.to_csv(folder_name + '/macro.csv', encoding="utf-8",
                        header=True)
 
     # save cat_info_event_iah
-    cat_info_event_iah.to_csv(folder_name + '/iah_' + option_fee_ + '_' + option_pds_ + '.csv', encoding="utf-8",
+    cat_info_event_iah.to_csv(folder_name + '/iah.csv', encoding="utf-8",
                               header=True)
 
     # Save results
-    results.to_csv(folder_name + '/results_' + option_fee_ + '_' + option_pds_ + '.csv', encoding="utf-8",
+    results.to_csv(folder_name + '/results.csv', encoding="utf-8",
                    header=True)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
-    parser.add_argument('--climate_scenario', type=str, help='Climate scenario from CDRI GIRI report.')
-    parser.add_argument('--scenarios', type=str, default='baselineEW-2018', help='Scenarios')
+    parser.add_argument('--climate_scenario', type=str, default='Existing_climate', help='Climate scenario from CDRI GIRI report.')
+    parser.add_argument('--scenarios', type=str, default='baseline_EW-2018', help='Scenarios')
     parser.add_argument('--option_fee', type=str, default='tax', help='Fee option to fund PDS.')
     parser.add_argument('--countries', type=str, default='', help='Select countries for the analysis. Use + to separate countries. If empty, all countries are selected.')
     parser.add_argument('--option_pds', type=str, default='unif_poor', help='PDS option.')

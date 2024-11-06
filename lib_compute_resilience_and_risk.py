@@ -24,7 +24,7 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level):
     return macro_event, cat_info_event
 
 
-def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
+def compute_dK(macro_event, cat_info_event, event_level, affected_cats, hazard_protection):
     macro_event_ = copy.deepcopy(macro_event)
     cat_info_event_ = copy.deepcopy(cat_info_event)
     cat_info_event_ia = concat_categories(cat_info_event_, cat_info_event_, index=affected_cats)
@@ -36,6 +36,12 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
 
     # capital losses and total capital losses
     cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
+
+    # apply hazard protection
+    protection_index = pd.merge(cat_info_event_ia, hazard_protection, left_index=True, right_index=True, how='left').protection.values >= cat_info_event_ia.reset_index('rp').rp.values
+    cat_info_event_ia.loc[protection_index, "dk"] = 0
+
+    # compute reconstruction capital share
     cat_info_event_ia["dk_reco"] = cat_info_event_ia["dk"] * macro_event_["reconstruction_share_sigma_h"]  # capital to be reconstructed at the expense of the households
 
     cat_info_event_ia.loc[pd.IndexSlice[:, :, :, :, 'na'], "dk"] = 0
@@ -279,18 +285,18 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
     elif option_pds == "prop":
         cat_info_event_iah_["help_received"] = macro_event_["aid"] / macro_event_["need"] * cat_info_event_iah_["help_received"]
 
-    # option_fee
-    if option_fee == "tax":
-        # help_fee is the share of the total help provided, distributed proportionally to the hh's capital shares
-        cat_info_event_iah_["help_fee"] = (fraction_inside * macro_event_["aid"] * cat_info_event_iah_["k"]
-                                           / agg_to_event_level(cat_info_event_iah_, "k", event_level))
-    elif option_fee == "insurance_premium":
-        # TODO: this is never used, because the case option_fee == "insurance_premium" is handled in calculate_response
-        cat_info_event_iah_.loc[(cat_info_event_iah_.income_cat.isin(poor_cat)), "help_fee"] = fraction_inside * agg_to_event_level(
-            cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_cat)], 'help_received', event_level) / (cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_cat)].n.sum())
-        cat_info_event_iah_.loc[(~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_fee"] = fraction_inside * agg_to_event_level(
-            cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_cat)], 'help_received', event_level) / (cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_cat)].n.sum())
-        cat_info_event_iah_[['help_received', 'help_fee']] += cats_event_iah_pre_pds[['help_received', 'help_fee']]
+    # # option_fee
+    # if option_fee == "tax":
+    #     # help_fee is the share of the total help provided, distributed proportionally to the hh's capital shares
+    #     cat_info_event_iah_["help_fee"] = (fraction_inside * macro_event_["aid"] * cat_info_event_iah_["c"]
+    #                                        / agg_to_event_level(cat_info_event_iah_, "c", event_level))
+    # elif option_fee == "insurance_premium":
+    #     # TODO: this is never used, because the case option_fee == "insurance_premium" is handled in calculate_response
+    #     cat_info_event_iah_.loc[(cat_info_event_iah_.income_cat.isin(poor_cat)), "help_fee"] = fraction_inside * agg_to_event_level(
+    #         cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_cat)], 'help_received', event_level) / (cat_info_event_iah_.loc[cat_info_event_iah_.income_cat.isin(poor_cat)].n.sum())
+    #     cat_info_event_iah_.loc[(~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_fee"] = fraction_inside * agg_to_event_level(
+    #         cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_cat)], 'help_received', event_level) / (cat_info_event_iah_.loc[~cat_info_event_iah_.income_cat.isin(poor_cat)].n.sum())
+    #     cat_info_event_iah_[['help_received', 'help_fee']] += cats_event_iah_pre_pds[['help_received', 'help_fee']]
 
     cat_info_event_iah_.drop(['income_cat', 'helped_cat', 'affected_cat'], axis=1, inplace=True)
     return macro_event_, cat_info_event_iah_
@@ -309,7 +315,8 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_m
        'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'diversified_share']]
     opt_data['capital_t'] = capital_t
     opt_data['delta_c_h_max'] = delta_c_h_max
-    opt_data = opt_data.xs('a', level='affected_cat', drop_level=False).round(10)
+    # opt_data = opt_data.xs('a', level='affected_cat', drop_level=False).round(10)
+    opt_data = opt_data[opt_data.delta_k_h_eff > 0].round(10)
     recovery_rates_lambda = optimize_data(
         df_in=opt_data,
         tolerance=1e-2,
@@ -354,15 +361,18 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
 
 def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):#, long_term_horizon_=None):
     cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - macro_event['reconstruction_share_sigma_h'])
-    macro_event['delta_tax_pub'] = ((agg_to_event_level(cat_info_event_iah, 'dk_pub', event_level)
-                                     / agg_to_event_level(cat_info_event_iah, 'k', event_level))
-                                    / macro_event.avg_prod_k)
+    hh_fee_share = cat_info_event_iah["c"] / agg_to_event_level(cat_info_event_iah, "c", event_level)
+    cat_info_event_iah['help_fee'] = hh_fee_share * agg_to_event_level(cat_info_event_iah, 'help_received', event_level)
+    cat_info_event_iah['reco_fee'] = hh_fee_share * agg_to_event_level(cat_info_event_iah, 'dk_pub', event_level)
     cat_info_event_iah['dc_long_term'] = (
-            cat_info_event_iah['dS_reco'] + cat_info_event_iah['help_fee'] + cat_info_event_iah['c']
-            * macro_event['delta_tax_pub'] - cat_info_event_iah['help_received']
+            cat_info_event_iah['help_fee'] + cat_info_event_iah['reco_fee'] +
+            (cat_info_event_iah['dS_reco_PDS'] - cat_info_event_iah['help_received'])
+            # 'dS_reco_PDS' is the amount used from both PDS and savings, therefore deducting 'help_received' to get the
+            # amount used from savings only. In case 'help_received' is higher than 'dS_reco_PDS', the household
+            # has made a net gain, no savings were used and long-term consumption losses decrease.
     )
-    cat_info_event_iah['dW_long_term'] = cat_info_event_iah['c'] ** (-macro_event['income_elasticity_eta']) * \
-                                         cat_info_event_iah['dc_long_term']
+    cat_info_event_iah['dW_long_term'] = (cat_info_event_iah['c'] ** (-macro_event['income_elasticity_eta']) *
+                                          cat_info_event_iah['dc_long_term'])
     return cat_info_event_iah, macro_event
 
 
