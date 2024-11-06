@@ -5,11 +5,10 @@ import pandas as pd
 
 from lib_prepare_scenario import average_over_rp
 from pandas_helper import load_input_data
-from plotting import plot_map
 
 
-def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True, plot_coverage_map=False,
-                           climate_scenario='Existing climate'):
+def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True, plot_coverage_map=False,
+                             climate_scenario='Existing climate'):
     """
     Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
     country, hazard, and return period. GIR data contains data for hazards Tropical cyclone, Tsunami, Flood (riverine),
@@ -79,6 +78,8 @@ def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp
     gir_data[['cap_stock', 'gdp']] = gir_data[['cap_stock_capita', 'gdp_capita']].mul(gir_data['pop'], axis=0)
     gir_macro = gir_data[['iso3', 'country', 'pop', 'cap_stock', 'gdp']].drop_duplicates().groupby(['iso3', 'country']).sum().reset_index('country')
     gir_loss = gir_data.groupby(['iso3', 'hazard', 'rp']).loss.sum().to_frame()
+
+    # compute the share of capital that is destroyed
     gir_loss['frac_value_destroyed'] = gir_loss.loss / gir_macro.cap_stock
 
     frac_value_destroyed_pml = gir_loss.frac_value_destroyed.drop('AAL', level='rp')
@@ -152,13 +153,6 @@ def load_gir_hazard_losses(root_dir_, gir_filepath_, default_rp_, extrapolate_rp
             frac_value_destroyed_completed = add_rp(frac_value_destroyed_aal, frac_value_destroyed_completed, new_max_rp)
         frac_value_destroyed_result = frac_value_destroyed_completed
 
-    if plot_coverage_map:
-        plot_map(
-            pd.Series(index=frac_value_destroyed_result.index.get_level_values('iso3').unique(), data=1,
-                      name='iso3').rename('coverage hazard_loss_tot'), cmap='PuRd_r', show_legend=False, show=False,
-            outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps', 'coverage_hazard_loss_tot.png')
-        )
-
     return frac_value_destroyed_result
 
 
@@ -167,7 +161,7 @@ if __name__ == '__main__':
     gir_filepath = "GIR_hazard_loss_data/export_all_metrics.csv.zip"
     default_rp = "default_rp"
     extrapolate_rp = False
-    load_gir_hazard_losses(
+    load_gir_hazard_loss_rel(
         root_dir_=root_dir,
         gir_filepath_=gir_filepath,
         default_rp_=default_rp,

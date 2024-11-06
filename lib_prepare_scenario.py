@@ -57,7 +57,7 @@ def average_over_rp(df, default_rp, protection=None):
     return res
 
 
-def gather_capital_data(root_dir_, plot_map=None, include_legacy_sids=False):
+def gather_capital_data(root_dir_, include_legacy_sids=False):
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
     # pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
     capital_data = load_input_data(root_dir_, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
@@ -94,11 +94,6 @@ def gather_capital_data(root_dir_, plot_map=None, include_legacy_sids=False):
     capital_data["avg_prod_k"] = capital_data.cgdpo / capital_data.cn
     capital_data = capital_data.dropna()
 
-    if plot_map is not None:
-        plot_map(pd.Series(index=capital_data.index, data=1, name='iso3').rename('coverage avg_prod_k'), cmap='PuRd_r',
-                 show_legend=False, show=False,
-                 outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps',
-                                      'coverage_avg_prod_k.png'))
     return capital_data
 
 

@@ -2,13 +2,12 @@
 # The script was developed by Robin Middelanis based on previous work by Adrien Vogt-Schilb and Jinqiang Chen.
 import argparse
 from gather_findex_data import get_liquidity_from_findex
-from gather_gir_data import load_gir_hazard_losses
+from gather_gir_data import load_gir_hazard_loss_rel
 from lib_prepare_scenario import *
 from apply_policy import *
 import pandas as pd
 from lib import get_country_name_dicts, df_to_iso3
 from wb_api_wrapper import get_wb_mrv
-from plotting import plot_map
 
 
 def get_cat_info_and_tau_tax(econ_scope, wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_):
@@ -138,44 +137,7 @@ def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, imf_capital_data_file
     elif reconstruction_capital_ == 'prv_oth':
         capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share + capital_shares.k_oth_share
 
-    # if make_plots:
-    # capital_shares *= 100
-    #     fig, axs = plt.subplots(ncols=3, figsize=(12, 4.5), sharex=True, sharey=True)
-    #     gdp = capital_shares.gdp_pc_pp / 1000
-    #     for ax, (x, y), name in zip(axs, [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_prv_share'),
-    #                                       ('gdp_pc_pp', 'k_oth_share')],
-    #                                 [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
-    #         if x == 'gdp_pc_pp':
-    #             x_ = gdp
-    #         else:
-    #             x_ = capital_shares[x]
-    #         ax.scatter(x_, capital_shares[y], marker='o')
-    #         for i, label in enumerate(capital_shares.index):
-    #             ax.text(x_[i], capital_shares[y][i], label, fontsize=10)
-    #             ax.set_xlabel('GDP per capita / $1,000')
-    #             ax.set_title(name)
-    #         axs[0].set_ylabel('share (%)')
-    #     plt.tight_layout()
-    #     plt.show(block=False);
-    #     plt.draw()
-    #
-    #     fig, axs = plt.subplots(ncols=3, figsize=(12, 4.5), sharex=True, sharey=True)
-    #     for ax, (x, y), name in zip(axs, [('self_employment', 'k_pub_share'),
-    #                                       ('self_employment', 'k_prv_share'),
-    #                                       ('self_employment', 'k_oth_share')],
-    #                                 [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
-    #         x_ = capital_shares[x]
-    #         ax.scatter(x_, capital_shares[y], marker='o')
-    #         for i, label in enumerate(capital_shares.index):
-    #             ax.text(x_[i], capital_shares[y][i], label, fontsize=10)
-    #             ax.set_xlabel('self employment rate (%)')
-    #             ax.set_title(name)
-    #         axs[0].set_ylabel('share (%)')
-    #     plt.tight_layout()
-    #     plt.show(block=False)
-    #     plt.draw()
-
-    return capital_shares.reconstruction_share_sigma_h
+    return capital_shares
 
 
 
@@ -218,8 +180,8 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population
     return exposure_fa_with_peb_
 
 
-def compute_exposure_and_adjust_vulnerability(root_dir_, hazard_loss_tot_, vulnerability_, fa_threshold_, plot_coverage_map=False):
-    exposure_fa_guessed_ = (hazard_loss_tot_ / vulnerability_.xs('tot', level='income_cat')).dropna().rename('fa')
+def compute_exposure_and_adjust_vulnerability(root_dir_, hazard_loss_rel_, vulnerability_, fa_threshold_, plot_coverage_map=False):
+    exposure_fa_guessed_ = (hazard_loss_rel_ / vulnerability_.xs('tot', level='income_cat')).dropna().rename('fa')
 
     vulnerability_quintiles = vulnerability_.drop('tot', level='income_cat')
 
@@ -250,13 +212,6 @@ def compute_exposure_and_adjust_vulnerability(root_dir_, hazard_loss_tot_, vulne
 
     exposure_fa_guessed_ = fa_v_merged.fa
     vulnerability_per_income_cat_adjusted_ = fa_v_merged.v
-
-    if plot_coverage_map:
-        plot_map(
-            pd.Series(index=exposure_fa_guessed_.index.get_level_values('iso3').unique(), data=1, name='iso3').rename(
-                'coverage exposure_fa'), cmap='PuRd_r', show_legend=False, show=False,
-            outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps', 'coverage_exposure_fa.png')
-        )
 
     return exposure_fa_guessed_, vulnerability_per_income_cat_adjusted_
 
@@ -324,11 +279,6 @@ def load_vulnerability_data(
         )
         vuln_distr = vuln_distr.set_index('iso3')[['q1', 'q2', 'q3', 'q4', 'q5']]
 
-        if plot_coverage_map:
-            plot_map(pd.Series(index=vuln_distr.index.get_level_values('iso3').unique(), data=1, name='iso3').rename(
-                'coverage vuln_distr'), cmap='PuRd_r', show_legend=False, show=False,
-                outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps', 'coverage_gmd.png'))
-
         # fill missing countries in the GMD data with average
         if fill_missing_gmd_with_country_average:
             missing_index = np.setdiff1d(vulnerability_.index.get_level_values('iso3').unique(), vuln_distr.index)
@@ -368,11 +318,6 @@ def load_vulnerability_data(
                   f"excess vulnerability values > 1!")
     vulnerability_ = pd.concat((vulnerability_, vulnerability_tot), axis=0).sort_index()
 
-    if plot_coverage_map:
-        plot_map(pd.Series(index=vulnerability_.index.get_level_values('iso3').unique(), data=1, name='iso3').rename(
-            'coverage vulnerability'), cmap='PuRd_r', show_legend=False, show=False,
-                 outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps',
-                                      'coverage_vulnerability.png'))
     return vulnerability_
 
 
@@ -386,11 +331,6 @@ def compute_borrowing_ability(root_dir_, credit_ratings_, finance_preparedness_=
     catddo_countries = pd.Series(index=pd.Index(catddo_countries, name='iso3'), data=1, name='contingent_countries')
     borrowing_ability_ = pd.concat((borrowing_ability_, catddo_countries), axis=1)
     borrowing_ability_ = borrowing_ability_.borrowing_ability.fillna(borrowing_ability_.contingent_countries)
-    if plot_coverage_map:
-        plot_map(pd.Series(index=borrowing_ability_.index, data=1, name='iso3').rename('coverage borrowing_ability'),
-                 cmap='PuRd_r', show_legend=False, show=False,
-                 outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps',
-                                      'coverage_borrowing_ability.png'))
     return borrowing_ability_
 
 
@@ -504,11 +444,6 @@ def load_wrp_data(any_to_wb_, wrp_data_path_="WRP/lrf_wrp_2021_full_data.csv.zip
     if outfile is not None:
         indicators.to_csv(outfile)
 
-    if plot_coverage_map:
-        plot_map(pd.Series(index=indicators.index, data=1, name='iso3').rename('coverage wrp_data'), cmap='PuRd_r',
-                 show_legend=False, show=False,
-                 outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps', 'coverage_wrp_data.png'))
-
     return indicators
 
 
@@ -580,13 +515,6 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
         print("No rating available for regions:", "; ".join(ratings[ratings.rating.isna()].index), ". Setting rating to 0.")
         ratings.rating.fillna(0, inplace=True)
 
-    if plot_coverage_map:
-        plot_map(
-            pd.Series(index=ratings.index, data=1, name='iso3').rename('coverage credit_ratings'), cmap='PuRd_r',
-            show_legend=False, show=False, outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps',
-                                                                'coverage_credit_ratings.png')
-        )
-
     return ratings.rating
 
 
@@ -648,12 +576,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     wb_data_macro = load_input_data(root_dir_, "WB_socio_economic_data/wb_data_macro.csv").set_index(econ_scope_)
     wb_data_cat_info = load_input_data(root_dir_, "WB_socio_economic_data/wb_data_cat_info.csv").set_index(
         [econ_scope_, 'income_cat'])
-    plot_map(pd.Series(index=wb_data_macro.index, data=1, name='iso3').rename('coverage wb_data_macro'), cmap='PuRd_r',
-             show_legend=False, show=False, outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps',
-                                                                'coverage_wb_data_macro.png'))
-    plot_map(pd.Series(index=wb_data_cat_info.index.get_level_values('iso3').unique(), data=1, name='iso3').rename('coverage wb_data_cat_info'), cmap='PuRd_r',
-             show_legend=False, show=False, outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps',
-                                                                'coverage_wb_data_cat_info.png'))
 
     pov_headcount = load_input_data(root_dir_, "PEB/pov_headcount.csv", index_col=[0, 1]).squeeze()
 
@@ -677,7 +599,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     # borrowing_ability = compute_borrowing_ability(credit_ratings, plot_coverage_map=True)
 
     # load average productivity of capital
-    avg_prod_k = gather_capital_data(root_dir_, plot_map=plot_map).avg_prod_k
+    avg_prod_k = gather_capital_data(root_dir_).avg_prod_k
 
     # load building vulnerability classification and compute vulnerability per income class
     vulnerability = load_vulnerability_data(
@@ -690,7 +612,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     )
 
     # load total hazard losses per return period (on the country level)
-    hazard_loss_tot = load_gir_hazard_losses(
+    hazard_loss_rel = load_gir_hazard_loss_rel(
         root_dir_=root_dir_,
         gir_filepath_="GIR_hazard_loss_data/export_all_metrics.csv.zip",
         default_rp_=default_rp_,
@@ -701,7 +623,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
 
     # compute exposure and adjust vulnerability (per income category) for excess exposure
     exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(root_dir_,
-        hazard_loss_tot, vulnerability, fa_threshold_, plot_coverage_map=True,
+        hazard_loss_rel, vulnerability, fa_threshold_, plot_coverage_map=True,
     )
 
     # apply poverty exposure bias
@@ -731,7 +653,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         else:
             hazard_protection = load_protection(hazard_ratios.index, root_dir_, protection_data="country_income", min_rp=1)
 
-    reconstruction_share_sigma = calc_reconstruction_share_sigma(root_dir_, any_to_wb, reconstruction_capital_=reconstruction_capital_)
+    reconstruction_share_sigma = calc_reconstruction_share_sigma(root_dir_, any_to_wb, reconstruction_capital_=reconstruction_capital_).reconstruction_share_sigma_h
 
     macro = wb_data_macro
     macro = macro.join(disaster_preparedness, how='left')
@@ -751,13 +673,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     cat_info.dropna(inplace=True)
     hazard_ratios.dropna(inplace=True)
     hazard_protection.dropna(inplace=True)
-
-    for df, name in zip([macro, cat_info, hazard_ratios], ['macro', 'cat_info', 'hazard_ratios']):
-        plot_map(
-            pd.Series(index=df.index.get_level_values('iso3').unique(), data=1, name='iso3').rename(f'coverage {name}'),
-            cmap='PuRd_r', show_legend=False, show=False,
-            outfile=os.path.join(root_dir_, 'figures', '__input_country_coverage_maps', f'coverage_{name}.png')
-        )
 
     common_regions = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index and c in hazard_protection.index]
     macro = macro.loc[common_regions]
