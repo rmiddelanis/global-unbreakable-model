@@ -3,10 +3,17 @@ import itertools
 import os
 
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+from matplotlib.colors import BoundaryNorm, LogNorm
+import matplotlib.colors as mcolors
+import matplotlib.ticker as ticker
+from matplotlib.transforms import blended_transform_factory
+
+import statsmodels.api as sm
+
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from matplotlib.gridspec import GridSpec
 from sklearn.metrics import r2_score
 from numpy.polynomial.polynomial import polyfit, polyval
 import cartopy.crs as ccrs
@@ -14,9 +21,35 @@ from lib import get_country_name_dicts, df_to_iso3
 from lib_compute_resilience_and_risk import agg_to_event_level
 from lib_prepare_scenario import average_over_rp
 from pandas_helper import load_input_data
+from prepare_scenario import calc_reconstruction_share_sigma
 from recovery_optimizer import baseline_consumption_c_h, delta_c_h_of_t, delta_k_h_eff_of_t
 from wb_api_wrapper import get_wb_series
 import seaborn as sns
+
+INCOME_GROUP_COLORS = {
+    'L': plt.get_cmap('Set1')(0),
+    'LM': plt.get_cmap('Set1')(1),
+    'UM': plt.get_cmap('Set1')(2),
+    'H': plt.get_cmap('Set1')(3),
+}
+
+INCOME_GROUP_MARKERS = ['o', 's', 'D', '^']
+
+# Set the default font size for labels and ticks
+plt.rcParams['axes.labelsize'] = 7  # Font size for x and y labels
+plt.rcParams['xtick.labelsize'] = 6  # Font size for x tick labels
+plt.rcParams['ytick.labelsize'] = 6  # Font size for y tick labels
+plt.rcParams['legend.fontsize'] = 6  # Font size for legend
+plt.rcParams['font.size'] = 7  # Font size for text
+
+# figure widths
+# "Column-and-a-Half: 120–136 mm wide"
+single_col_width = 8.9  # cm
+double_col_width = 18.3  # cm
+max_fig_height = 24.7  # cm
+
+inch = 2.54
+centimeter = 1 / inch
 
 
 def format_axis(ax, x_name=None, y_name=None, name_mapping=None, title='infer', ylim=None, xlim=None):
@@ -37,24 +70,108 @@ def format_axis(ax, x_name=None, y_name=None, name_mapping=None, title='infer', 
         ax.set_xlim(xlim)
 
 
-def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap='viridis', name_dict=None, outfile=None,
-             show=False, show_legend=True):
+def add_regression(ax_, data_, x_var_, y_var, p_val_pos='above left'):
+    # Perform OLS regression
+    reg_data = data_.sort_values(by=x_var_).copy()
+    X = sm.add_constant(reg_data[x_var_])
+    y = reg_data[y_var]
+    model = sm.OLS(y, X).fit()
+    print(model.summary())
+
+    # Get the regression line
+    regline = model.predict(X)
+
+    # Get the confidence intervals
+    predictions = model.get_prediction(X)
+    pred_int = predictions.conf_int(alpha=0.05)
+
+    # Plot the regression line
+    ax_.plot(reg_data[x_var_], regline, color='k', linestyle='--', lw=.75)
+
+    # Plot the confidence intervals
+    ax_.fill_between(reg_data[x_var_], pred_int[:, 0], pred_int[:, 1], color='k', alpha=0.15, lw=0)
+
+    # Determine significance level
+    p_value = model.pvalues[1]  # p-value for the slope coefficient
+    if p_value < 0.001:
+        significance = '***'
+    elif p_value < 0.01:
+        significance = '**'
+    elif p_value < 0.05:
+        significance = '*'
+    else:
+        significance = ' (n.s.)'  # not significant
+
+    r2 = model.rsquared
+
+    # Add significance stars to the plot
+    if p_val_pos == 'above left':
+        xy = (0, 1.01)
+    elif p_val_pos == 'above right':
+        xy = (1, 1.01)
+    elif p_val_pos == 'lower left':
+        xy = (.01, .01)
+    ax_.annotate(f'R2={r2:.2f}{significance}', xy=xy, xycoords='axes fraction',
+                 ha='left', va='bottom', fontsize=6)
+
+
+def plot_fig_1(data_, exclude_countries=None, bins_list=None, cmap='viridis', outfile=None,
+               show=False, numbering=True, annotate=None, run_ols=False, log_xaxis=False):
+    """
+    Plots a map with the given data and variables.
+
+    Parameters:
+    data_ (str or DataFrame or Series or GeoDataFrame): The data to plot. Can be a path to a CSV file, a pandas DataFrame,
+                                                        a pandas Series, or a GeoDataFrame.
+    exclude_countries (list or str, optional): Countries to exclude from the plot. Defaults to None.
+    bins_list (dict, optional): Bins for the variables. Defaults to None.
+    cmap (str or dict, optional): Colormap for the variables. Defaults to 'viridis'.
+    outfile (str, optional): Path to save the plot. Defaults to None.
+    show (bool, optional): Whether to show the plot. Defaults to False.
+    show_legend (bool, optional): Whether to show the legend. Defaults to True.
+    numbering (bool, optional): Whether to add numbering to the subplots. Defaults to True.
+
+    Returns:
+    list: List of axes objects.
+    """
+
+    variables = ['risk_to_assets', 'risk', 'resilience']
+
+    name_dict_ = {
+        'resilience': 'socio-economic\nresilience [%]',
+        'risk': 'wellbeing losses\n[% of GDP]',
+        'risk_to_assets': 'asset losses\n[% of GDP]',
+        'gdp_pc_pp': 'GDPpc [1000 PPP USD]',
+        'log_gdp_pc_pp': 'log(GDPpc)',
+        'dk_tot': 'Asset losses\n[PPP USD]',
+        'dWtot_currency': 'Welfare losses\n[PPP USD]',
+        'gini_index': 'Gini index [%]',
+    }
+
+    # Load and prepare the world map
     world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres')).set_crs(4326).to_crs('World_Robinson')
     world = world[~world.continent.isin(['Antarctica', 'seven seas (open ocean)'])]
-    if isinstance(data, str):
-        data = pd.read_csv(data)
-    elif not isinstance(data, (pd.DataFrame, pd.Series, gpd.GeoDataFrame)):
+
+    # Load data
+    if isinstance(data_, str):
+        data_ = pd.read_csv(data_)
+    elif not isinstance(data_, (pd.DataFrame, pd.Series, gpd.GeoDataFrame)):
         raise ValueError('data should be a path to a csv file, a pandas DataFrame, a pandas Series, or a GeoDataFrame.')
-    if 'iso3' not in list(data.columns if isinstance(data, pd.DataFrame) else []) + list(data.index.names):
-        if 'country' in list(data.columns if isinstance(data, pd.DataFrame) else []) + list(data.index.names):
-            data = df_to_iso3(data.reset_index(), 'country').set_index('iso3').copy()
+
+    # Ensure data has 'iso3' column
+    if 'iso3' not in list(data_.columns if isinstance(data_, pd.DataFrame) else []) + list(data_.index.names):
+        if 'country' in list(data_.columns if isinstance(data_, pd.DataFrame) else []) + list(data_.index.names):
+            data_ = df_to_iso3(data_.reset_index(), 'country').set_index('iso3').copy()
         else:
             raise ValueError('Neither "iso3" nor "country" were found in the data.')
-    data_ = gpd.GeoDataFrame(pd.merge(data, world.rename(columns={'iso_a3': 'iso3'}), on='iso3', how='inner'))
-    if len(data_) != len(data):
-        print(f'{len(data) - len(data_)} countries were not found in the world map. They will be excluded from the plot.')
+
+    # Merge data with world map
+    data_ = gpd.GeoDataFrame(pd.merge(data_, world.rename(columns={'iso_a3': 'iso3'}), on='iso3', how='inner'))
+    if len(data_) != len(data_):
+        print(f'{len(data_) - len(data_)} countries were not found in the world map. They will be excluded from the plot.')
     data_.replace([np.inf, -np.inf], np.nan, inplace=True)
 
+    # Prepare variables and colormap
     if isinstance(variables, str):
         variables = [variables]
     elif variables is None:
@@ -68,45 +185,207 @@ def plot_map(data, variables=None, exclude_countries=None, bins_list=None, cmap=
     elif not isinstance(cmap, dict):
         raise ValueError('cmap should be a string or a dictionary.')
 
-    # data_.dropna(subset=variables, inplace=True)
-
+    # Exclude specified countries
     if exclude_countries:
         if isinstance(exclude_countries, str):
             exclude_countries = [exclude_countries]
         data_ = data_[~data_.iso3.isin(exclude_countries)]
 
+    # Create subplots
     proj = ccrs.Robinson(central_longitude=0, globe=None)
-    # fig, axs = plt.subplots(nrows=len(variables), ncols=2, figsize=(8, 4 * len(variables)),
-    #                         subplot_kw=dict(projection=proj), gridspec_kw={'width_ratios': [20, 2]})
+    nrows = len(variables) + 1
+    ncols = 3
+    fig_width = 12 * centimeter
+    hist_width = .34
+    scatter_plot_width = 3.84
+    map_width = 7.82
+    hspace_adjust = .2
+    fig_height = (len(variables) * scatter_plot_width + hist_width) * centimeter / (1 - hspace_adjust)
+    if fig_height > max_fig_height * centimeter:
+        print("Warning. The figure height exceeds the maximum height of 24.7 cm.")
+    fig = plt.figure(figsize=(fig_width, fig_height))
+    gs = GridSpec(nrows, ncols, figure=fig, width_ratios=[map_width, scatter_plot_width, hist_width], height_ratios=[hist_width if not log_xaxis else 0] + [scatter_plot_width] * len(variables))
+    plt_axs = [[], [], []]
+    for i in range(1, nrows):
+        plt_axs[i - 1].append(fig.add_subplot(gs[i, 0], projection=proj))
+        plt_axs[i - 1].append(fig.add_subplot(gs[i, 1]))
+    plt_axs = np.array(plt_axs)
 
-    nrows = len(variables)
-    ncols = 2
-    fig = plt.figure(figsize=(8, 4 * nrows))
-    gs = GridSpec(nrows, ncols, figure=fig, width_ratios=[20, .5])
-    axs = [[fig.add_subplot(gs[i, j], projection=(proj if j % 2 == 0 else None)) for j in range(ncols)] for i in range(nrows)]
+    if not log_xaxis:
+        hist_x_ax = fig.add_subplot(gs[0, 1])
+    hist_y_axs = [fig.add_subplot(gs[i, 2]) for i in range(1, nrows)]
 
-    for (ax, cax), variable in zip(axs, variables):
-        world.boundary.plot(ax=ax, fc='lightgrey', lw=.5, zorder=0, ec='k')
-        ax.set_extent([-160, 180, -60, 85])
+    # Plot data
+    scatter_x_var = 'gdp_pc_pp' if not log_xaxis else 'log_gdp_pc_pp'
+    for i, ((m_ax, s_ax), variable) in enumerate(zip(plt_axs, variables)):
+        world.boundary.plot(ax=m_ax, fc='lightgrey', lw=0, zorder=0, ec='k')
+        m_ax.set_extent([-150, 180, -60, 85])
 
+        # Create a truncated version of the colormap that starts at 20% and goes up to 100%
+        truncated_cmap = mcolors.LinearSegmentedColormap.from_list(
+            'truncated_cmap', plt.get_cmap(cmap[variable])(np.linspace(0.1, 1, 256))
+        )
+
+        norm = None
         if bins_list[variable] is not None:
-            data_.plot(column=variable, ax=ax, legend=show_legend, zorder=5, cmap=cmap[variable], scheme="User_Defined",
-                          classification_kwds={'bins': bins_list[variable]}, legend_kwds={'loc': 'lower left', 'bbox_to_anchor': (0, 0)})
-            cax.set_visible(False)
-        else:
-            data_.plot(column=variable, ax=ax, legend=show_legend, cmap=cmap[variable], cax=cax)
+            norm = BoundaryNorm(bins_list[variable], truncated_cmap.N)
+        data_.plot(column=variable, ax=m_ax, zorder=5, cmap=truncated_cmap, norm=norm, lw=0, legend=True,
+                       legend_kwds={'orientation': 'horizontal', 'shrink': 0.6, 'aspect': 30, 'fraction': .1, 'pad': 0})
 
-        format_axis(ax, title=variable, name_mapping=name_dict)
+        m_ax.axis('off')
 
-        ax.axis('off')
-    plt.tight_layout()
+        if run_ols:
+            add_regression(s_ax, data_, scatter_x_var, variable)
+
+        sns_plot = sns.scatterplot(data=data_, x=scatter_x_var, y=variable, ax=s_ax,
+                                   hue='Income group', hue_order=list(rename_income_groups.values()), alpha=.5,
+                                   palette=INCOME_GROUP_COLORS,
+                                   style='Income group', markers=INCOME_GROUP_MARKERS, s=10,
+                                   legend='brief' if i == 1 else False)
+
+        if i == 1:
+            sns.move_legend(sns_plot, 'upper right', bbox_to_anchor=(1, 1), frameon=False, title=None, handletextpad=-.25)
+            # Adjust legend markers to have full opacity
+            for legend_handle in sns_plot.legend_.legend_handles:
+                legend_handle.set_alpha(1)
+
+        if annotate:
+            for idx, row in data_[data_.iso3.isin(annotate)].iterrows():
+                txt = row.iso3
+                s_ax.annotate(txt, (row.loc[scatter_x_var], row.loc[variable]), fontsize=6, ha='center', va='top')
+
+        # Histogram for the distribution of 'Income group'
+        # sns.kdeplot(data=data_, y=variable, ax=hist_y_axs[i], legend=False, fill=True, color='k', alpha=.25, common_norm=True)
+        # sns.histplot(data=data_, y=variable, hue='Income group', ax=hist_y_axs[i], legend=False, element='poly',
+        #             palette=INCOME_GROUP_COLORS)
+        sns.kdeplot(data=data_, y=variable, hue='Income group', ax=hist_y_axs[i], legend=False, fill=False,
+                    common_norm=True,
+                    palette=INCOME_GROUP_COLORS, alpha=.5)
+        hist_y_axs[i].set_ylim(s_ax.get_ylim())
+
+        hist_y_axs[i].axis('off')
+
+        if i == 0 and not log_xaxis:
+            # sns.kdeplot(data=data_, x='gdp_pc_pp', ax=hist_x_ax, legend=False, fill=True, common_norm=True, lw=0, alpha=.25, color='k')
+            sns.kdeplot(data=data_, x='gdp_pc_pp', hue='Income group', ax=hist_x_ax, legend=False, fill=False, common_norm=True,
+                        palette=INCOME_GROUP_COLORS, alpha=.5)
+            hist_x_ax.set_xlim(s_ax.get_xlim())
+
+            hist_x_ax.axis('off')
+
+        # s_ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        s_ax.set_title('')
+        s_ax.set_xlabel('')
+        s_ax.set_ylabel('')
+
+    for ax in plt_axs[:-1, 1]:
+        ax.set_xticklabels([])
+
+    plt_axs[-1, 1].set_xlabel(name_dict_[scatter_x_var])
+
+    plt.tight_layout(pad=0)
+
+    # add space between the subplots
+    plt.subplots_adjust(hspace=hspace_adjust)
+
+    for i, ((m_ax, s_ax), variable) in enumerate(zip(plt_axs, variables)):
+        fig.text(0, .5, name_dict_[variable], transform=blended_transform_factory(fig.transFigure, m_ax.transAxes),
+                 rotation=90, va='top', ha='center', rotation_mode='anchor')
+
+        # Adjust the position of hist_y_axs to align with s_ax
+        pos_s_ax = s_ax.get_position()
+        pos_hist_y_ax = hist_y_axs[i].get_position()
+        width_new = (pos_hist_y_ax.x1 - pos_s_ax.x1) * .95
+        x0_new = pos_s_ax.x1 + (pos_hist_y_ax.x1 - pos_s_ax.x1) * .05
+        hist_y_axs[i].set_position([x0_new, pos_hist_y_ax.y0, width_new, pos_hist_y_ax.height])
+
+        if i == 0 and not log_xaxis:
+            pos_hist_x_ax = hist_x_ax.get_position()
+            height_new = (pos_hist_x_ax.y1 - pos_s_ax.y1) * .95
+            y0_new = pos_s_ax.y1 + (pos_hist_x_ax.y1 - pos_s_ax.y1) * .05
+            hist_x_ax.set_position([pos_hist_x_ax.x0, y0_new, pos_hist_x_ax.width, height_new])
+
+    if numbering:
+        i = 0
+        for row in plt_axs:
+            bbox = row[1].get_position()
+            fig.text(0, bbox.y1, f'{chr(97 + i)}', ha='left', va='top', fontsize=8, fontweight='bold')
+            fig.text(bbox.x0 * .85, bbox.y1, f'{chr(97 + i + 1)}', ha='left', va='top', fontsize=8, fontweight='bold')
+            i += 2
+
+    # Save or show the plot
     if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight', transparent=True)
+        plt.savefig(outfile, dpi=300, bbox_inches='tight', transparent=True, pad_inches=0)
     if show:
         plt.show(block=False)
+        return
     else:
         plt.close()
-    return axs
+        return plt_axs
+
+
+def plot_fig_2(results_data_, income_cat_data_, outfile=None, show=False, numbering=True):
+    fig_width = single_col_width * centimeter
+    fig_heigt = 5.2 * centimeter
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(fig_width, fig_heigt),
+                            gridspec_kw={'height_ratios': [1, 4], 'hspace': 0},
+                            )
+    ax_scatter = axs[1, 0]
+    ax_kde = axs[0, 0]
+    ax_boxplots = axs[1, 1]
+    axs[0, 1].set_visible(False)
+    # Scatter plot
+    sns_scatter = sns.scatterplot(data=results_data_, x='gini_index', y='resilience', hue='Income group', style='Income group',
+                                  palette=INCOME_GROUP_COLORS, ax=ax_scatter, legend=True, markers=INCOME_GROUP_MARKERS, alpha=.5, s=10,
+                                  hue_order=list(rename_income_groups.values()))
+    sns.move_legend(sns_scatter, 'upper right', bbox_to_anchor=(1, 1), frameon=False, title=None, handletextpad=-.25)
+    # Adjust legend markers to have full opacity
+    for legend_handle in sns_scatter.legend_.legend_handles:
+        legend_handle.set_alpha(1)
+    ax_scatter.set_xlabel('Gini index [%]')
+    ax_scatter.set_ylabel('Resilience')
+
+    add_regression(ax_scatter, results_data_, 'gini_index', 'resilience', p_val_pos='lower left')
+
+    # KDE plot
+    sns.kdeplot(data=results_data_, x='gini_index', hue='Income group', palette=INCOME_GROUP_COLORS, ax=ax_kde, fill=False, common_norm=False, legend=False, alpha=0.5)
+    ax_kde.set_xlim(ax_scatter.get_xlim())
+    ax_kde.set_xlabel('')
+    ax_kde.set_ylabel('')
+    ax_kde.set_xticklabels([])
+    ax_kde.set_yticklabels([])
+    ax_kde.set_xticks([])
+    ax_kde.set_yticks([])
+    ax_kde.axis('off')
+
+    boxplot_data = income_cat_data_[['dw_rel', 'dk_rel']].stack() * 100
+    boxplot_data.index.names = ['iso3', 'income quintile', 'loss_type']
+    boxplot_data.name = 'shares [%]'
+    boxplot_data = boxplot_data.reset_index()
+    boxplot_data = boxplot_data.replace({'dw_rel': 'utility loss', 'dk_rel': 'asset loss'})
+
+    sns_boxplot = sns.boxplot(x='income quintile', y='shares [%]', hue='loss_type',
+                linewidth=.5, legend='brief', ax=ax_boxplots,
+                palette=[plt.get_cmap('Blues')(.5), plt.get_cmap('Greens')(.5)],
+                data=boxplot_data, flierprops=dict(marker='o', markersize=1, markerfacecolor='black', lw=0, alpha=.5))
+    sns.move_legend(sns_boxplot, loc='best', frameon=False, title=None)
+
+    ax_boxplots.set_ylabel('Loss share [%]')
+
+    plt.tight_layout(pad=0, w_pad=1.08)
+
+    if numbering:
+        fig.text(-.27, 1, f'{chr(97)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax_scatter.transAxes)
+        fig.text(-.28, 1, f'{chr(98)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax_boxplots.transAxes)
+
+    if outfile:
+        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
 
 
 def plot_scatter(data, x_vars, y_vars, exclude_countries=None, reg_degrees=None, name_dict=None, outfile=None,
@@ -194,6 +473,7 @@ def plot_scatter(data, x_vars, y_vars, exclude_countries=None, reg_degrees=None,
     if outfile:
         plt.savefig(outfile, dpi=300, bbox_inches='tight')
     plt.show(block=False)
+
 
 
 def plot_hbar(data, variables, comparison_data=None, norm=None, how='abs', head=15, outfile=None,
@@ -289,19 +569,17 @@ def fancy_scatter_matrix(data, reg_degree=1):
     plt.show(block=False)
 
 
-def load_data_per_income_cat(path, scenario='Existing_climate/baseline'):
-    cat_info = pd.read_csv(os.path.join(path, 'iah_tax_unif_poor.csv'), index_col=[0, 1, 2, 3, 4, 5])
-    protection = pd.read_csv(f"./intermediate/scenarios/{scenario}/scenario__hazard_protection.csv", index_col=[0, 1])
-    income_cat_data = cat_info[['c']].droplevel(['hazard', 'rp', 'affected_cat', 'helped_cat']).drop_duplicates()
+def aggregate_to_quintile_data(cat_info_):
+    quintile_data = cat_info_[['c']].droplevel(['hazard', 'rp', 'affected_cat', 'helped_cat']).drop_duplicates()
     for variable in ['dk', 'dw']:
-        var_data = agg_to_event_level(cat_info, variable, ['iso3', 'hazard', 'rp', 'income_cat'])
-        var_data = average_over_rp(var_data, 'default_rp', protection).groupby(['iso3', 'income_cat']).sum()
-        income_cat_data[variable] = var_data
-        income_cat_data[f'{variable}_rel'] = var_data / var_data.groupby('iso3').sum() * 100
-    income_cat_data['dw_pc_currency'] = income_cat_data['dw'] / income_cat_data.c.groupby('iso3').mean() ** (-1.5)
-    income_cat_data['resilience'] = income_cat_data['dk'] / income_cat_data['dw_pc_currency'] * 100
-    income_cat_data['dw_over_dk'] = income_cat_data['dw_pc_currency'] / income_cat_data['dk']
-    return income_cat_data
+        var_data = agg_to_event_level(cat_info_, variable, ['iso3', 'hazard', 'rp', 'income_cat'])
+        var_data = average_over_rp(var_data, 'default_rp').groupby(['iso3', 'income_cat']).sum()
+        quintile_data[variable] = var_data
+        quintile_data[f'{variable}_rel'] = var_data / var_data.groupby('iso3').sum()
+    # quintile_data['dw_pc_currency'] = quintile_data['dw'] / quintile_data.c.groupby('iso3').mean() ** (-1.5)
+    # quintile_data['resilience'] = quintile_data['dk'] / quintile_data['dw_pc_currency']
+    # quintile_data['dw_over_dk'] = quintile_data['dw_pc_currency'] / quintile_data['dk']
+    return quintile_data
 
 
 def plot_fast_slow_recovery_example_figure():
@@ -678,7 +956,7 @@ def make_liquid_savings_distribution_boxplot():
 def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_,
                   delta_i_h_pds_, delta_c_h_max_, recovery_params_, social_protection_share_gamma_h_, diversified_share_,
                   show_sp_losses=False, consumption_floor_xi_=None, t_hat_=None, t_tilde_=None, delta_tilde_k_h_eff_=None,
-                  consumption_offset_=None, title=None, ylims=None):
+                  consumption_offset_=None, title=None, ylims=None, plot_legend=True, show_ylabel=True):
     """
     Make a plot of the consumption and capital losses over time
     """
@@ -707,20 +985,27 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
                         label='Reconstruction loss', lw=0)
     axs[0].fill_between(t_[dc_savings_pds != 0], (c_baseline - (di_h + dc_reco) + dc_savings_pds)[dc_savings_pds != 0],
                        (c_baseline - (di_h + dc_reco))[dc_savings_pds != 0], facecolor='none', lw=0, hatch='XXX',
-                        edgecolor='grey', label='Liquid savings and PDS')
+                        edgecolor='grey', label='Liquidity and PDS')
     axs[0].plot([-0.03 * (max(t_) - min(t_)), 0], [c_baseline, c_baseline], color='black', label='__none__')
     axs[0].plot([0, 0], [c_baseline, (c_baseline - di_h - dc_reco + dc_savings_pds)[0]], color='black', label='__none__')
     axs[0].plot(t_, c_baseline - di_h - dc_reco + dc_savings_pds, color='black', label='Consumption')
 
     dk_eff = delta_k_h_eff_of_t(t_, 0, delta_k_h_eff_, lambda_h_, sigma_h_, delta_c_h_max_, productivity_pi_)
-    axs[1].fill_between(t_, 0, dk_eff, color='red', alpha=0.5, label='Effective capital loss')
+    #axs[1].fill_between(t_, 0, dk_eff, color='red', alpha=0.5, label='Effective capital loss')
     axs[1].plot([-0.03 * (max(t_) - min(t_)), 0], [0, 0], color='black', label='__none__')
     axs[1].plot([0, 0], [0, dk_eff[0]], color='black', label='__none__')
     axs[1].plot(t_, dk_eff, color='black', label='Effective capital loss')
 
     axs[1].set_xlabel('Time [y]')
-    axs[0].set_ylabel(r'Consumption $c(t)$')
-    axs[1].set_ylabel(r'Capital loss $\Delta k(t)$')
+
+    if show_ylabel:
+        axs[0].set_ylabel('Consumption\n(2021 PPP USD)')
+        axs[1].set_ylabel('Capital loss\n(2021 PPP USD)')
+    else:
+        axs[0].set_ylabel(None)
+        axs[1].set_ylabel(None)
+        axs[0].set_yticklabels([])
+        axs[1].set_yticklabels([])
 
     if ylims is not None:
         axs[0].set_ylim(ylims[0])
@@ -728,102 +1013,196 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
 
     if title is not None:
         axs[0].set_title(title)
-    for ax in axs:
-        ax.legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
+    if plot_legend:
+        for ax in axs:
+            ax.legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     plt.tight_layout()
+
+
+def plot_capital_shares(root_dir_, any_to_wb_, gdp_pc_, reconstruction_capital_='prv', outpath_=None):
+    capital_shares = calc_reconstruction_share_sigma(root_dir_, any_to_wb_, reconstruction_capital_=reconstruction_capital_)
+    capital_shares *= 100
+    fig, axs = plt.subplots(ncols=3, figsize=(12, 4.5), sharex=True, sharey=True)
+    capital_shares = pd.concat([capital_shares, gdp_pc_.rename('gdp_pc_pp')], axis=1)
+    gdp = capital_shares.gdp_pc_pp / 1000
+    for ax, (x, y), name in zip(axs, [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_prv_share'),
+                                      ('gdp_pc_pp', 'k_oth_share')],
+                                [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
+        if x == 'gdp_pc_pp':
+            x_ = gdp
+        else:
+            x_ = capital_shares[x]
+        ax.scatter(x_, capital_shares[y], marker='o')
+        for i, label in enumerate(capital_shares.index):
+            ax.text(x_[i], capital_shares[y][i], label, fontsize=10)
+            ax.set_xlabel('GDP per capita / $1,000')
+            ax.set_title(name)
+        axs[0].set_ylabel('share (%)')
+    plt.tight_layout()
+    if outpath_ is not None:
+        fig.savefig(os.path.join(outpath_, f"capital_shares_over_gpd.pdf"), dpi=300, bbox_inches='tight')
+    plt.show(block=False)
+
+    fig, axs = plt.subplots(ncols=3, figsize=(12, 4.5), sharex=True, sharey=True)
+    for ax, (x, y), name in zip(axs, [('self_employment', 'k_pub_share'),
+                                      ('self_employment', 'k_prv_share'),
+                                      ('self_employment', 'k_oth_share')],
+                                [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
+        x_ = capital_shares[x]
+        ax.scatter(x_, capital_shares[y], marker='o')
+        for i, label in enumerate(capital_shares.index):
+            ax.text(x_[i], capital_shares[y][i], label, fontsize=10)
+            ax.set_xlabel('self employment rate (%)')
+            ax.set_title(name)
+        axs[0].set_ylabel('share (%)')
+    plt.tight_layout()
+    if outpath_ is not None:
+        fig.savefig(os.path.join(outpath_, f"capital_shares_over_self_employment.pdf"), dpi=300, bbox_inches='tight')
+    plt.show(block=False)
+
+    fig, ax = plt.subplots(figsize=(4.5, 4.5))
+    sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='self_employment', alpha=.5)
+    ax.set_xlabel('GDP per capita (PPP USD)')
+    ax.set_ylabel('self employment rate (%)')
+    plt.tight_layout()
+    if outpath_ is not None:
+        fig.savefig(os.path.join(outpath_, f"self_employment_over_gdp.pdf"), dpi=300, bbox_inches='tight')
+    plt.show(block=False)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
     parser.add_argument('--climate_scenario', type=str, default='Existing climate')
     parser.add_argument('--plot', action='store_true')
+    parser.add_argument('--root_dir', type=str, default='./')
     args = parser.parse_args()
 
     climate_scenario = args.climate_scenario.replace(' ', '_')
-    outpath = f"./figures/{climate_scenario}"
+    outpath = f"./figures/"
     os.makedirs(outpath, exist_ok=True)
+    root_dir = args.root_dir
 
-    datasets = {
-        'baseline': pd.read_csv("./output/scenarios/Existing_climate/2024-05-14_15-20_baseline_EW-2018/results_tax_unif_poor.csv"),
-        'poor_reduction_results': pd.read_csv("./output/scenarios/Existing_climate/2024-05-15_09-57_reduce_poor_exposure_5_EW-2018/results_tax_unif_poor.csv"),
-        'nonpoor_reduction_results': pd.read_csv("./output/scenarios/Existing_climate/2024-05-15_10-08_reduce_nonpoor_exposure_5_EW-2018/results_tax_unif_poor.csv"),
-        'no_liquidity_no_pds': pd.read_csv("./output/scenarios/Existing_climate/2024-05-15_11-32_no_liquidity_EW-2018_noPDS/results_tax_no.csv"),
-        'with_liquidity_no_pds': pd.read_csv("./output/scenarios/Existing_climate/2024-05-15_11-43_baseline_EW-2018_noPDS/results_tax_no.csv"),
-        'no_liquidity_with_pds': pd.read_csv("./output/scenarios/Existing_climate/2024-05-15_11-36_no_liquidity_EW-2018/results_tax_unif_poor.csv"),
+    simulation_paths = {
+        'baseline': "2024-11-06_16-12_baseline_EW-2018",
+    }
+
+    results_data = {
+        k: pd.read_csv(f"./output/scenarios/Existing_climate/{v}/results.csv") for k, v in simulation_paths.items()
+    }
+
+    cat_info_data = {
+        k: pd.read_csv(f"./output/scenarios/Existing_climate/{v}/iah.csv", index_col=[0, 1, 2, 3, 4, 5]) for k, v in simulation_paths.items()
+    }
+
+    quintile_data = {
+        k: aggregate_to_quintile_data(cat_info_data[k]) for k in cat_info_data.keys()
     }
 
     gini_index = get_wb_series('SI.POV.GINI').rename('gini_index').dropna().reset_index()
     gini_index = gini_index.loc[gini_index.groupby('country').year.idxmax()].drop(columns='year')
     gini_index = df_to_iso3(gini_index, 'country').set_index('iso3').drop(columns='country').squeeze()
 
-    for k in datasets.keys():
-        datasets[k] = datasets[k][datasets[k].iso3 != 'THA']
-        datasets[k][['resilience', 'risk', 'risk_to_assets']] *= 100
-        datasets[k] = datasets[k].join(gini_index, on='iso3')
-
     income_groups = load_income_groups()
+    rename_income_groups = {
+        'Low income': 'L',
+        'Lower middle income': 'LM',
+        'Upper middle income': 'UM',
+        'High income': 'H'
+    }
+
+    for k in results_data.keys():
+        results_data[k] = results_data[k][results_data[k].iso3 != 'THA']
+        results_data[k][['resilience', 'risk', 'risk_to_assets']] *= 100
+        results_data[k] = results_data[k].join(gini_index, on='iso3')
+        results_data[k]['log_gdp_pc_pp'] = np.log(results_data[k]['gdp_pc_pp'])
+        results_data[k]['gdp_pc_pp'] /= 1e3
+        results_data[k] = pd.merge(results_data[k], income_groups, left_on='iso3', right_index=True, how='left')
+        results_data[k]['Income group'] = results_data[k]['Income group'].replace(rename_income_groups)
+
+    # read WB data
+    wb_data_macro = load_input_data(root_dir, "WB_socio_economic_data/wb_data_macro.csv").set_index('iso3')
+    wb_data_cat_info = load_input_data(root_dir, "WB_socio_economic_data/wb_data_cat_info.csv").set_index(
+        ['iso3', 'income_cat'])
 
     name_dict = {
-        'resilience': 'socio-economic resilience (%)',
-        'risk': 'risk to well-being (% of GDP)',
-        'risk_to_assets': 'risk to assets (% of GDP)',
-        'gdp_pc_pp': 'GDP per capita (PPP USD)',
-        'dk_tot': 'Asset losses',
-        'dWtot_currency': 'Welfare losses',
-        'gini_index': 'Gini index (%)',
+        'resilience': 'socio-economic resilience [%]',
+        'risk': 'wellbeing losses [% of GDP]',
+        'risk_to_assets': 'asset losses [% of GDP]',
+        'gdp_pc_pp': 'GDP per capita [PPP USD]',
+        'dk_tot': 'Asset losses [PPP USD]',
+        'dWtot_currency': 'Welfare losses [PPP USD]',
+        'gini_index': 'Gini index [%]',
     }
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts("./")
 
     if args.plot:
-        # plot recovery of ('COL', 'Earthquake', 5000, 'q1', 'a', 'not_helped') for scenarios with and without savings
-        for directory, with_savings in zip(["2024-05-15_11-32_no_liquidity_EW-2018_noPDS", "2024-05-15_11-43_baseline_EW-2018_noPDS"], [False, True]):
-            cat_info = pd.read_csv(f"./output/scenarios/Existing_climate/{directory}/iah_tax_no.csv", index_col=[0, 1, 2, 3, 4, 5])
-            macro = pd.read_csv(f"./output/scenarios/Existing_climate/{directory}/macro_tax_no.csv", index_col=[0, 1, 2])
-            data = pd.merge(macro, cat_info, left_index=True, right_index=True)
-            data = data.loc[('COL', 'Earthquake', 5000, 'q1', 'a', 'not_helped')]
-            data.recovery_params = [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in data.recovery_params[2:-2].split('), (')]
-            plot_recovery(10, data.avg_prod_k, data.tau_tax, data.k, data.dk,
-                          data.lambda_h, data.reconstruction_share_sigma_h, data.liquidity, data.help_received, np.nan,
-                          data.recovery_params, data.gamma_SP * data.n, data.diversified_share,
-                          ylims=[(-2200, 3000), None], title=f"{'with' if with_savings else 'without'} liquid savings and borrowing")
-            plt.savefig(f"./figures/{climate_scenario}/COL_Earthquake_5000_q1_a_not-helped_{'with' if with_savings else 'without'}-liquidity.pdf", dpi=300, bbox_inches='tight')
+        # plot capital shares
+        plot_capital_shares(root_dir, any_to_wb, wb_data_macro.gdp_pc_pp, reconstruction_capital_='prv', outpath_=outpath)
 
-        plot_map(
-            data=datasets['baseline'],
-            variables=['risk_to_assets', 'risk', 'resilience'],
-            bins_list={'resilience': None, 'risk': [.2, .4, 1, 2, 6],
-                       'risk_to_assets': [.15, .3, .5, 1, 3]},
-            name_dict=name_dict,
-            cmap={'resilience': 'YlOrBr_r', 'risk': 'Blues', 'risk_to_assets': 'Greens'},
-            outfile=f"{outpath}/resilience-wellbeing_risk-asset_risk_map.pdf",
+        # plot recovery of ('LBN', 'Earthquake', 5000, 'q1', 'a', 'not_helped') for scenarios without PDS and savings and with
+        household = ['LBN', 'Earthquake', 5000, 'q1', 'a']
+        cat_info = pd.read_csv(f"./output/scenarios/Existing_climate/2024-05-15_11-32_no_liquidity_EW-2018_noPDS/iah_tax_no.csv", index_col=[0, 1, 2, 3, 4, 5])
+        macro = pd.read_csv(f"./output/scenarios/Existing_climate/2024-05-15_11-32_no_liquidity_EW-2018_noPDS/macro_tax_no.csv", index_col=[0, 1, 2])
+        data = pd.merge(macro, cat_info, left_index=True, right_index=True).loc[tuple(household + ['not_helped'])]
+        data.recovery_params = [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in data.recovery_params[2:-2].split('), (')]
+        plot_recovery(6, data.avg_prod_k, data.tau_tax, data.k, data.dk,
+                      data.lambda_h, data.reconstruction_share_sigma_h, data.liquidity, data.help_received, np.nan,
+                      data.recovery_params, data.gamma_SP * data.n, data.diversified_share,
+                      ylims=[(-2000, 5500), None],
+                      title=f"without liquidity and PDS")
+        plt.savefig(f"./figures/{climate_scenario}/{household[0]}_{household[1]}_{household[2]}_{household[3]}_a_without_liqudity-PDS.pdf", dpi=300, bbox_inches='tight')
+        cat_info = pd.read_csv(f"./output/scenarios/Existing_climate/2024-05-14_15-20_baseline_EW-2018/iah_tax_unif_poor.csv", index_col=[0, 1, 2, 3, 4, 5])
+        macro = pd.read_csv(f"./output/scenarios/Existing_climate/2024-05-14_15-20_baseline_EW-2018/macro_tax_unif_poor.csv", index_col=[0, 1, 2])
+        data = pd.merge(macro, cat_info, left_index=True, right_index=True).loc[tuple(household + ['helped'])]
+        data.recovery_params = [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in data.recovery_params[2:-2].split('), (')]
+        plot_recovery(6, data.avg_prod_k, data.tau_tax, data.k, data.dk,
+                      data.lambda_h, data.reconstruction_share_sigma_h, data.liquidity, data.help_received, np.nan,
+                      data.recovery_params, data.gamma_SP * data.n, data.diversified_share,
+                      ylims=[(-2000, 5500), None],
+                      title=f"with liquidity and PDS")
+        plt.savefig(f"./figures/{climate_scenario}/{household[0]}_{household[1]}_{household[2]}_{household[3]}_a_with_liqudity-PDS.pdf", dpi=300, bbox_inches='tight')
+        if False:
+            for directory, with_savings in zip(["2024-05-15_11-32_no_liquidity_EW-2018_noPDS", "2024-05-15_11-43_baseline_EW-2018_noPDS"], [False, True]):
+                cat_info = pd.read_csv(f"./output/scenarios/Existing_climate/{directory}/iah_tax_no.csv", index_col=[0, 1, 2, 3, 4, 5])
+                macro = pd.read_csv(f"./output/scenarios/Existing_climate/{directory}/macro_tax_no.csv", index_col=[0, 1, 2])
+                data = pd.merge(macro, cat_info, left_index=True, right_index=True)
+                data = data.loc[('COL', 'Earthquake', 5000, 'q1', 'a', 'not_helped')]
+                data.recovery_params = [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in data.recovery_params[2:-2].split('), (')]
+                plot_recovery(10, data.avg_prod_k, data.tau_tax, data.k, data.dk,
+                              data.lambda_h, data.reconstruction_share_sigma_h, data.liquidity, data.help_received, np.nan,
+                              data.recovery_params, data.gamma_SP * data.n, data.diversified_share,
+                              ylims=[(-2200, 3000), None], title=f"{'with' if with_savings else 'without'} liquid savings and borrowing")
+                plt.savefig(f"./figures/{climate_scenario}/COL_Earthquake_5000_q1_a_not-helped_{'with' if with_savings else 'without'}-liquidity.pdf", dpi=300, bbox_inches='tight')
+                data = data.loc[('COL', 'Earthquake', 5000, 'q1', 'a', 'helped')]
+                plot_recovery(10, data.avg_prod_k, data.tau_tax, data.k, data.dk,
+                              data.lambda_h, data.reconstruction_share_sigma_h, data.liquidity, data.help_received, np.nan,
+                              data.recovery_params, data.gamma_SP * data.n, data.diversified_share,
+                              ylims=[(-2200, 3000), None],
+                              title=f"{'with' if with_savings else 'without'} liquid savings and borrowing")
+                plt.savefig(
+                    f"./figures/{climate_scenario}/COL_Earthquake_5000_q1_a_helped_{'with' if with_savings else 'without'}-liquidity.pdf",
+                    dpi=300, bbox_inches='tight')
+
+        plot_fig_1(
+            data_=results_data['baseline'],
+            bins_list={'resilience': [50, 60, 70, 80, 90, 100], 'risk': [0, .25, .5, 1, 2, 6],
+                       'risk_to_assets': [0, .125, .25, .5, 1, 3]},
+            cmap={'resilience': 'Reds_r', 'risk': 'Reds', 'risk_to_assets': 'Reds'},
+            annotate=['HTI', 'TJK'],
+            outfile=f"{outpath}/fig_1.pdf",
+            log_xaxis=True,
+            run_ols=True,
         )
-        plot_map(
-            data=datasets['baseline'],
-            variables='risk_to_assets',
-            bins_list={'risk_to_assets': [.15, .3, .5, 1, 3]},
-            name_dict=name_dict,
-            cmap='Greens',
-            outfile=f"{outpath}/risk_to_assets_map.pdf",
-        )
-        plot_map(
-            data=datasets['baseline'],
-            variables='risk',
-            bins_list={'risk': [.2, .4, 1, 2, 6]},
-            name_dict=name_dict,
-            cmap='Blues',
-            outfile=f"{outpath}/risk_map.pdf",
-        )
-        plot_map(
-            data=datasets['baseline'],
-            variables='resilience',
-            bins_list={'resilience': None},  # , 'risk': [.2, .4, 1, 2, 6],
-            name_dict=name_dict,
-            cmap='YlOrBr_r',
-            outfile=f"{outpath}/resilience_map.pdf",
+
+        plot_fig_2(
+            results_data_=results_data['baseline'],
+            income_cat_data_=quintile_data['baseline'],
+            outfile=f"{outpath}/fig_2.pdf",
+            numbering=True
         )
 
         plot_drivers_gdp_and_gini_index(
-            datasets['baseline'],
+            results_data['baseline'],
             outpath=outpath,
             annotate=['HTI', 'LAO', 'HND', 'TJK', 'GRC', 'MMR', 'URK', 'ECU', 'BTN', 'IRL', 'LUX', 'UKR', 'IRN', 'GEO']
         )
@@ -835,8 +1214,8 @@ if __name__ == '__main__':
         )
 
         plot_hbar(
-            data=datasets['baseline'],
-            comparison_data=datasets['poor_reduction_results'],
+            data=results_data['baseline'],
+            comparison_data=results_data['poor_reduction_results'],
             variables=["dWtot_currency", "dk_tot"],
             how='abs',
             unit='millions',
@@ -845,8 +1224,8 @@ if __name__ == '__main__':
             outfile=f"{outpath}/poor_exposure_reduction_dW-dk_comparison_abs.pdf",
         )
         plot_hbar(
-            data=datasets['baseline'],
-            comparison_data=datasets['poor_reduction_results'],
+            data=results_data['baseline'],
+            comparison_data=results_data['poor_reduction_results'],
             variables=["dWtot_currency", "dk_tot"],
             how='rel',
             name_dict=name_dict,
@@ -854,8 +1233,8 @@ if __name__ == '__main__':
         )
         plot_hbar(
             # data=datasets['baseline'][datasets['baseline'].iso3.isin(['CHN', 'IND', 'IDN', 'USA', 'ITA', 'TUR', 'JPN', 'VNM', 'IRN', 'PAK', 'GRC', 'KOR', 'COL', 'PHL', 'URK'])],
-            data=datasets['baseline'],
-            comparison_data=datasets['nonpoor_reduction_results'],
+            data=results_data['baseline'],
+            comparison_data=results_data['nonpoor_reduction_results'],
             variables=["dWtot_currency", "dk_tot"],
             how='abs',
             unit='millions',
@@ -865,8 +1244,8 @@ if __name__ == '__main__':
         )
         plot_hbar(
             # data=datasets['baseline'][datasets['baseline'].iso3.isin(['AZE', 'NGA', 'ALB', 'SVK', 'IDN', 'NPL', 'HND', 'CYP', 'GHA', 'HTI', 'LAO', 'COL', 'AGO', 'PAK', 'IND'])],
-            data=datasets['baseline'],
-            comparison_data=datasets['nonpoor_reduction_results'],
+            data=results_data['baseline'],
+            comparison_data=results_data['nonpoor_reduction_results'],
             variables=["dWtot_currency", "dk_tot"],
             how='rel',
             name_dict=name_dict,
