@@ -24,7 +24,7 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level):
     return macro_event, cat_info_event
 
 
-def compute_dK(macro_event, cat_info_event, event_level, affected_cats, hazard_protection):
+def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     macro_event_ = copy.deepcopy(macro_event)
     cat_info_event_ = copy.deepcopy(cat_info_event)
     cat_info_event_ia = concat_categories(cat_info_event_, cat_info_event_, index=affected_cats)
@@ -36,10 +36,6 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats, hazard_p
 
     # capital losses and total capital losses
     cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
-
-    # apply hazard protection
-    protection_index = pd.merge(cat_info_event_ia, hazard_protection, left_index=True, right_index=True, how='left').protection.values >= cat_info_event_ia.reset_index('rp').rp.values
-    cat_info_event_ia.loc[protection_index, "dk"] = 0
 
     # compute reconstruction capital share
     cat_info_event_ia["dk_reco"] = cat_info_event_ia["dk"] * macro_event_["reconstruction_share_sigma_h"]  # capital to be reconstructed at the expense of the households

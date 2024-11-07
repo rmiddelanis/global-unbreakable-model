@@ -69,7 +69,6 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         cat_info_event=cat_info_event,
         event_level=event_level,
         affected_cats=affected_cats,
-        hazard_protection=hazard_protection,
     )
 
     # calculate the post-disaster response
