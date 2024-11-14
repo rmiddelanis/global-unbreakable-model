@@ -653,14 +653,14 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         else:
             hazard_protection = load_protection(hazard_ratios.index, root_dir_, protection_data="country_income", min_rp=1)
 
-    reconstruction_share_sigma = calc_reconstruction_share_sigma(root_dir_, any_to_wb, reconstruction_capital_=reconstruction_capital_).reconstruction_share_sigma_h
+    capital_shares = calc_reconstruction_share_sigma(root_dir_, any_to_wb, reconstruction_capital_=reconstruction_capital_)
 
     macro = wb_data_macro
     macro = macro.join(disaster_preparedness, how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
-    macro = macro.join(reconstruction_share_sigma, how='left')
+    macro = macro.join(capital_shares, how='left')
     macro = macro.join(pov_headcount.unstack('pov_line')[include_pov_head_].rename(f"pov_rate_{include_pov_head_}"),
                        how='left')
     macro['rho'] = discount_rate_rho_
