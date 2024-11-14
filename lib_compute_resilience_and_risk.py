@@ -317,7 +317,7 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_m
         df_in=opt_data,
         tolerance=1e-2,
         min_lambda=.05,
-        max_lambda=6,
+        max_lambda=1e2,
         num_cores=num_cores
     )
     return pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
