@@ -9,10 +9,10 @@ import time
 warnings.filterwarnings("always", category=UserWarning)
 
 
-def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation_name_, exclude_hazards_, countries_,
+def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, pds_shareable_, pds_targeting_, pds_borrowing_, scale_liquidity_, scale_vulnerability_, simulation_name_, exclude_hazards_, countries_,
               num_cores_):
     print(scenario_)
-    print(f'optionFee ={option_fee_}, optionPDS ={option_pds_}, optionB ={option_b}, optionT ={option_t}')
+    print(f'optionFee ={option_fee_}, optionPDS ={option_pds_}, optionB ={pds_borrowing_}, optionT ={pds_targeting_}')
 
     # Options and parameters
     econ_scope = "iso3"  # province, deparmtent
@@ -26,11 +26,13 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
     # macro-economic country economic data
     macro = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', climate_scenario_, scenario_, "scenario__macro.csv"),
                         index_col=econ_scope)
+    macro['shareable'] = pds_shareable_
 
     # consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
     cat_info = pd.read_csv(
         os.path.join(intermediate_dir, 'scenarios', climate_scenario_, scenario_, "scenario__cat_info.csv"),
         index_col=[econ_scope, "income_cat"])
+    cat_info['liquidity'] *= scale_liquidity_
 
     # exposure, vulnerability, and access to early warning by country, hazard, return period, income category
     hazard_ratios = pd.read_csv(
@@ -81,9 +83,9 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, simulation
         poor_cat=poor_cat,
         helped_cats=helped_cats,
         option_fee=option_fee_,
-        option_t=option_t,
+        option_t=pds_targeting_,
         option_pds=option_pds_,
-        option_b=option_b,
+        option_b=pds_borrowing_,
         loss_measure="dk_reco",
         fraction_inside=1,
         share_insured=.25,
@@ -143,10 +145,14 @@ if __name__ == '__main__':
     parser.add_argument('--option_fee', type=str, default='tax', help='Fee option to fund PDS.')
     parser.add_argument('--countries', type=str, default='', help='Select countries for the analysis. Use + to separate countries. If empty, all countries are selected.')
     parser.add_argument('--option_pds', type=str, default='unif_poor', help='PDS option.')
+    parser.add_argument('--pds_borrowing', type=str, default='data', help='PDS borrowing option.')
+    parser.add_argument('--pds_targeting', type=str, default='data', help='PDS targeting option.')
     parser.add_argument('--simulation_name', type=str, default='', help='Name of the simluation.')
     parser.add_argument('--exclude_hazard', type=str, default='', help='Exclude hazards from analysis.')
     parser.add_argument('--num_cores', type=int, default=0, help='Number of cores to use for the optimization.')
     parser.add_argument('--do_not_execute', action='store_true', help='Do not execute the model.')
+    parser.add_argument('--shareable', type=float, default=0.4, help='Asset loss covered rel. to q1 asset loss.')
+    parser.add_argument('--scale_liquidity', type=float, default=1, help='Reduce available liquidity by some factor.')
 
     args = parser.parse_args()
 
@@ -170,12 +176,9 @@ if __name__ == '__main__':
 
     option_fee = args.option_fee
     option_pds = args.option_pds
-    if option_fee == "insurance_premium":
-        option_b = 'unlimited'
-        option_t = 'perfect'
-    else:
-        option_b = 'data'
-        option_t = 'data'
+
+    pds_borrowing_ = args.pds_borrowing
+    pds_targeting_ = args.pds_targeting
 
     if not args.do_not_execute:
         for scenario in scenarios:
@@ -184,6 +187,10 @@ if __name__ == '__main__':
                 scenario_=scenario,
                 option_fee_=option_fee,
                 option_pds_=option_pds,
+                pds_targeting_=pds_targeting_,
+                pds_borrowing_=pds_borrowing_,
+                pds_shareable_=args.shareable,
+                scale_liquidity_=args.scale_liquidity,
                 simulation_name_=args.simulation_name,
                 exclude_hazards_=exclude_hazards,
                 countries_=args.countries,
