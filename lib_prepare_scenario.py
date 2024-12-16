@@ -178,21 +178,21 @@ def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_
     cat_info_ = cat_info_.copy(deep=True)
     hazard_ratios_ = hazard_ratios_.copy(deep=True)
 
-    # TODO: check whether any of the recomputation is still necessary
-    macro_["gdp_pc_pp"] = macro_["avg_prod_k"] * agg_to_economy_level(cat_info_, "k", econ_scope_)
-    cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
-                      cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
-                      * agg_to_economy_level(cat_info_, "k", econ_scope_))
-
-    # recompute diversified_share after policy change
-    cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
-
-    macro_["tau_tax"], cat_info_["gamma_SP"] = social_to_tx_and_gsp(econ_scope_, cat_info_)
-
-    # Recompute consumption from k and new gamma_SP and tau_tax
-    cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
-                      cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
-                      * agg_to_economy_level(cat_info_, "k", econ_scope_))
+    # # TODO: check whether any of the recomputation is still necessary
+    # macro_["gdp_pc_pp"] = macro_["avg_prod_k"] * agg_to_economy_level(cat_info_, "k", econ_scope_)
+    # cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
+    #                   cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
+    #                   * agg_to_economy_level(cat_info_, "k", econ_scope_))
+    #
+    # # recompute diversified_share after policy change
+    # cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
+    #
+    # macro_["tau_tax"], cat_info_["gamma_SP"] = social_to_tx_and_gsp(econ_scope_, cat_info_)
+    #
+    # # Recompute consumption from k and new gamma_SP and tau_tax
+    # cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
+    #                   cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
+    #                   * agg_to_economy_level(cat_info_, "k", econ_scope_))
 
     hazard_ratios_["v_ew"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
     hazard_ratios_.drop(['ew', 'v'], inplace=True, axis=1)
