@@ -719,7 +719,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         sim_name += f"_scale_self_employment_{scale_self_employment_}" if scale_self_employment_ != 1. else ''
         sim_name += f"_scale_non_diversified_income_{scale_non_diversified_income_}" if scale_non_diversified_income_ != 1 else ''
         sim_name += f"_min_diversified_share-{min_diversified_share_}" if min_diversified_share_ != 0 else ''
-        sim_name += f"_scale_GDPpc_{scale_gdp_pc_pp_}" if scale_gdp_pc_pp_ != 0 else ''
+        sim_name += f"_scale_GDPpc_{scale_gdp_pc_pp_}" if scale_gdp_pc_pp_ != 1 else ''
 
         outpath = os.path.join(intermediate_dir_, 'scenarios', sim_name).replace(' ', '_')
         if not os.path.exists(outpath):
