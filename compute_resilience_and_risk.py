@@ -9,7 +9,7 @@ import time
 warnings.filterwarnings("always", category=UserWarning)
 
 
-def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, pds_shareable_, pds_targeting_, pds_borrowing_, scale_liquidity_, simulation_name_, exclude_hazards_, countries_,
+def run_model(scenario_, option_fee_, option_pds_, pds_shareable_, pds_targeting_, pds_borrowing_, scale_liquidity_, simulation_name_, exclude_hazards_, countries_,
               num_cores_):
     print(scenario_)
     print(f'optionFee ={option_fee_}, optionPDS ={option_pds_}, optionB ={pds_borrowing_}, optionT ={pds_targeting_}')
@@ -24,23 +24,23 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, pds_sharea
 
     # read data
     # macro-economic country economic data
-    macro = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', climate_scenario_, scenario_, "scenario__macro.csv"),
+    macro = pd.read_csv(os.path.join(intermediate_dir, 'scenarios', scenario_, "scenario__macro.csv"),
                         index_col=econ_scope)
     macro['shareable'] = pds_shareable_
 
     # consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
     cat_info = pd.read_csv(
-        os.path.join(intermediate_dir, 'scenarios', climate_scenario_, scenario_, "scenario__cat_info.csv"),
+        os.path.join(intermediate_dir, 'scenarios', scenario_, "scenario__cat_info.csv"),
         index_col=[econ_scope, "income_cat"])
     cat_info['liquidity'] *= scale_liquidity_
 
     # exposure, vulnerability, and access to early warning by country, hazard, return period, income category
     hazard_ratios = pd.read_csv(
-        os.path.join(intermediate_dir, 'scenarios', climate_scenario_, scenario_, "scenario__hazard_ratios.csv"),
+        os.path.join(intermediate_dir, 'scenarios', scenario_, "scenario__hazard_ratios.csv"),
         index_col=event_level + ["income_cat"])
 
     hazard_protection = pd.read_csv(
-        os.path.join(intermediate_dir, 'scenarios', climate_scenario_, scenario_, "scenario__hazard_protection.csv"),
+        os.path.join(intermediate_dir, 'scenarios', scenario_, "scenario__hazard_protection.csv"),
         index_col=[econ_scope, "hazard"])
 
     if len(exclude_hazards_) > 0:
@@ -116,7 +116,7 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, pds_sharea
     )
 
     date_time_string = time.strftime("%Y-%m-%d_%H-%M_")
-    folder_name = f'output/scenarios/{climate_scenario_}/{date_time_string + scenario_}'
+    folder_name = f'output/scenarios/{date_time_string + scenario_}'
     if simulation_name_ != '':
         folder_name = folder_name + f'_{simulation_name_}'
     if len(exclude_hazards_) > 0:
@@ -140,7 +140,6 @@ def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, pds_sharea
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
-    parser.add_argument('--climate_scenario', type=str, default='Existing_climate', help='Climate scenario from CDRI GIRI report.')
     parser.add_argument('--scenarios', type=str, default='baseline_EW-2018', help='Scenarios')
     parser.add_argument('--option_fee', type=str, default='tax', help='Fee option to fund PDS.')
     parser.add_argument('--countries', type=str, default='', help='Select countries for the analysis. Use + to separate countries. If empty, all countries are selected.')
@@ -156,10 +155,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    climate_scenario = args.climate_scenario
-    if climate_scenario not in ['Existing_climate', 'Upper_bound', 'Lower_bound']:
-        raise ValueError(f'Invalid climate scenario: {climate_scenario}')
-
     exclude_hazards = args.exclude_hazard
 
     # define directory
@@ -169,8 +164,8 @@ if __name__ == '__main__':
 
     scenarios = args.scenarios
     if scenarios == 'all':
-        scenarios = os.listdir(os.path.join(intermediate_dir, 'scenarios', climate_scenario))
-        scenarios = [s for s in scenarios if os.path.isdir(os.path.join(intermediate_dir, 'scenarios', climate_scenario, s))]
+        scenarios = os.listdir(os.path.join(intermediate_dir, 'scenarios'))
+        scenarios = [s for s in scenarios if os.path.isdir(os.path.join(intermediate_dir, 'scenarios', s))]
     else:
         scenarios = scenarios.split('+')
 
@@ -183,7 +178,6 @@ if __name__ == '__main__':
     if not args.do_not_execute:
         for scenario in scenarios:
             run_model(
-                climate_scenario_=climate_scenario,
                 scenario_=scenario,
                 option_fee_=option_fee,
                 option_pds_=option_pds,
