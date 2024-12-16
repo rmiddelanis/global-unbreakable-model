@@ -10,9 +10,11 @@ from lib import get_country_name_dicts, df_to_iso3
 from wb_api_wrapper import get_wb_mrv
 
 
-def get_cat_info_and_tau_tax(econ_scope, wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_):
+def get_cat_info_and_tau_tax(econ_scope, wb_data_cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_,
+                             scale_non_diversified_income_, min_diversified_share_):
     cat_info_ = wb_data_cat_info_.copy(deep=True)
     cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
+    cat_info_['diversified_share'] = (1 - (1 - cat_info_['diversified_share']) * scale_non_diversified_income_).clip(upper=1, lower=min_diversified_share_)
 
     cat_info_['n'] = 1 / n_quantiles_
     cat_info_['c'] = cat_info_.income_share / cat_info_.n * wb_data_macro_.gdp_pc_pp
@@ -100,7 +102,7 @@ def load_liquidity(root_dir_, force_recompute_=False, write_output_=True):
     return liquidity_[['liquidity_share', 'liquidity']].prod(axis=1).rename('liquidity')
 
 
-def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
+def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, scale_self_employment=1, imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
                                     reconstruction_capital_='prv',
                                     labor_share_data_file="ILO_labor_share_of_GDP/LAP_2GDP_NOC_RT_A-filtered-2024-04-23.csv"):
     imf_data = load_input_data(root_dir_, imf_capital_data_file, sheet_name='Dataset')
@@ -123,6 +125,8 @@ def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, imf_capital_data_file
     self_employment = get_wb_mrv('SL.EMP.SELF.ZS', 'self_employment') / 100
     self_employment = df_to_iso3(self_employment.reset_index(), 'country', any_to_wb_, verbose_=False).dropna(subset='iso3')
     self_employment = self_employment.set_index('iso3').drop('country', axis=1).squeeze()
+
+    self_employment *= scale_self_employment
 
     capital_shares = pd.merge(capital_share, imf_data.k_pub_share_kappa, left_index=True, right_index=True, how='inner')
     capital_shares = pd.merge(capital_shares, self_employment, left_index=True, right_index=True, how='inner')
@@ -180,7 +184,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population
     return exposure_fa_with_peb_
 
 
-def compute_exposure_and_adjust_vulnerability(root_dir_, hazard_loss_rel_, vulnerability_, fa_threshold_, plot_coverage_map=False):
+def compute_exposure_and_adjust_vulnerability(hazard_loss_rel_, vulnerability_, fa_threshold_):
     exposure_fa_guessed_ = (hazard_loss_rel_ / vulnerability_.xs('tot', level='income_cat')).dropna().rename('fa')
 
     vulnerability_quintiles = vulnerability_.drop('tot', level='income_cat')
@@ -561,10 +565,10 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
 
 
 def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp_, reduction_vul_,
-                income_elasticity_eta_, discount_rate_rho_, shareable_, max_increased_spending_, fa_threshold_,
-                axfin_impact_, no_optimized_recovery_, default_reconstruction_time_, force_recompute_,
-                include_pov_head_, reconstruction_capital_, climate_scenario_, ew_year_, ew_decade_, econ_scope_, event_level_,
-                root_dir_, input_dir_, intermediate_dir_, pol_opt_):
+                income_elasticity_eta_, discount_rate_rho_, max_increased_spending_, fa_threshold_,
+                axfin_impact_, no_exposure_bias_, force_recompute_,
+                include_pov_head_, reconstruction_capital_, ew_year_, ew_decade_, econ_scope_, scale_self_employment_,
+                scale_non_diversified_income_, min_diversified_share_, scale_gdp_pc_pp_, root_dir_, intermediate_dir_, pol_opt_):
 
     # if the intermediate directory doesn't exist, create one
     if not os.path.exists(intermediate_dir_):
@@ -576,6 +580,9 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
     wb_data_macro = load_input_data(root_dir_, "WB_socio_economic_data/wb_data_macro.csv").set_index(econ_scope_)
     wb_data_cat_info = load_input_data(root_dir_, "WB_socio_economic_data/wb_data_cat_info.csv").set_index(
         [econ_scope_, 'income_cat'])
+
+    # scale GDPpc
+    wb_data_macro['gdp_pc_pp'] *= scale_gdp_pc_pp_
 
     pov_headcount = load_input_data(root_dir_, "PEB/pov_headcount.csv", index_col=[0, 1]).squeeze()
 
@@ -618,16 +625,17 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         default_rp_=default_rp_,
         extrapolate_rp_=False,
         plot_coverage_map=True,
-        climate_scenario=climate_scenario_,
+        climate_scenario="Existing climate",
     )
 
     # compute exposure and adjust vulnerability (per income category) for excess exposure
-    exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(root_dir_,
-        hazard_loss_rel, vulnerability, fa_threshold_, plot_coverage_map=True,
-    )
+    exposure_fa, vulnerability_per_income_cat_adjusted = compute_exposure_and_adjust_vulnerability(hazard_loss_rel, vulnerability, fa_threshold_)
 
     # apply poverty exposure bias
-    exposure_fa_with_peb = apply_poverty_exposure_bias(root_dir_, exposure_fa, use_avg_pe_, wb_data_macro['pop'])
+    if no_exposure_bias_:
+        exposure_fa_with_peb = exposure_fa
+    else:
+        exposure_fa_with_peb = apply_poverty_exposure_bias(root_dir_, exposure_fa, use_avg_pe_, wb_data_macro['pop'])
 
     # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
     # (Earthquake and Tsunami)
@@ -639,8 +647,9 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
 
     # get data per income categories
     cat_info, tau_tax = get_cat_info_and_tau_tax(econ_scope=econ_scope_, wb_data_cat_info_=wb_data_cat_info,
-                                                 wb_data_macro_=wb_data_macro,avg_prod_k_=avg_prod_k,
-                                                 n_quantiles_=n_quantiles, axfin_impact_=axfin_impact_)
+                                                 wb_data_macro_=wb_data_macro, avg_prod_k_=avg_prod_k,
+                                                 n_quantiles_=n_quantiles, axfin_impact_=axfin_impact_,
+                                                 scale_non_diversified_income_=scale_non_diversified_income_, min_diversified_share_=min_diversified_share_)
 
     liquidity = load_liquidity(root_dir_, force_recompute_=force_recompute_)
     cat_info = pd.merge(cat_info, liquidity, left_index=True, right_index=True, how='left')
@@ -653,7 +662,7 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         else:
             hazard_protection = load_protection(hazard_ratios.index, root_dir_, protection_data="country_income", min_rp=1)
 
-    capital_shares = calc_reconstruction_share_sigma(root_dir_, any_to_wb, reconstruction_capital_=reconstruction_capital_)
+    capital_shares = calc_reconstruction_share_sigma(root_dir_, any_to_wb, reconstruction_capital_=reconstruction_capital_, scale_self_employment=scale_self_employment_)
 
     macro = wb_data_macro
     macro = macro.join(disaster_preparedness, how='left')
@@ -665,7 +674,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
                        how='left')
     macro['rho'] = discount_rate_rho_
     macro['max_increased_spending'] = max_increased_spending_
-    macro['shareable'] = shareable_
     macro['income_elasticity_eta'] = income_elasticity_eta_
 
     # clean and harmonize data frames
@@ -705,7 +713,15 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
             policy_opt=pol_opt
         )
 
-        outpath = os.path.join(intermediate_dir_, 'scenarios', climate_scenario_, pol_name + f"_EW-{ew_year_ if ew_decade_ == '' else ew_decade_}").replace(' ', '_')
+        sim_name = pol_name
+        sim_name += f"_EW-{ew_year_ if ew_decade_ == '' else ew_decade_}" if (ew_year_ != 2018 or ew_decade_ != '') else ''
+        sim_name += '_no-EB' if no_exposure_bias_ else ''
+        sim_name += f"_scale_self_employment_{scale_self_employment_}" if scale_self_employment_ != 1. else ''
+        sim_name += f"_scale_non_diversified_income_{scale_non_diversified_income_}" if scale_non_diversified_income_ != 1 else ''
+        sim_name += f"_min_diversified_share-{min_diversified_share_}" if min_diversified_share_ != 0 else ''
+        sim_name += f"_scale_GDPpc_{scale_gdp_pc_pp_}" if scale_gdp_pc_pp_ != 0 else ''
+
+        outpath = os.path.join(intermediate_dir_, 'scenarios', sim_name).replace(' ', '_')
         if not os.path.exists(outpath):
             os.makedirs(outpath)
 
@@ -772,7 +788,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
-    parser.add_argument('--climate_scenario', type=str, default='Existing climate', help='Climate scenario from CDRI GIRI data.')
     parser.add_argument('--use_flopros_protection', type=bool, default=True, help='Use FLOPROS for protection')
     parser.add_argument('--no_protection', action='store_true', help='No protection')
     parser.add_argument('--use_avg_pe', type=bool, default=True, help='Use average PE')
@@ -780,24 +795,25 @@ if __name__ == '__main__':
     parser.add_argument('--econ_scope', type=str, default='iso3', help='Economic scope')
     parser.add_argument('--include_pov_head', type=float, default=2.15, help='poverty headcount to include in macro.')
     parser.add_argument('--default_rp', type=str, default='default_rp', help='Default return period')
-    parser.add_argument('--reconstruction_time', type=float, default=3.0, help='Reconstruction time')
     parser.add_argument('--reduction_vul', type=float, default=0.2, help='Reduction in vulnerability')
     parser.add_argument('--income_elasticity_eta', type=float, default=1.5, help='Income elasticity')
     parser.add_argument('--discount_rate_rho', type=float, default=0.06, help='Discount rate')
-    parser.add_argument('--shareable', type=float, default=0.8, help='Asset loss covered')
     parser.add_argument('--max_increased_spending', type=float, default=0.05, help='Maximum support')
-    parser.add_argument('--fa_threshold', type=float, default=2/3, help='FA threshold')  # setting to 2/3 s.th. inclusion error can never greater than 1
+    parser.add_argument('--fa_threshold', type=float, default=1, help='FA threshold')
     parser.add_argument('--axfin_impact', type=float, default=0.1, help='Increase of the fraction of diversified '
                                                                         'income through financial inclusion')
     parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
-    parser.add_argument('--no_optimized_recovery', action='store_true', help='Use fixed recovery duration'
-                                                                             'instead of optimization.')
     parser.add_argument('--force_recompute', action='store_true', help='Force recomputation of recovery '
                                                                        'duration and liquidity.')
+    parser.add_argument('--no_exposure_bias', action='store_true', help='Do not apply exposure bias.')
     parser.add_argument('--reconstruction_capital', type=str, default='prv', help="Fraction of the reconstruction"
                                                                                   " capital that needs to be paid for "
                                                                                   "by households. Options: 'prv' / "
                                                                                   "'prv_oth'.")
+    parser.add_argument('--scale_self_employment', type=float, default=1., help='Factor to scale self-employment rate.')
+    parser.add_argument('--scale_non_diversified_income', type=float, default=1, help='Scale the share of income that does not come from diversified sources.')
+    parser.add_argument('--min_diversified_share', type=float, default=0, help='Set lower bound for the share of income diversified sources.')
+    parser.add_argument('--scale_gdp_pc_pp', type=float, default=1, help='Scale per capita GDP.')
     parser.add_argument('--ew_year', type=int, default=2018, help='Year of early warning data')
     parser.add_argument('--ew_decade', type=str, default='', help='Decade of early warning data')
     parser.add_argument('--pol_opt', type=str, default='None+None', help='Policy selection')
@@ -814,22 +830,21 @@ if __name__ == '__main__':
             reduction_vul_=args.reduction_vul,
             income_elasticity_eta_=args.income_elasticity_eta,
             discount_rate_rho_=args.discount_rate_rho,
-            shareable_=args.shareable,
             max_increased_spending_=args.max_increased_spending,
             fa_threshold_=args.fa_threshold,
             axfin_impact_=args.axfin_impact,
-            no_optimized_recovery_=args.no_optimized_recovery,
-            default_reconstruction_time_=args.reconstruction_time,
             force_recompute_=args.force_recompute,
             include_pov_head_=args.include_pov_head,
             reconstruction_capital_=args.reconstruction_capital,
-            climate_scenario_=args.climate_scenario,
             ew_year_=args.ew_year if args.ew_year != -1 else None,
             ew_decade_=args.ew_decade,
             econ_scope_=args.econ_scope,
-            event_level_=[args.econ_scope, "hazard", "rp"],  # levels of index at which one event happens,
+            scale_self_employment_=args.scale_self_employment,
+            scale_non_diversified_income_=args.scale_non_diversified_income,
+            min_diversified_share_=args.min_diversified_share,
+            scale_gdp_pc_pp_=args.scale_gdp_pc_pp,
             root_dir_=args.root_dir,
-            input_dir_=os.path.join(args.root_dir, 'inputs'),  # get inputs data directory,
             intermediate_dir_=os.path.join(args.root_dir, 'intermediate'),  # get outputs data directory
             pol_opt_=args.pol_opt,
+            no_exposure_bias_=args.no_exposure_bias,
         )
