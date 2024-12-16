@@ -9,7 +9,7 @@ import time
 warnings.filterwarnings("always", category=UserWarning)
 
 
-def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, pds_shareable_, pds_targeting_, pds_borrowing_, scale_liquidity_, scale_vulnerability_, simulation_name_, exclude_hazards_, countries_,
+def run_model(climate_scenario_, scenario_, option_fee_, option_pds_, pds_shareable_, pds_targeting_, pds_borrowing_, scale_liquidity_, simulation_name_, exclude_hazards_, countries_,
               num_cores_):
     print(scenario_)
     print(f'optionFee ={option_fee_}, optionPDS ={option_pds_}, optionB ={pds_borrowing_}, optionT ={pds_targeting_}')
