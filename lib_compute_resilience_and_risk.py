@@ -11,7 +11,6 @@ from recovery_optimizer import optimize_data, recompute_data_with_tax
 
 pd.set_option('display.width', 220)
 
-
 def reshape_input(macro, cat_info, hazard_ratios, event_level):
     # Broadcast macro to event level
     macro_event = pd.merge(macro, hazard_ratios.iloc[:, 0].unstack('income_cat'), left_index=True, right_index=True)[macro.columns]
@@ -130,9 +129,8 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, opt
         macro_event_["error_excl"] = 1 - 25 / 80  # 25% of pop chosen among top 80 DO receive the aid
     elif option_t == "data":
         # TODO: inclusion error can become negative, which results in negative n!!!
-        macro_event_["error_incl"] = ((1 - macro_event_["prepare_scaleup"]) / 2 * macro_event_["fa"]
-                                      / (1 - macro_event_["fa"]))  # as in equation 16 of the paper
-        macro_event_["error_excl"] = (1 - macro_event_["prepare_scaleup"]) / 2  # as in equation 16 of the paper
+        macro_event_["error_incl"] = (((1 - macro_event_["prepare_scaleup"]) / 2 * macro_event_["fa"] / (1 - macro_event_["fa"]))).clip(upper=1, lower=0)  # as in equation 16 of the paper
+        macro_event_["error_excl"] = ((1 - macro_event_["prepare_scaleup"]) / 2).clip(upper=1, lower=0)  # as in equation 16 of the paper
     elif option_t == "x33":
         macro_event_["error_incl"] = .33 * macro_event_["fa"] / (1 - macro_event_["fa"])
         macro_event_["error_excl"] = .33
