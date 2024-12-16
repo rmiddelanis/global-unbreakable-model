@@ -153,6 +153,10 @@ def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_
             frac_value_destroyed_completed = add_rp(frac_value_destroyed_aal, frac_value_destroyed_completed, new_max_rp)
         frac_value_destroyed_result = frac_value_destroyed_completed
 
+    # drop zero values
+    zero_values = frac_value_destroyed_result.groupby(['iso3', 'hazard']).apply(lambda x: (x == 0).all())
+    frac_value_destroyed_result.drop(zero_values[zero_values].index, inplace=True)
+
     return frac_value_destroyed_result
 
 
