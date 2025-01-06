@@ -229,7 +229,6 @@ def load_vulnerability_data(
         gem_vulnerability_classes_filepath_="GEM_vulnerability/country_vulnerability_classes.csv",
         building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
         gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling quintile vul ratio.xlsx",
-        plot_coverage_map=False,
 ):
     # load distribution of vulnerability classes per country
     building_classes = load_input_data(root_dir_, gem_vulnerability_classes_filepath_, index_col=[0, 1], header=[0, 1])
@@ -615,7 +614,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         use_gmd_to_distribute=True,
         fill_missing_gmd_with_country_average=False,
         vulnerability_bounds='gem_extremes',
-        plot_coverage_map=True,
     )
 
     # load total hazard losses per return period (on the country level)
@@ -624,7 +622,6 @@ def gather_data(use_flopros_protection_, no_protection_, use_avg_pe_, default_rp
         gir_filepath_="GIR_hazard_loss_data/export_all_metrics.csv.zip",
         default_rp_=default_rp_,
         extrapolate_rp_=False,
-        plot_coverage_map=True,
         climate_scenario="Existing climate",
     )
 

@@ -140,7 +140,7 @@ def run_model(scenario_, option_fee_, option_pds_, pds_shareable_, pds_targeting
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
-    parser.add_argument('--scenarios', type=str, default='baseline_EW-2018', help='Scenarios')
+    parser.add_argument('--scenarios', type=str, default='baseline', help='Scenarios')
     parser.add_argument('--option_fee', type=str, default='tax', help='Fee option to fund PDS.')
     parser.add_argument('--countries', type=str, default='', help='Select countries for the analysis. Use + to separate countries. If empty, all countries are selected.')
     parser.add_argument('--option_pds', type=str, default='unif_poor', help='PDS option.')

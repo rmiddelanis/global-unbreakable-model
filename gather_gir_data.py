@@ -7,7 +7,7 @@ from lib_prepare_scenario import average_over_rp
 from pandas_helper import load_input_data
 
 
-def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True, plot_coverage_map=False,
+def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True,
                              climate_scenario='Existing climate'):
     """
     Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
