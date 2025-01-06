@@ -4,11 +4,10 @@ import numpy as np
 import pandas as pd
 
 from lib import get_country_name_dicts, df_to_iso3
-from pandas_helper import load_input_data
 from wb_api_wrapper import get_wb_series
 
 
-def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_: str, varname_: str):
+def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_: str, varname_: str, verbose: bool=False):
     """
     This function gathers and processes data from the FINDEX datasets.
 
@@ -64,7 +63,7 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
             findex_data.set_index(['country', 'year', 'income_cat'], inplace=True)
 
             findex_datasets.append(findex_data)
-        else:
+        elif verbose:
             print(f'No question ID provided for FINDEX year {year}. Skipping.')
 
     # Concatenate the datasets
@@ -73,7 +72,7 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
     return findex_data
 
 
-def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
+def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, write_output_=False, verbose=True):
     # fin17a (2021): "Saved using an account at a financial institution"
     # fin17a (2017): "In the PAST 12 MONTHS, have you, personally, saved or set aside any money by using an
     #                   account at a bank or another type of formal financial institution (This can include
@@ -91,6 +90,7 @@ def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
         question_ids_=question_ids,
         root_dir_=root_dir_,
         varname_='axfin',
+        verbose=verbose
     ).drop('FINDEX_wave', axis=1)
 
     # Replace the values in the 'axfin' column based on the FINDEX codebook
@@ -103,6 +103,9 @@ def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
     axfin_data = (findex_data.prod(axis=1).groupby(['country', 'year', 'income_cat']).sum()
                   / findex_data.wgt.groupby(['country', 'year', 'income_cat']).sum()).rename('axfin')
 
+    axfin_data = df_to_iso3(axfin_data.reset_index('country'), 'country', any_to_wb_, verbose_=verbose)
+    axfin_data = axfin_data.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat'])
+
     # If an output path is provided, save the result to a CSV file at that path
     if write_output_:
         axfin_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_axfin.csv'))
@@ -110,7 +113,7 @@ def gather_axfin_data(root_dir_, findex_data_paths_, write_output_=False):
     return axfin_data
 
 
-def get_liquidity_from_findex(root_dir_, findex_data_paths_, write_output_=False, drop_refused=True):
+def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, write_output_=False, drop_refused=True, verbose=True):
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}
 
     # Gather the data from the FINDEX datasets
@@ -119,6 +122,7 @@ def get_liquidity_from_findex(root_dir_, findex_data_paths_, write_output_=False
         question_ids_=question_ids,
         root_dir_=root_dir_,
         varname_='savings',
+        verbose=verbose
     )
     # Replace the values in the 'savings' column based on the FINDEX codebooks:
     # 2021:
@@ -148,11 +152,10 @@ def get_liquidity_from_findex(root_dir_, findex_data_paths_, write_output_=False
     # findex shares are combined with the GNI pc data to obtain the average liquidity per quintile
 
     # load GNI data
-    any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir_)
     gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI')
     gni = gni.reset_index()
     gni.year = gni.year.astype(int)
-    gni.country = gni.country.apply(lambda ctry: any_to_wb.loc[ctry] if ctry in any_to_wb else ctry)
+    gni.country = gni.country.apply(lambda ctry: any_to_wb_.loc[ctry] if ctry in any_to_wb_ else ctry)
     gni = gni.set_index(['country', 'year']).squeeze().unstack('country')
     gni = gni.interpolate(method='nearest').ffill().bfill()  # fill missing values with the nearest non-missing value
     gni = gni.stack().reorder_levels(['country', 'year']).sort_index().rename('GNI')
@@ -160,7 +163,7 @@ def get_liquidity_from_findex(root_dir_, findex_data_paths_, write_output_=False
     liquidity_data = pd.merge(liquidity_shares, (gni / 20).rename('liquidity'), left_index=True, right_index=True,
                               how='left').dropna()
 
-    liquidity_data = df_to_iso3(liquidity_data.reset_index('country'), 'country', any_to_wb, False)
+    liquidity_data = df_to_iso3(liquidity_data.reset_index('country'), 'country', any_to_wb_, verbose_=verbose)
     liquidity_data = liquidity_data.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat'])
 
     if write_output_:

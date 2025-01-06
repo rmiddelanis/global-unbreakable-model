@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def apply_policy(macro_, cat_info_, hazard_ratios_, policy_name=None, policy_opt=None):
+def apply_policy(macro_, cat_info_, hazard_ratios_, policy_name, policy_opt):
     """
     Chooses a policy by name, applies it to macro, cat_info, and/or hazard_ratios, and returns new values as well
     as a policy description
@@ -80,22 +80,5 @@ def apply_policy(macro_, cat_info_, hazard_ratios_, policy_name=None, policy_opt
         desc = f"Uniformly reduce vulnerability by {policy_opt * 100}%"
         hazard_ratios.v = hazard_ratios.v * (1 - policy_opt)
         policy_name = 'reduce_total_vulnerability_{}'.format(policy_opt)
-    elif policy_name == 'no_liquidity':
-        desc = "No liquidity"
-        cat_info['liquidity'] = 0
-    elif policy_name == 'reduce_ew':
-        desc = f"Reduce early warning to {policy_opt * 100}%"
-        macro.ew = macro.ew * policy_opt
-        hazard_ratios.ew = hazard_ratios.ew * policy_opt
-        policy_name = 'reduce_ew_{}'.format(policy_opt)
-    elif policy_name == 'increase_ew_to_max':
-        desc = "Increase early warning to maximum"
-        macro.ew = macro.ew.max()
-        hazard_ratios.ew = (hazard_ratios.ew / hazard_ratios.ew * hazard_ratios.ew.max()).fillna(0)
-    elif policy_name == 'set_ew':
-        desc = "Set early warning to {}".format(policy_opt)
-        macro.ew = policy_opt
-        hazard_ratios.ew = (hazard_ratios.ew / hazard_ratios.ew * policy_opt).fillna(0)
-        policy_name = 'set_ew_{}'.format(policy_opt)
 
     return macro, cat_info, hazard_ratios, policy_name, desc

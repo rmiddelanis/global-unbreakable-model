@@ -1,0 +1,14 @@
+run_params:
+  simulation_name: 'test'
+  append_date: False
+  outpath: '/path/to/output'
+  verbose: False
+
+scenario_params:
+  countries: DEU+USA
+
+pds_params:
+  pds_targeting: 'data'
+  pds_variant: 'unif_poor'
+  pds_borrowing_ability: 'data'
+  pds_shareable: .2

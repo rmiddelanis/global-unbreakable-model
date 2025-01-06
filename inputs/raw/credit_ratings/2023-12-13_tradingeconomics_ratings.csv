@@ -1,0 +1,157 @@
+﻿country,S&P,Moody's,DBRS,TE
+Australia,AAA,Aaa,AAA,100
+Canada,AAA,Aaa,AAA,100
+Denmark,AAA,Aaa,AAA,100
+Germany,AAA,Aaa,AAA,100
+Liechtenstein,AAA,,,100
+Luxembourg,AAA,Aaa,AAA,100
+Netherlands,AAA,Aaa,AAA,100
+Switzerland,AAA,Aaa,AAA,100
+Norway,AAA,Aaa,AAA,99
+Sweden,AAA,Aaa,AAA,99
+European Union,AA,Aaa,AAA,98
+Singapore ,AAA,Aaa,AAA,98
+United States,AA+,Aaa ,AAA,97
+Austria,AA+,Aa1,AAA,96
+Finland,AA+,Aa1,AA (high),96
+New Zealand,AA+,Aaa,,95
+France,AA ,Aa2,AA (high),92
+Taiwan,AA+,Aa3,,90
+United Arab Emirates,AA,Aa2,,90
+Hong Kong,AA+,Aa3 ,,88
+Belgium,AA,Aa3,AA,87
+Isle of Man,N/A,Aa3,,87
+Macau,,Aa3 ,,87
+United Kingdom,AA,Aa3,AA,87
+Qatar,AA,Aa3 ,,86
+South Korea,AA,Aa2,,86
+Cayman Islands ,,Aa3,,85
+Czech Republic,AA-,Aa3,,85
+Estonia,AA- ,A1,AA (low),83
+Ireland,AA,Aa3,AA (low),83
+Israel,AA- ,A1,,81
+Kuwait,A+,A1,,81
+Bermuda,A+,A2,,78
+China,A+,A1 ,A,78
+Japan,A+,A1,A (high),77
+Lithuania,A+ ,A2,A (high),76
+Saudi Arabia,A,A1 ,,76
+Slovakia,A+,A2 ,A,76
+Iceland,A+,A2 ,,75
+Malta,A-,A2,A (high),75
+Slovenia,AA-,A3,A (high),75
+Chile,A ,A2,N/A,73
+Latvia,A+ ,A3,A,73
+Poland,A-,A2,A,71
+Spain,A,Baa1,A,71
+Malaysia,A-,A3,,68
+Botswana,BBB+,A3,,67
+Portugal,BBB+ ,A3,A ,67
+Andorra,BBB+ ,Baa2,,65
+Thailand,BBB+,Baa1,,65
+Croatia,BBB+ ,Baa2 ,,63
+Italy,BBB,Baa3,BBB (high),62
+Bulgaria,BBB ,Baa1,,61
+Peru,BBB ,Baa1 ,N/A,61
+Philippines,BBB+,Baa2,,61
+Hungary,BBB-,Baa2,,60
+Indonesia,BBB,Baa2,,60
+Mexico,BBB,Baa2,BBB,60
+Uruguay,BBB+,Baa2 ,BBB,60
+Kazakhstan,BBB-,Baa2 ,,58
+Cyprus,BBB ,Baa2,BBB (high),57
+India,BBB-,Baa3,BBB (low),56
+Panama,BBB ,Baa3,,56
+Colombia,BB+,Baa2,BBB (low),55
+Mauritius,BBB-,Baa3,,55
+Montserrat,BBB-,,,55
+Romania,BBB-,Baa3,,55
+Aruba,BBB,,,52
+Azerbaijan,BB+,Ba1,,50
+Greece,BBB-,Ba1,BBB (low),50
+Morocco,BB+,Ba1,,50
+Trinidad and Tobago,BBB-,Ba2 ,,50
+Oman,BB+,Ba1,,48
+Paraguay,BB,Ba1 ,,48
+Serbia,BB+,Ba2,,48
+Vietnam,BB+,Ba2,,46
+Georgia,BB,Ba2 ,,45
+Guatemala,BB,Ba1,,45
+Macedonia,BB-,,,45
+San Marino,,,BBB (low),45
+Brazil,BB- ,Ba2,BB,43
+Dominican Republic,BB,Ba3 ,,41
+South Africa,BB-,Ba2,,41
+Ivory Coast,BB-,Ba3 ,,40
+Namibia,,B1,,40
+Armenia,BB-,Ba3,,38
+Bangladesh,BB- ,B1,,38
+Uzbekistan,BB-,Ba3,,38
+Bahamas,B+,B1,,37
+Honduras,BB-,B1,,37
+Senegal,B+,Ba3,,37
+Costa Rica,BB-,B1 ,,36
+Jordan,B+,B1 ,,36
+Albania,B+ ,B1,,35
+Benin,B+ ,B1,,35
+Fiji,B+,B1,,35
+Jamaica,BB-,B1 ,,35
+Montenegro,B,B1,,35
+Seychelles,,,,35
+Turkmenistan,,,,35
+Bahrain,B+,B2,,33
+Rwanda,B+,B2,,33
+Uganda,B-,B2 ,,31
+Cambodia,N/A,B2 ,,30
+Lesotho,,,,30
+Tanzania,,B2 ,,30
+Zambia,SD,Ca,,30
+Kenya,B ,B3 ,,28
+Mongolia,B,B3,,28
+Turkey ,B ,B3,BB (high) ,28
+Bosnia and Herzegovina,B+,B3,,27
+Kyrgyzstan,NR,B3 ,,27
+Papua New Guinea,B-,B2,,27
+Togo,B,B3 ,,27
+Barbados,B- ,B3,,26
+Nicaragua,B,B3,,26
+Angola,B-,B3 ,,25
+Cameroon,SD,Caa1,,25
+Cape Verde,B-,,,25
+Egypt,B-,Caa1,,25
+Gabon,N/A,Caa1 ,,25
+Madagascar,B-,,,25
+Moldova,,B3,,25
+Solomon Islands,,Caa1,,25
+St Vincent and the Grenadines,,B3,,25
+Swaziland,,B3 ,,25
+Tajikistan,B-,B3,,25
+Bolivia,CCC+ ,Caa1 ,,23
+Iraq,B-,Caa1,,23
+Nigeria,B-,Caa1 ,,23
+Congo,B-,B3,,22
+Maldives,,Caa1,,22
+Tunisia,N/A,Caa2 ,,21
+Burkina Faso,CCC+,,,20
+Ecuador,B-,Caa3,,20
+Mozambique,CCC+,Caa2,,18
+Pakistan,CCC+,Caa3,,18
+Republic of the Congo,B-,Caa2,,18
+Belize,B-,Caa2,,17
+El Salvador,B-,Caa3,,16
+Ethiopia,CCC ,Caa3,,15
+Laos,,Caa3,,15
+Mali,,Caa2,,15
+Niger,,Caa2 ,,15
+Suriname,CCC+,Caa3,,15
+Ukraine,CCC ,Ca,,15
+Russia,NR,NR,,14
+Argentina,CCC- ,Ca,CCC,12
+Belarus,NR,C,,11
+Ghana,SD,Ca,,11
+Lebanon,D,C,,11
+Sri Lanka,SD,Ca,,11
+Venezuela,N/A,C,,11
+Cuba,,N/A,,5
+Puerto Rico,D ,,,0
+Grenada,SD ,,,

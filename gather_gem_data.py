@@ -26,7 +26,7 @@ def load_mapping(gem_fields_path_, vuln_class_mapping_):
     return mapping_df, field_value_to_type_map
 
 
-def assign_vulnerability(material, resistance_system, height, mapping):
+def assign_vulnerability(material, resistance_system, height, mapping, verbose=True):
     """
     This function assigns a vulnerability to a given GEM taxonomy.
 
@@ -60,7 +60,8 @@ def assign_vulnerability(material, resistance_system, height, mapping):
                                     if h_range[0] <= height[0] <= h_range[1] or h_range[0] <= height[1] <= h_range[1]:
                                         return mapping.loc[(material, resistance_system, h_idx)].transpose().squeeze().rename('vulnerability')
                         except ValueError as e:
-                            print(f"Warning: could not parse height value {height} to integer. Using default value.")
+                            if verbose:
+                                print(f"Warning: could not parse height value {height} to integer. Using default value.")
                 return mapping.loc[(material, resistance_system, 'default')].transpose().squeeze().rename('vulnerability')
             return mapping.loc[(material, 'default')].transpose().squeeze().rename('vulnerability')
     else:
@@ -68,7 +69,7 @@ def assign_vulnerability(material, resistance_system, height, mapping):
 
 
 def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path_, vuln_class_mapping_,
-                    vulnerability_class_output_=None, weight_by='replacement_cost'):
+                    vulnerability_class_output_=None, weight_by='replacement_cost', verbose=True):
     """
         This function gathers GEM (Global Exposure Model) data from the GEM repository directory, decodes the taxonomy
         strings, assigns vulnerabilities based on the decoded taxonomy, and optionally outputs the distribution of
@@ -104,7 +105,7 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
             # Check if the file is 'Exposure_Summary_Taxonomy.csv'
             if filename == 'Exposure_Summary_Taxonomy.csv':
                 # Construct the full file path
-                file_path = os.path.join(dirpath, filename)
+                file_path = str(os.path.join(dirpath, filename))
 
                 # Read the file into a DataFrame
                 df = pd.read_csv(file_path)
@@ -150,20 +151,20 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
 
     unique_tax_strings = gem.taxonomy.unique()
     decoded_tax_strings = pd.concat(
-        [decode_taxonomy(t, field_value_to_type_map, keep_unknown=False, verbose=False)
+        [decode_taxonomy(t, field_value_to_type_map, keep_unknown=False, verbose=verbose)
          for t in tqdm.tqdm(unique_tax_strings, desc="decoding taxonomy strings")]
     )
     res = pd.merge(gem, decoded_tax_strings, how='left', on='taxonomy')
 
     # set material to 'UNK' if Lateral load resisting system value = 'LN' (No lateral load-resisting system)
-    res.lat_load_mat[(res.lat_load_mat.isna())
-                     & (res.lat_load_sys.apply(lambda x: 'LN' in x if type(x) is str else False))] = 'UNK'
+    res.loc[(res.lat_load_mat.isna())
+                     & (res.lat_load_sys.apply(lambda x: 'LN' in x if type(x) is str else False)), "lat_load_mat"] = 'UNK'
     # if taxonomy starts with 'UNK', assume this is the material code and set material to 'UNK'
-    res.lat_load_mat[(res.lat_load_mat.isna()) & (res.taxonomy.apply(lambda x: x.startswith('UNK')))] = 'UNK'
+    res.loc[(res.lat_load_mat.isna()) & (res.taxonomy.apply(lambda x: x.startswith('UNK'))), "lat_load_mat"] = 'UNK'
 
     # assign vulnerability classes
     vulnerability = res.apply(
-        lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height, vulnerability_mapping), axis=1
+        lambda x: assign_vulnerability(x.lat_load_mat, x.lat_load_sys, x.height, vulnerability_mapping, verbose=verbose), axis=1
     )
     merged = pd.concat([res, vulnerability], axis=1)
 
@@ -223,10 +224,10 @@ def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True
 
 if __name__ == '__main__':
     gem_repo_root_dir = '../global_exposure_model/'
-    vulnarebility_class_mapping = "./inputs/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx"
-    hazus_gem_mapping_path = './inputs/GEM_vulnerability/hazus-gem_mapping.csv'
-    gem_fields_path = "./inputs/GEM_vulnerability/gem_taxonomy_fields.json"
-    vulnerability_class_output = './inputs/GEM_vulnerability/country_vulnerability_classes.csv'
+    vulnarebility_class_mapping = "./inputs/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx"
+    hazus_gem_mapping_path = './inputs/raw/GEM_vulnerability/hazus-gem_mapping.csv'
+    gem_fields_path = "./inputs/raw/GEM_vulnerability/gem_taxonomy_fields.json"
+    vulnerability_class_output = './inputs/raw/GEM_vulnerability/country_vulnerability_classes.csv'
     gem_data, vuln_class_shares = gather_gem_data(
         gem_repo_root_dir_=gem_repo_root_dir,
         hazus_gem_mapping_path_=hazus_gem_mapping_path,
@@ -234,6 +235,7 @@ if __name__ == '__main__':
         vuln_class_mapping_=vulnarebility_class_mapping,
         vulnerability_class_output_=vulnerability_class_output,
         weight_by='replacement_cost',
+        verbose=False
     )
     print(gem_data)
     print(vuln_class_shares)

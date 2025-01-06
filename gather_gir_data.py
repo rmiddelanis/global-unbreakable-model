@@ -4,11 +4,9 @@ import numpy as np
 import pandas as pd
 
 from lib_prepare_scenario import average_over_rp
-from pandas_helper import load_input_data
 
 
-def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_rp_=True,
-                             climate_scenario='Existing climate'):
+def load_gir_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scenario='Existing climate', verbose=True):
     """
     Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
     country, hazard, and return period. GIR data contains data for hazards Tropical cyclone, Tsunami, Flood (riverine),
@@ -24,7 +22,7 @@ def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_
     pandas.Series: A pandas Series with a MultiIndex of ['iso3', 'hazard', 'rp'] and values representing the
     fraction of value destroyed for each country, hazard, and return period.
     """
-    gir_data = load_input_data(root_dir_, gir_filepath_, version='new')
+    gir_data = pd.read_csv(gir_filepath_, compression='zip')
     gir_data.rename({'value_axis_1': 'loss', 'value_axis_2': 'rp', 'iso3cd': 'iso3',
                      'country_name': 'country'}, axis=1,
                     inplace=True)
@@ -86,8 +84,8 @@ def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_
     frac_value_destroyed_aal = gir_loss.frac_value_destroyed.xs('AAL', level='rp')
 
     # check for incoherences
-    loss_incoherences = frac_value_destroyed_aal - average_over_rp(frac_value_destroyed_pml, default_rp_) < 0
-    if loss_incoherences.any():
+    loss_incoherences = frac_value_destroyed_aal - average_over_rp(frac_value_destroyed_pml) < 0
+    if loss_incoherences.any() and verbose:
         print(f"Warning: AAL is smaller than the average loss over all return periods for the following "
               f"(iso3, hazard) tuples:\n\n{loss_incoherences[loss_incoherences].index.values}.\n\nThis will result "
               f"in negative losses for additional return periods.")
@@ -107,9 +105,9 @@ def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_
                                  "pml_data")
             # average_over_rp() averages return period losses, weighted with the probability of each return period, i.e.
             # the inverse of the return period
-            new_data = (aal_data_ - average_over_rp(pml_data_, default_rp_).squeeze()) / new_probability
+            new_data = (aal_data_ - average_over_rp(pml_data_).squeeze()) / new_probability
             negative_results = new_data < 0
-            if np.any(negative_results):
+            if np.any(negative_results) and verbose:
                 print(f"Setting negative losses for return period {new_rp_} to 0 for {len(new_data[negative_results])} "
                       f"countries.")
                 new_data[new_data < 0] = 0
@@ -118,8 +116,8 @@ def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_
             new_data = new_data.set_index(['iso3', 'hazard', 'rp']).frac_value_destroyed
             res = pd.concat([pml_data_, new_data]).sort_index()
             # check that the new data is consistent with the overall AAL. Values should be 0 (tolerance 1e-10)
-            max_deviation = (average_over_rp(res, default_rp_).squeeze() - aal_data_).abs().max()
-            if max_deviation > 1e-10:
+            max_deviation = (average_over_rp(res).squeeze() - aal_data_).abs().max()
+            if max_deviation > 1e-10 and verbose:
                 print(f"Warning: new data for return period {new_rp_} is not consistent with the overall AAL. The "
                       f"difference of the AAL to the return period average is up to {max_deviation}.")
             return res
@@ -136,7 +134,7 @@ def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_
         overflow_countries = overflow_countries[overflow_countries].index.values
 
         # add infrequent events for overflow countries
-        if len(overflow_countries) > 0:
+        if len(overflow_countries) > 0 and verbose:
             print("overflow in {n} (iso3, event) tuples.".format(n=len(overflow_countries)))
             # clip the new return period loss s.th. it is not higher than the loss for the previously smallest rp times
             # the overflow_factor
@@ -162,12 +160,10 @@ def load_gir_hazard_loss_rel(root_dir_, gir_filepath_, default_rp_, extrapolate_
 
 if __name__ == '__main__':
     root_dir = os.getcwd()
-    gir_filepath = "GIR_hazard_loss_data/export_all_metrics.csv.zip"
+    gir_filepath = os.path.join(root_dir, "inputs/raw/GIR_hazard_loss_data/export_all_metrics.csv.zip")
     default_rp = "default_rp"
     extrapolate_rp = False
     load_gir_hazard_loss_rel(
-        root_dir_=root_dir,
         gir_filepath_=gir_filepath,
-        default_rp_=default_rp,
         extrapolate_rp_=extrapolate_rp,
     )

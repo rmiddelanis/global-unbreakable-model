@@ -7,34 +7,29 @@ import pandas as pd
 from scipy.interpolate import interp1d
 
 from lib import get_country_name_dicts, df_to_iso3
-from pandas_helper import get_list_of_index_names, load_input_data
+from pandas_helper import get_list_of_index_names
 
 
-def social_to_tx_and_gsp(economy, cat_info):
+def social_to_tx_and_gsp(cat_info):
     """(tx_tax, gamma_SP) from cat_info[["social","c","n"]] """
 
     # paper equation 4: \tau = (\Sigma_i t_i) / (\Sigma_i \mu k_i)
     # --> tax is the sum of all transfers paid over the sum of all income
-    tx_tax = (cat_info[["diversified_share", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum()
-              / cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
+    tx_tax = (cat_info[["diversified_share", "c", "n"]].prod(axis=1, skipna=False).groupby(level="iso3").sum()
+              / cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level="iso3").sum())
     tx_tax.name = 'tau_tax'
 
     # income from social protection PER PERSON as fraction of PER CAPITA social protection
     # paper equation 5: \gamma_i = t_i / (\Sigma_i \mu \tau k_i)
     gsp = (cat_info[["diversified_share", "c"]].prod(axis=1, skipna=False)
-           / cat_info[["diversified_share", "c", "n"]].prod(axis=1, skipna=False).groupby(level=economy).sum())
+           / cat_info[["diversified_share", "c", "n"]].prod(axis=1, skipna=False).groupby(level="iso3").sum())
     gsp.name = 'gamma_SP'
 
     return tx_tax, gsp
 
 
-def average_over_rp(df, default_rp, protection=None):
+def average_over_rp(df, protection=None):
     """Aggregation of the outputs over return periods"""
-
-    # just drops rp index if df contains default_rp
-    if default_rp in df.index.get_level_values("rp"):
-        print("default_rp detected, dropping rp")
-        return (df.T / protection).T.reset_index("rp", drop=True)
 
     # compute probability of each return period
     return_periods = df.index.get_level_values('rp').unique()
@@ -57,10 +52,15 @@ def average_over_rp(df, default_rp, protection=None):
     return res
 
 
-def gather_capital_data(root_dir_, include_legacy_sids=False):
+def gather_capital_data(root_dir_, force_recompute=True):
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
-    # pwt_data = load_input_data(root_dir, "pwt90.xlsx", sheet_name="Data")
-    capital_data = load_input_data(root_dir_, "PWT_macro_economic_data/pwt1001.xlsx", sheet_name="Data")
+    outpath = os.path.join(root_dir_, "inputs/processed/capital_data.csv")
+    if not force_recompute and os.path.exists(outpath):
+        print("Loading capital data from file...")
+        return pd.read_csv(outpath, index_col='iso3')
+
+    print("Recomputing capital data...")
+    capital_data = pd.read_excel(os.path.join(root_dir_, "inputs/raw/PWT_macro_economic_data/pwt1001.xlsx"), sheet_name="Data")
     capital_data = capital_data.rename({'countrycode': 'iso3'}, axis=1)
 
     # !! NOTE: PWT variable for capital stock has been renamed from 'ck' to 'cn' in the 10.0.0 version
@@ -70,29 +70,11 @@ def gather_capital_data(root_dir_, include_legacy_sids=False):
     capital_data = capital_data.groupby("iso3").apply(lambda x: x.loc[(x['year']) == np.nanmax(x['year']), :])
     capital_data = capital_data.reset_index(drop=True).set_index('iso3')
 
-    # get capital data for SIDS from GAR
-    if include_legacy_sids:
-        sids_list = load_input_data(root_dir_, "gar_name_sids.csv")
-        sids_list = df_to_iso3(sids_list, 'country')
-        sids_list = sids_list[sids_list.isaSID == "SIDS"].dropna().reset_index().iso3
-        sids_capital_gar = load_input_data(root_dir_, "GAR_capital.csv")[['country', 'GDP', 'K']]
-        sids_capital_gar = df_to_iso3(sids_capital_gar, 'country').drop('country', axis=1)
-        sids_capital_gar.dropna(inplace=True)
-        sids_capital_gar = sids_capital_gar.set_index("iso3")
-        sids_capital_gar = sids_capital_gar.loc[np.intersect1d(sids_list.values, sids_capital_gar.index.values), :]
-        sids_capital_gar = sids_capital_gar.replace(0, np.nan).dropna()
-        sids_capital_gar.rename({'K': 'cn', 'GDP': 'cgdpo'}, axis=1, inplace=True)
-
-        # merge capital data from PWT and GAR (SIDS)
-        # compute average productivity of capital
-        capital_data = pd.merge(capital_data, sids_capital_gar, on='iso3', how='outer')
-        capital_data['cgdpo'] = capital_data.cgdpo_x.fillna(capital_data.cgdpo_y)
-        capital_data['cn'] = capital_data.cn_x.fillna(capital_data.cn_y)
-        capital_data.drop(['cgdpo_x', 'cgdpo_y', 'cn_x', 'cn_y'], axis=1, inplace=True)
-
     capital_data.drop('year', axis=1, inplace=True)
     capital_data["avg_prod_k"] = capital_data.cgdpo / capital_data.cn
     capital_data = capital_data.dropna()
+
+    capital_data.to_csv(outpath)
 
     return capital_data
 
@@ -171,30 +153,3 @@ def interpolate_rps(hazard_ratios, protection_list, default_rp):
     if flag_stack:
         res = res.stack("rp").reset_index().set_index(original_index_names).sort_index()
     return res
-
-
-def recompute_after_policy_change(macro_, cat_info_, hazard_ratios_, econ_scope_, axfin_impact_, pi_):
-    macro_ = macro_.copy(deep=True)
-    cat_info_ = cat_info_.copy(deep=True)
-    hazard_ratios_ = hazard_ratios_.copy(deep=True)
-
-    # # TODO: check whether any of the recomputation is still necessary
-    # macro_["gdp_pc_pp"] = macro_["avg_prod_k"] * agg_to_economy_level(cat_info_, "k", econ_scope_)
-    # cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
-    #                   cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
-    #                   * agg_to_economy_level(cat_info_, "k", econ_scope_))
-    #
-    # # recompute diversified_share after policy change
-    # cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
-    #
-    # macro_["tau_tax"], cat_info_["gamma_SP"] = social_to_tx_and_gsp(econ_scope_, cat_info_)
-    #
-    # # Recompute consumption from k and new gamma_SP and tau_tax
-    # cat_info_["c"] = ((1 - macro_["tau_tax"]) * macro_["avg_prod_k"] * cat_info_["k"] +
-    #                   cat_info_["gamma_SP"] * macro_["tau_tax"] * macro_["avg_prod_k"]
-    #                   * agg_to_economy_level(cat_info_, "k", econ_scope_))
-
-    hazard_ratios_["v_ew"] = hazard_ratios_["v"] * (1 - pi_ * hazard_ratios_["ew"])
-    hazard_ratios_.drop(['ew', 'v'], inplace=True, axis=1)
-
-    return macro_, cat_info_, hazard_ratios_

@@ -1,1 +1,0 @@
-The data in file _findex_axfin.csv_ was created using the script _gather_findex_data.py_ 

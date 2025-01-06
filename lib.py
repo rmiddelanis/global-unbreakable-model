@@ -1,49 +1,17 @@
+import os
+
+import pandas as pd
 import pycountry as pc
-from pandas_helper import load_input_data
 
 
 def get_country_name_dicts(root_dir):
     # Country dictionaries
-    any_to_wb = load_input_data(root_dir, "country_name_mappings/any_name_to_wb_name.csv", index_col="any")
-    any_to_wb = any_to_wb[~any_to_wb.index.duplicated(keep='first')]  # drop duplicates
-    any_to_wb.dropna(inplace=True)  # drop rows with NaN values
-
-    any_to_wb = any_to_wb.squeeze()
+    any_to_wb = pd.read_csv(os.path.join(root_dir, "inputs/raw/country_name_mappings/any_name_to_wb_name.csv"), index_col="any").squeeze()
 
     # iso3 to wb country name table
-    iso3_to_wb = load_input_data(root_dir, "country_name_mappings/iso3_to_wb_name.csv").set_index("iso3").squeeze()
-    # iso2 to iso3 table
-    iso2_iso3 = load_input_data(root_dir, "country_name_mappings/names_to_iso.csv",
-                                usecols=["iso2", "iso3"]).drop_duplicates().set_index("iso2").squeeze()
+    iso3_to_wb = pd.read_csv(os.path.join(root_dir, "inputs/raw/country_name_mappings/iso3_to_wb_name.csv"), index_col="iso3").squeeze()
 
-    # rename PWT countries to WB names:
-    any_to_wb.loc["Côte d'Ivoire"] = "Cote d'Ivoire"
-    any_to_wb.loc["Côte d’Ivoire"] = "Cote d'Ivoire"
-    any_to_wb.loc['D.R. of the Congo'] = 'Congo, Dem. Rep.'
-    any_to_wb.loc['China, Hong Kong SAR'] = 'Hong Kong SAR, China'
-    any_to_wb.loc["Lao People's DR"] = "Lao PDR"
-    any_to_wb.loc['China, Macao SAR'] = 'Macao SAR, China'
-    any_to_wb.loc["North Macedonia"] = "Macedonia, FYR"
-    any_to_wb.loc["Eswatini"] = "Swaziland"
-    any_to_wb.loc['U.R. of Tanzania: Mainland'] = 'Tanzania'
-    any_to_wb.loc['Taiwan, China'] = 'Taiwan'
-    any_to_wb.loc['Czechia'] = 'Czech Republic'
-    any_to_wb.loc['Turkiye'] = 'Turkey'
-
-    for _c in any_to_wb.index:
-        _c_nospace = _c.replace(' ', '')
-        _c_lower = str.lower(_c)
-        _c_lower_nospace = str.lower(_c_nospace)
-        for __c in [_c_nospace, _c_lower, _c_lower_nospace]:
-            if __c != _c:
-                any_to_wb.loc[__c] = any_to_wb.loc[_c]
-
-    # add values to iso3_to_wb
-    iso3_to_wb['KSV'] = 'Kosovo'
-    iso3_to_wb['XKX'] = 'Kosovo'
-    iso3_to_wb['ROM'] = 'Romania'
-    iso3_to_wb['ZAR'] = 'Congo, Dem. Rep.'
-    iso3_to_wb['WBG'] = 'West Bank and Gaza'
+    iso2_iso3 = pd.read_csv(os.path.join(root_dir, "inputs/raw/country_name_mappings/iso2_to_iso3.csv"), index_col="iso2").squeeze()
 
     return any_to_wb, iso3_to_wb, iso2_iso3
 

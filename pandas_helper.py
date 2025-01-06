@@ -35,31 +35,21 @@ def concat_categories(p,np, index):
     
     #makes sure a series is returned when possible
     return y.squeeze()
-
-
-# only for updating purposes; load data from inputs or __legacy_structure/inputs, depending on whether it has
-# already been updated
-def load_input_data(root_dir, filename, version='infer', **kwargs):
-    if filename.endswith('.csv') or filename.endswith('.csv.zip'):
-        load_func = partial(pd.read_csv, **kwargs)
-    elif filename.endswith('.xlsx'):
-        load_func = partial(pd.read_excel, **kwargs)
-    elif filename.endswith('.txt'):
-        def load_txt(x):
-            return open(x, 'r').read().strip().split('\n')
-        load_func = load_txt
-    else:
-        raise ValueError('Unknown file type for file {}'.format(filename))
-    if os.path.exists(os.path.join(root_dir, 'inputs', filename)) and version in ['new', 'infer']:
-        if version != 'new':
-            print('loading file {} from inputs'.format(filename))
-        return load_func(os.path.join(root_dir, 'inputs', filename))
-    elif version in ['legacy', 'infer']:
-        if os.path.exists(os.path.join(root_dir, '__legacy_structure', 'inputs', filename)):
-            if version != 'legacy':
-                print('loading file {} from __legacy_structure/inputs'.format(filename))
-            return load_func(os.path.join(root_dir, '__legacy_structure', 'inputs', filename))
-        elif os.path.exists(os.path.join(root_dir, '__legacy_structure', 'orig_inputs', filename)):
-            print('loading file {} from __legacy_structure/orig_inputs'.format(filename))
-            return load_func(os.path.join(root_dir, '__legacy_structure', 'orig_inputs', filename))
-    raise ValueError('File {} not found with version={}'.format(filename, version))
+#
+#
+# # only for updating purposes; load data from inputs or __legacy_structure/inputs, depending on whether it has
+# # already been updated
+# def load_input_data(root_dir, filename, **kwargs):
+#     if filename.endswith('.csv') or filename.endswith('.csv.zip'):
+#         load_func = partial(pd.read_csv, **kwargs)
+#     elif filename.endswith('.xlsx'):
+#         load_func = partial(pd.read_excel, **kwargs)
+#     elif filename.endswith('.txt'):
+#         def load_txt(x):
+#             return open(x, 'r').read().strip().split('\n')
+#         load_func = load_txt
+#     else:
+#         raise ValueError('Unknown file type for file {}'.format(filename))
+#     if os.path.exists(os.path.join(root_dir, 'inputs', filename)):
+#         return load_func(os.path.join(root_dir, 'inputs', filename))
+#     raise ValueError('File {} not found.'.format(filename))

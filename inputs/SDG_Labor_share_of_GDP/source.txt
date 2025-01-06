@@ -1,3 +1,0 @@
-2024-04-10_unstats_labor_share_of_gdp.xlsx: https://unstats.un.org/sdgs/dataportal/database
-2024-04-10_Ourworldindata_labor-share-of-gdp.csv: https://ourworldindata.org/grapher/labor-share-of-gdp
-
