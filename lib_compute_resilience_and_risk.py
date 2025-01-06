@@ -60,7 +60,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
         event_level=event_level,
         poor_cat=poor_cat,
         pds_targeting=pds_targeting,
-        option_pds=pds_variant,
+        pds_variant=pds_variant,
         pds_borrowing_ability=pds_borrowing_ability,
         pds_shareable=pds_shareable,
         loss_measure=loss_measure,
@@ -69,7 +69,7 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
     return macro_event, cat_info_event_iah
 
 
-def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds_targeting="data", option_pds="unif_poor", pds_borrowing_ability="data",
+def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds_targeting="data", pds_variant="unif_poor", pds_borrowing_ability="data",
                      pds_shareable=.2, loss_measure="dk_reco"):
 
     """Computes aid received,  aid fee, and other stuff, from losses and PDS options on targeting, financing,
@@ -81,7 +81,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds
     @param poor_cat: list of income categories to be considered poor
     @param pds_targeting: Targeting error option. Changes how inclusion and exclusion errors are calculated. Values:
         "perfect": no targeting errors, "prop_nonpoor_lms": , "data": , "x33": , "incl": , "excl":
-    @param option_pds: Post disaster support options. Values: "unif_poor", "no", "prop", "prop_nonpoor", "unif_poor_only"
+    @param pds_variant: Post disaster support options. Values: "unif_poor", "no", "prop", "prop_nonpoor", "unif_poor_only"
     @param pds_borrowing_ability: Post disaster support budget option. Values: "data", "unif_poor", "max01", "max05", "unlimited",
         "one_per_affected", "one_per_helped", "one", "no"
     @param option_fee: Values: "insurance_premium", "tax"
@@ -140,18 +140,18 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds
 
     # post disaster support (PDS) calculation depending on option_pds
     # Step 1: Compute the help needed for all helped households to fulfill the policy
-    if option_pds == "no":
+    if pds_variant == "no":
         macro_event_["aid"] = 0
         macro_event_['need'] = 0
         cat_info_event_iah_['help_needed'] = 0
         cat_info_event_iah_['help_received'] = 0
         pds_borrowing_ability = 'no'
-    elif option_pds == "unif_poor":
+    elif pds_variant == "unif_poor":
         # help_received for all helped hh = 80% of dk for poor, affected hh
         # share of losses to be covered * (losses of helped, affected, poor households)
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = pds_shareable * cat_info_event_iah_.xs(('helped', 'a', 'q1'), level=('helped_cat', 'affected_cat', 'income_cat'))[loss_measure]
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_needed"] = 0
-    elif option_pds == "unif_poor_only":
+    elif pds_variant == "unif_poor_only":
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped') & (cat_info_event_iah_.income_cat == poor_cat), "help_needed"] = pds_shareable * cat_info_event_iah_.xs(('helped', 'a', 'q1'), level=('helped_cat', 'affected_cat', 'income_cat'))[loss_measure]
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped') | (~cat_info_event_iah_.income_cat == poor_cat), "help_received"] = 0
 
@@ -189,14 +189,14 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds
     else:
         print(f"Unknown optionB={pds_borrowing_ability}")
 
-    if option_pds == "unif_poor":
+    if pds_variant == "unif_poor":
         # Step 4: help_received = unif_aid = aid/(N hh helped)
         macro_event_["unif_aid"] = (macro_event_["aid"] / (
             cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == "helped"), "n"].groupby(level=event_level).sum()
         )).fillna(0)  # division by zero is possible if no losses occur
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_received"] = macro_event_["unif_aid"]
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_received"] = 0
-    elif option_pds == "unif_poor_only":
+    elif pds_variant == "unif_poor_only":
         macro_event_["unif_aid"] = macro_event_["aid"] / (
             cat_info_event_iah_.loc[
                 (cat_info_event_iah_.helped_cat == "helped") & (cat_info_event_iah_.income_cat.isin(poor_cat)), "n"].groupby(
@@ -204,7 +204,7 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_received"] = macro_event_["unif_aid"]
         cat_info_event_iah_.loc[
             (cat_info_event_iah_.helped_cat == 'not_helped') | (~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_received"] = 0
-    elif option_pds == "prop":
+    elif pds_variant == "prop":
         cat_info_event_iah_["help_received"] = macro_event_["aid"] / macro_event_["need"] * cat_info_event_iah_["help_received"]
 
     cat_info_event_iah_.drop(['income_cat', 'helped_cat', 'affected_cat'], axis=1, inplace=True)

@@ -28,7 +28,7 @@ def run_model(run_params, scenario_params, pds_params):
     if scenario_params is None:
         scenario_params = {}
     macro, cat_info, hazard_ratios, hazard_protection = gather_data(
-        intermediate_dir_=scenario_params.get('intermediate_dir', None),
+        intermediate_dir_=run_params.get('intermediate_dir', None),
         force_recompute_=scenario_params.get('force_recompute', False),
         hazard_protection_=scenario_params.get('hazard_protection', "FLOPROS"),
         reduction_vul_=scenario_params.get('reduction_vul', .2),
