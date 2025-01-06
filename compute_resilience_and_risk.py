@@ -131,7 +131,7 @@ def run_model(run_params, scenario_params, pds_params):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
-    parser.add_argument('--settings', type=str, help='Provide settings file to run the model.')
+    parser.add_argument('settings', type=str, help='Provide settings file to run the model.')
 
     args = parser.parse_args()
 
