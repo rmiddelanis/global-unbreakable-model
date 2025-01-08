@@ -682,7 +682,7 @@ def plot_fig_3(results_data_, cat_info_data_, outfile=None, show=False, numberin
     boxplot_data = cat_info_data_[['c']].droplevel(['hazard', 'rp', 'affected_cat', 'helped_cat']).drop_duplicates()
     for variable in ['dk', 'dw']:
         var_data = cat_info_data_[[variable, 'n']].prod(axis=1).groupby(['iso3', 'hazard', 'rp', 'income_cat']).sum()
-        var_data = average_over_rp(var_data, 'default_rp').groupby(['iso3', 'income_cat']).sum()
+        var_data = average_over_rp(var_data).groupby(['iso3', 'income_cat']).sum()
         boxplot_data[variable] = var_data
         boxplot_data[f'{variable}_rel'] = var_data / var_data.groupby('iso3').sum()
 
@@ -1762,7 +1762,7 @@ def make_liquid_savings_distribution_boxplot():
     liquidity = liquidity.droplevel('year')
 
     asset_losses = pd.read_csv("./output/scenarios/Existing_climate/2024-05-03_14-09_no_liquidity_EW-2018_noPDS/iah_tax_no.csv", index_col=[0, 1, 2, 3, 4, 5])[['dk', 'n']]
-    asset_losses = average_over_rp(agg_to_event_level(asset_losses, 'dk', ['iso3', 'hazard', 'rp', 'income_cat']), 'default_rp', None).groupby(['iso3', 'income_cat']).sum()
+    asset_losses = average_over_rp(agg_to_event_level(asset_losses, 'dk', ['iso3', 'hazard', 'rp', 'income_cat']), None).groupby(['iso3', 'income_cat']).sum()
 
     merged = pd.merge(asset_losses.rename('Asset loss'), liquidity.rename('liquid savings'), left_index=True, right_index=True, how='inner')
     merged = pd.merge(merged, income_groups, left_on='iso3', right_index=True, how='left')
@@ -1970,7 +1970,7 @@ def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Earthquake', plot
                       country_data.lambda_h, country_data.reconstruction_share_sigma_h, country_data.liquidity,
                       0, np.nan, country_data.recovery_params, country_data.gamma_SP * country_data.n,
                       country_data.diversified_share, axs=[ax], show_ylabel=not legend, plot_capital=False, plot_legend=legend,
-                      ylims=[(-2500, 9000), None], title=title)
+                      ylims=[(-2500, 10000), None], title=title)
 
     for ax in axs[-1, :]:
         ax.remove()
@@ -2024,7 +2024,7 @@ def compute_national_recovery_duration(cat_info_data_, outpath=None):
     return result#, durations
 
 
-def load_data(simulation_paths_):
+def load_data(simulation_paths_, input_data_dir_):
     rename_income_groups = {
         'Low income': 'LIC',
         'Lower middle income': 'LMIC',
@@ -2034,7 +2034,7 @@ def load_data(simulation_paths_):
     income_groups_ = load_income_groups().replace(rename_income_groups)
     income_groups_ = income_groups_.rename({'Income group': 'Country income group'}, axis=1)
 
-    gini_index_ = pd.read_csv("./inputs/WB_socio_economic_data/gini_index.csv", index_col=0)
+    gini_index_ = pd.read_csv(os.path.join(input_data_dir_, "./WB_socio_economic_data/gini_index.csv"), index_col=0)
 
     cat_info_data_ = {
         k: pd.read_csv(os.path.join(v, "iah.csv"), index_col=[0, 1, 2, 3, 4, 5]) for k, v in
@@ -2085,19 +2085,31 @@ def load_data(simulation_paths_):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
+    parser.add_argument('simulation_outputs_dir', type=str)
+    parser.add_argument('outpath', type=str)
     parser.add_argument('--plot', action='store_true')
-    parser.add_argument('--input_data_dir', type=str, default='./inputs/')
-    parser.add_argument('--simulation_paths', type=str, default='./output/simulation_paths.json')
-    parser.add_argument('--outpath', type=str, default='./figures/')
     args = parser.parse_args()
 
     outpath = args.outpath
     os.makedirs(outpath, exist_ok=True)
-    input_data_dir = args.input_data_dir
+    input_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inputs', 'raw')
 
-    simulation_paths = json.load(open(args.simulation_paths))
+    simulation_paths = {
+        'baseline': '0_baseline',
+        'reduce_total_exposure_0.05': '1_reduce_total_exposure/5/all',
+        'reduce_poor_exposure_0.05': '1_reduce_total_exposure/5/q1',
+        'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/5/all',
+        'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/5/q1',
+        'reduce_self_employment_0.1': '6_reduce_self_employment/10/all',
+        'reduce_non_diversified_income_0.1': '7_reduce_non_diversified_income/10/all',
+        'increase_gdp_pc_and_liquidity_0.05': '5_increase_income_and_liquidity/5/all',
+        'pds20': '8_post_disaster_support_imperfect/20/all',
+        'pds20_perfect': '9_post_disaster_support_perfect/20/all',
+        'noLiquidity': '10_no_liquidity',
+    }
+    simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
-    income_groups, gini_index, cat_info_data, macro_data, results_data, wb_data_macro, wb_data_cat_info, name_dict, any_to_wb, iso3_to_wb, iso2_iso3 = load_data(simulation_paths)
+    income_groups, gini_index, cat_info_data, macro_data, results_data, wb_data_macro, wb_data_cat_info, name_dict, any_to_wb, iso3_to_wb, iso2_iso3 = load_data(simulation_paths, input_data_dir)
 
     gadm_world = gpd.read_file("/Users/robin/data/GADM/gadm_410-levels.gpkg", layer='ADM_0').set_crs(4326).to_crs('World_Robinson')
     gadm_world = gadm_world[~gadm_world.COUNTRY.isin(['Antarctica', 'Caspian Sea'])]
@@ -2166,15 +2178,6 @@ if __name__ == '__main__':
             outpath_=outpath,
         )
 
-        # plot_supfig_5(
-        #     macro_baseline=macro_data['baseline'],
-        #     cat_info_baseline=cat_info_data['baseline'],
-        #     macro_no_liquidity=macro_data['noLiquidity'],
-        #     cat_info_no_liquidity=cat_info_data['noLiquidity'],
-        #     household_=['LBN', 'Earthquake', 5000, 'q1', 'a'],
-        #     outfile=f"{outpath}/supfig_5.pdf",
-        # )
-
         plot_supfig_5(
             results_data_=results_data['baseline'],
             outfile=f"{outpath}/supfig_5.pdf",
@@ -2195,14 +2198,6 @@ if __name__ == '__main__':
             show=True,
         )
 
-        # plot_hazard_detail_supfig(
-        #     cat_info_data_=cat_info_data['baseline'],
-        #     income_groups_=income_groups,
-        #     plot_rp=100,
-        #     outfile=f"{outpath}/supfig_8.pdf",
-        #     show=True,
-        # )
-
         plot_supfig_8(
             cat_info_data_=cat_info_data,
             outfile=f"{outpath}/supfig_8.pdf",
@@ -2211,84 +2206,6 @@ if __name__ == '__main__':
             numbering=False
         )
 
-        # plot_fig_4_supfig_9(
-        #     results_data_=results_data,
-        #     cat_info_data_=cat_info_data,
-        #     plot_rp=100,
-        #     ref_scenario='baseline_noPDS',
-        #     outfile=f"{outpath}/supfig_9.pdf",
-        # )
-
     print_stats(results_data['baseline'])
 
     print_results_table(results_data['baseline'])
-
-    # if args.plot:
-    #     # plot recovery of ('LBN', 'Earthquake', 5000, 'q1', 'a', 'not_helped') for scenarios without PDS and savings and with
-    #     plot_drivers_gdp_and_gini_index(
-    #         results_data['baseline'],
-    #         outpath=outpath,
-    #         annotate=['HTI', 'LAO', 'HND', 'TJK', 'GRC', 'MMR', 'URK', 'ECU', 'BTN', 'IRL', 'LUX', 'UKR', 'IRN', 'GEO']
-    #     )
-    #
-    #     make_income_cat_boxplots(
-    #         results_path="./output/scenarios/Existing_climate/2024-05-14_15-20_baseline_EW-2018",
-    #         outpath=outpath,
-    #         focus_countries=['FIN', 'BOL', 'NAM'],
-    #     )
-    #
-    #     plot_hbar(
-    #         data=results_data['baseline'],
-    #         comparison_data=results_data['poor_reduction_results'],
-    #         variables=["dWtot_currency", "dk_tot"],
-    #         how='abs',
-    #         unit='millions',
-    #         name_dict=name_dict,
-    #         precision=0,
-    #         outfile=f"{outpath}/poor_exposure_reduction_dW-dk_comparison_abs.pdf",
-    #     )
-    #     plot_hbar(
-    #         data=results_data['baseline'],
-    #         comparison_data=results_data['poor_reduction_results'],
-    #         variables=["dWtot_currency", "dk_tot"],
-    #         how='rel',
-    #         name_dict=name_dict,
-    #         outfile=f"{outpath}/poor_exposure_reduction_dW-dk_comparison_rel.pdf",
-    #     )
-    #     plot_hbar(
-    #         # data=datasets['baseline'][datasets['baseline'].iso3.isin(['CHN', 'IND', 'IDN', 'USA', 'ITA', 'TUR', 'JPN', 'VNM', 'IRN', 'PAK', 'GRC', 'KOR', 'COL', 'PHL', 'URK'])],
-    #         data=results_data['baseline'],
-    #         comparison_data=results_data['nonpoor_reduction_results'],
-    #         variables=["dWtot_currency", "dk_tot"],
-    #         how='abs',
-    #         unit='millions',
-    #         name_dict=name_dict,
-    #         precision=0,
-    #         outfile=f"{outpath}/nonpoor_exposure_reduction_dW-dk_comparison_abs.pdf",
-    #     )
-    #     plot_hbar(
-    #         # data=datasets['baseline'][datasets['baseline'].iso3.isin(['AZE', 'NGA', 'ALB', 'SVK', 'IDN', 'NPL', 'HND', 'CYP', 'GHA', 'HTI', 'LAO', 'COL', 'AGO', 'PAK', 'IND'])],
-    #         data=results_data['baseline'],
-    #         comparison_data=results_data['nonpoor_reduction_results'],
-    #         variables=["dWtot_currency", "dk_tot"],
-    #         how='rel',
-    #         name_dict=name_dict,
-    #         outfile=f"{outpath}/nonpoor_exposure_reduction_dW-dk_comparison_rel.pdf",
-    #     )
-    #     make_liquidity_comparison_plot(
-    #         path_with="./output/scenarios/Existing_climate/2024-05-15_11-43_baseline_EW-2018_noPDS/",
-    #         path_without="./output/scenarios/Existing_climate/2024-05-15_11-32_no_liquidity_EW-2018_noPDS/",
-    #         is_pds=False,
-    #         outpath_=outpath,
-    #     )
-    #     make_liquidity_comparison_plot(
-    #         path_with="./output/scenarios/Existing_climate/2024-05-15_11-36_no_liquidity_EW-2018/",
-    #         path_without="./output/scenarios/Existing_climate/2024-05-15_11-32_no_liquidity_EW-2018_noPDS/",
-    #         is_pds=True,
-    #         outpath_=outpath,
-    #     )
-    #     plot_ew_impact_over_time(
-    #         ensemble_dir="./output/scenarios_pre_max_aid_fix/Existing_climate",
-    #         outpath_=outpath,
-    #     )
-

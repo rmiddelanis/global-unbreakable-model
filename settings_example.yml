@@ -1,14 +1,54 @@
-run_params:
-  simulation_name: 'test'
-  append_date: False
-  outpath: '/path/to/output'
-  verbose: False
-
+model_params:
+  run_params:
+    append_date: False
+    outpath: '/Users/robin/Documents/Karriere/Jobs/2023_The_World_Bank/03_projects/01_Unbreakable/04_paper/01_simulation_data/0_baseline'
+    verbose: False
+  pds_params:
+    pds_variant: 'no'
+    pds_targeting: 'data'
+    pds_borrowing_ability: 'no'
+    pds_shareable: 0
 scenario_params:
-  countries: DEU+USA
-
-pds_params:
-  pds_targeting: 'data'
-  pds_variant: 'unif_poor'
-  pds_borrowing_ability: 'data'
-  pds_shareable: .2
+  run_params:
+    outpath: null
+    force_recompute: False
+    verbose: False
+    countries: 'all'
+    hazards: 'all'
+  macro_params:
+    income_elasticity_eta: 1.5
+    discount_rate_rho: .06
+    max_increased_spending: .05
+    axfin_impact: .1
+    reconstruction_capital: 'prv'
+    ew_year: 2018
+    ew_decade: null
+    reduction_vul: .2
+  hazard_params:
+    hazard_protection: 'FLOPROS'
+    no_exposure_bias: False
+    fa_threshold: .9
+  policy_params:
+    scale_self_employment:
+      parameter: 1
+      scope: q1+q2+q3+q4+q5
+    scale_non_diversified_income:
+      parameter: 1
+      scope: q1+q2+q3+q4+q5
+    min_diversified_share:
+      parameter: 0
+      scope: q1+q2+q3+q4+q5
+    scale_income:
+      parameter: 1
+      scope: q1+q2+q3+q4+q5
+    scale_liquidity:
+      parameter: 1
+      scope: q1+q2+q3+q4+q5
+    scale_exposure:
+      parameter: 1
+      scope: q1+q2+q3+q4+q5
+      scale_total: False
+    scale_vulnerability:
+      parameter: 1
+      scope: q1+q2+q3+q4+q5
+      scale_total: False

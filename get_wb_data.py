@@ -136,7 +136,7 @@ def get_wb_data(root_dir, include_remittances=True, use_additional_data=False, d
 
     # legacy additions are not formatted to ISO3; therefore, they cannot be added after the df_to_iso3 function
     if use_additional_data:
-        guessed_social = pd.read_csv("inputs/raw/social_share_regression/social_predicted.csv",
+        guessed_social = pd.read_csv(os.path.join(root_dir, "inputs/raw/social_share_regression/social_predicted.csv"),
                                          index_col=[0, 1]).squeeze()
         cat_info_df_.social.fillna(guessed_social, inplace=True)
 
@@ -170,5 +170,4 @@ if __name__ == "__main__":
         include_remittances=args.exclude_remittances,
         use_additional_data=not args.no_additional_data,
         drop_incomplete=not args.keep_incomplete,
-        processed_files_dir='inputs/processed/',
     )

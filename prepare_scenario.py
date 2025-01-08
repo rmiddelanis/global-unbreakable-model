@@ -3,13 +3,13 @@
 import argparse
 
 import numpy as np
+import yaml
 
 from gather_findex_data import get_liquidity_from_findex, gather_axfin_data
 from gather_gem_data import gather_gem_data
 from gather_gir_data import load_gir_hazard_loss_rel
 from get_wb_data import get_wb_data
 from lib_prepare_scenario import *
-from apply_policy import *
 import pandas as pd
 from lib import get_country_name_dicts, df_to_iso3
 from wb_api_wrapper import get_wb_mrv
@@ -17,13 +17,28 @@ from time import time
 
 
 def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_,
-                             scale_non_diversified_income_, min_diversified_share_):
+                             scale_non_diversified_income_=None, min_diversified_share_=None, scale_income_=None):
     print("Computing diversified income share and tax...")
     cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
-    cat_info_['diversified_share'] = (1 - (1 - cat_info_['diversified_share']) * scale_non_diversified_income_).clip(upper=1, lower=min_diversified_share_)
+    if scale_non_diversified_income_ is not None:
+        scope = scale_non_diversified_income_['scope'].split('+')
+        parameter = scale_non_diversified_income_['parameter']
+        cat_info_.loc[pd.IndexSlice[:, scope], 'diversified_share'] = 1 - (1 - cat_info_['diversified_share']) * parameter
+    cat_info_['diversified_share'] = cat_info_['diversified_share'].clip(upper=1, lower=0)
+    if min_diversified_share_ is not None:
+        scope = min_diversified_share_['scope'].split('+')
+        parameter = min_diversified_share_['parameter']
+        cat_info_.loc[pd.IndexSlice[:, scope], 'diversified_share'] = cat_info_['diversified_share'].clip(lower=parameter)
 
     cat_info_['n'] = 1 / n_quantiles_
     cat_info_['c'] = cat_info_.income_share / cat_info_.n * wb_data_macro_.gdp_pc_pp
+
+    if scale_income_ is not None:
+        scope = scale_income_['scope'].split('+')
+        parameter = scale_income_['parameter']
+        cat_info_.loc[pd.IndexSlice[:, scope], 'c'] *= parameter
+        wb_data_macro_.gdp_pc_pp = cat_info_.groupby('iso3').c.mean()
+        cat_info_['income_share'] = cat_info_.c * cat_info_.n / wb_data_macro_.gdp_pc_pp
 
     # compute tau tax and gamma_sp from social
     tau_tax_, cat_info_["gamma_SP"] = social_to_tx_and_gsp(cat_info_)
@@ -32,7 +47,7 @@ def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles
     cat_info_["k"] = (1 - cat_info_.diversified_share) * cat_info_.c / ((1 - tau_tax_) * avg_prod_k_)
 
     cat_info_ = cat_info_.loc[cat_info_.drop('n', axis=1).dropna(how='all').index]
-    return cat_info_, tau_tax_
+    return wb_data_macro_, cat_info_, tau_tax_
 
 
 def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, hazard_types="Flood+Storm surge",
@@ -89,34 +104,38 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
         prot.loc[prot < min_rp] = min_rp
     return prot
 
-def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True, verbose=True):
+def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True, verbose_=True, scale_liquidity_=None):
     outpath = os.path.join(root_dir_, 'inputs', 'processed', 'findex_liquidity_and_axfin.csv')
     if not force_recompute_ and os.path.exists(outpath):
         print("Loading liquidity and axfin data from file...")
         liquidity_and_axfin = pd.read_csv(outpath)
-        return liquidity_and_axfin.set_index(['iso3', 'income_cat'])
-    print("Recomputing liquidity and axfin data from FINDEX...")
-    findex_data_paths = {
-        2021: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2021_FINDEX_v03_M.csv'),
-        2017: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2017_FINDEX_v02_M.csv'),
-        2014: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2014_FINDEX_v01_M.csv'),
-        2011: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2011_FINDEX_v02_M.csv'),
-    }
-    liquidity_ = get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths, write_output_=False, verbose=verbose)
-    liquidity_ = liquidity_[['liquidity_share', 'liquidity']].prod(axis=1).rename('liquidity')
-    liquidity_ = liquidity_.iloc[liquidity_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
-    liquidity_ = liquidity_.droplevel('year')
+        liquidity_and_axfin.set_index(['iso3', 'income_cat'], inplace=True)
+    else:
+        print("Recomputing liquidity and axfin data from FINDEX...")
+        findex_data_paths = {
+            2021: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2021_FINDEX_v03_M.csv'),
+            2017: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2017_FINDEX_v02_M.csv'),
+            2014: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2014_FINDEX_v01_M.csv'),
+            2011: os.path.join(root_dir_, "inputs/raw/", 'FINDEX', 'WLD_2011_FINDEX_v02_M.csv'),
+        }
+        liquidity_ = get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths, write_output_=False, verbose=verbose_)
+        liquidity_ = liquidity_[['liquidity_share', 'liquidity']].prod(axis=1).rename('liquidity')
+        liquidity_ = liquidity_.iloc[liquidity_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
+        liquidity_ = liquidity_.droplevel('year')
 
-    axfin_ = gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths, write_output_=False, verbose=verbose)
-    axfin_ = axfin_.iloc[axfin_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()].axfin.droplevel('year')
+        axfin_ = gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths, write_output_=False, verbose=verbose_)
+        axfin_ = axfin_.iloc[axfin_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()].axfin.droplevel('year')
 
-    liquidity_and_axfin = pd.merge(liquidity_, axfin_, left_index=True, right_index=True, how='inner')
+        liquidity_and_axfin = pd.merge(liquidity_, axfin_, left_index=True, right_index=True, how='inner')
 
-    liquidity_and_axfin.to_csv(outpath)
+        liquidity_and_axfin.to_csv(outpath)
+    if scale_liquidity_ is not None:
+        liquidity_and_axfin.loc[pd.IndexSlice[:, scale_liquidity_['scope'].split('+')], 'liquidity'] *= scale_liquidity_['parameter']
     return liquidity_and_axfin
 
 
-def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, scale_self_employment=1, imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
+def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, scale_self_employment=None,
+                                    imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
                                     reconstruction_capital_='prv', verbose=True, force_recompute=True,
                                     labor_share_data_file="ILO_labor_share_of_GDP/LAP_2GDP_NOC_RT_A-filtered-2024-04-23.csv"):
     capital_shares_before_adjustment_path = os.path.join(root_dir_, "inputs/processed/capital_shares.csv")
@@ -131,7 +150,7 @@ def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, scale_self_employment
         imf_data = imf_data.replace(0, np.nan)
         imf_data = imf_data.rename({'kpriv_n': 'knonpub_n'}, axis=1)[['year', 'kpub_n', 'knonpub_n']].dropna(axis=0, how='any')
         imf_data = imf_data.iloc[imf_data.reset_index().groupby('iso3').year.idxmax()].drop('year', axis=1)
-        imf_data['k_pub_share_kappa'] = imf_data['kpub_n'] / (imf_data['knonpub_n'] + imf_data['kpub_n'])
+        imf_data['k_pub_share'] = imf_data['kpub_n'] / (imf_data['knonpub_n'] + imf_data['kpub_n'])
 
         labor_share_of_gdp = pd.read_csv(os.path.join(root_dir_, "inputs/raw/", labor_share_data_file))
         labor_share_of_gdp = labor_share_of_gdp.rename({'ref_area.label': 'country'}, axis=1).set_index('country').obs_value
@@ -146,19 +165,24 @@ def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, scale_self_employment
         self_employment = df_to_iso3(self_employment.reset_index(), 'country', any_to_wb_, verbose_=verbose).dropna(subset='iso3')
         self_employment = self_employment.set_index('iso3').drop('country', axis=1).squeeze()
 
-        capital_shares = pd.merge(capital_share, imf_data.k_pub_share_kappa, left_index=True, right_index=True, how='inner')
+        capital_shares = pd.merge(capital_share, imf_data.k_pub_share, left_index=True, right_index=True, how='inner')
         capital_shares = pd.merge(capital_shares, self_employment, left_index=True, right_index=True, how='inner')
 
         capital_shares.to_csv(capital_shares_before_adjustment_path)
 
-    capital_shares['self_employment'] *= scale_self_employment
+    new_index = pd.MultiIndex.from_product([capital_shares.index, ['q1', 'q2', 'q3', 'q4', 'q5']],
+                                           names=['iso3', 'income_cat'])
+    capital_shares = capital_shares.reindex(capital_shares.index.repeat(5)).reset_index(drop=True)
+    capital_shares.index = new_index
 
-    capital_shares['k_pub_share'] = capital_shares.k_pub_share_kappa
+    if scale_self_employment is not None:
+        capital_shares.loc[pd.IndexSlice[:, scale_self_employment['scope'].split('+')], 'self_employment'] *= scale_self_employment['parameter']
+
     denominator = capital_shares.capital_elasticity_alpha + capital_shares.self_employment * (
                 1 - capital_shares.capital_elasticity_alpha)
     capital_shares['k_oth_share'] = capital_shares.capital_elasticity_alpha * (
-                1 - capital_shares.k_pub_share_kappa) / denominator
-    capital_shares['k_prv_share'] = (1 - capital_shares.k_pub_share_kappa) * capital_shares.self_employment * (
+                1 - capital_shares.k_pub_share) / denominator
+    capital_shares['k_prv_share'] = (1 - capital_shares.k_pub_share) * capital_shares.self_employment * (
                 1 - capital_shares.capital_elasticity_alpha) / denominator
 
     if reconstruction_capital_ == 'prv':
@@ -166,17 +190,9 @@ def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, scale_self_employment
     elif reconstruction_capital_ == 'prv_oth':
         capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share + capital_shares.k_oth_share
 
+    capital_shares = capital_shares[['self_employment', 'k_pub_share', 'k_prv_share', 'k_oth_share', 'reconstruction_share_sigma_h']]
+
     return capital_shares
-
-
-
-def get_early_warning_per_hazard(index_, ew_per_country_, no_ew_hazards="Earthquake+Tsunami"):
-    ew_per_hazard_ = pd.Series(index=index_, data=0.0, name='ew')
-    common_countries = np.intersect1d(index_.get_level_values('iso3').unique(), ew_per_country_.index)
-    ew_per_hazard_.loc[common_countries] += ew_per_country_.loc[common_countries]
-    ew_per_hazard_.loc[:, no_ew_hazards.split('+')] = 0
-    ew_per_hazard_.fillna(0, inplace=True)
-    return ew_per_hazard_
 
 
 def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population_data_=None,
@@ -206,16 +222,13 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population
 
 
 def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, verbose=True, force_recompute_=False,
-                                       apply_exposure_bias=True, population_data=None):
-    outpath = os.path.join(root_dir_, 'inputs', 'processed')
-    exposure_path = os.path.join(outpath, 'exposure_fa_guessed.csv')
-    vuln_adj_path = os.path.join(outpath, 'vulnerability_adjusted.csv')
-    vuln_unadj_path = os.path.join(outpath, 'vulnerability_unadjusted.csv')
-    if not force_recompute_ and os.path.exists(exposure_path) and os.path.exists(vuln_adj_path) and os.path.exists(vuln_unadj_path):
+                                       apply_exposure_bias=True, population_data=None, scale_exposure=None,
+                                       scale_vulnerability=None, early_warning_data=None, reduction_vul=.2,
+                                       no_ew_hazards="Earthquake+Tsunami"):
+    hazard_ratios_path = os.path.join(root_dir_, 'inputs', 'processed', 'hazard_ratios.csv')
+    if not force_recompute_ and os.path.exists(hazard_ratios_path):
             print("Loading exposure and vulnerability from file...")
-            exposure_fa_ = pd.read_csv(exposure_path, index_col=[0, 1, 2, 3]).squeeze()
-            vulnerability_adjusted_ = pd.read_csv(vuln_adj_path, index_col=[0, 1, 2, 3])
-            vulnerability_unadjusted_ = pd.read_csv(vuln_unadj_path, index_col=[0, 1, 2])
+            hazard_ratios = pd.read_csv(hazard_ratios_path, index_col=[0, 1, 2, 3]).squeeze()
     else:
         print("Computing exposure and vulnerability...")
         # load total hazard losses per return period (on the country level)
@@ -266,22 +279,37 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
                     print(f"The adjustment of exposure and vulnerability resulted in excess vulnerability for some entries.")
                     print(f"Clipped excess vulnerability to .99 for {len(excess_vulnerability)} entries.")
 
-        exposure_fa_ = fa_v_merged.fa
-        vulnerability_adjusted_ = fa_v_merged.v
-
-        exposure_fa_.to_csv(exposure_path)
-        vulnerability_adjusted_.to_csv(vuln_adj_path)
-        vulnerability_unadjusted_.to_csv(vuln_unadj_path)
+        hazard_ratios = fa_v_merged[['fa', 'v']]
+        hazard_ratios.to_csv(hazard_ratios_path)
 
     # apply poverty exposure bias
     if apply_exposure_bias:
-        exposure_fa_ = apply_poverty_exposure_bias(
+        hazard_ratios['fa'] = apply_poverty_exposure_bias(
             root_dir_=root_dir_,
-            exposure_fa_=exposure_fa_,
+            exposure_fa_=hazard_ratios['fa'],
             use_avg_pe_=True,
             population_data_=population_data
         )
-    return exposure_fa_, vulnerability_adjusted_, vulnerability_unadjusted_
+
+    for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
+        if policy_dict is not None:
+            scope = policy_dict['scope'].split('+')
+            parameter = policy_dict['parameter']
+            scale_total = policy_dict['scale_total']
+            if not scale_total:
+                hazard_ratios.loc[pd.IndexSlice[:, :, :, scope], col_name] *= parameter
+            else:
+                average = hazard_ratios[col_name].groupby(['iso3', 'hazard', 'rp']).mean()
+                scope_sum = hazard_ratios.loc[pd.IndexSlice[:, :, :, scope], col_name].groupby(['iso3', 'hazard', 'rp']).sum()
+                none_scope_sum = hazard_ratios[col_name].groupby(['iso3', 'hazard', 'rp']).sum() - scope_sum
+                scope_factor = (average * parameter - 1 / n_quantiles * none_scope_sum) / (1 / n_quantiles * scope_sum)
+                hazard_ratios.loc[pd.IndexSlice[:, :, :, scope], col_name] *= scope_factor
+
+    if early_warning_data is not None:
+        hazard_ratios["v_ew"] = hazard_ratios["v"] * (1 - reduction_vul * early_warning_data)
+        hazard_ratios.loc[pd.IndexSlice[:, no_ew_hazards.split('+'), :, :], "v_ew"] = hazard_ratios.loc[
+            pd.IndexSlice[:, no_ew_hazards.split('+'), :, :], "v"]
+    return hazard_ratios
 
 
 def load_vulnerability_data(
@@ -296,7 +324,6 @@ def load_vulnerability_data(
         vulnarebility_class_mapping = "./inputs/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx",
         building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
         gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling quintile vul ratio.xlsx",
-        force_reompute=False,
         verbose=True
 ):
     # load distribution of vulnerability classes per country
@@ -608,6 +635,8 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
                                     forecast_accuracy_file_yearly="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_yearly.csv",
                                     forecast_accuracy_file_decadal="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_decadal.csv",
                                     force_recompute=True, verbose=True):
+    if ew_decade == '':
+        ew_decade = None
     outpath = os.path.join(root_dir_, "inputs/processed/disaster_preparedness.csv")
     if not force_recompute and os.path.exists(outpath) and (ew_year == 2018) and (ew_decade is None):
         print("Loading disaster preparedness data from file...")
@@ -640,12 +669,12 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Income group').mean())
         merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Income group'])] if not x[['Region', 'Income group']].isna().any() else x, axis=1))
         disaster_preparedness_ = merged[disaster_preparedness_.columns]
-    if ew_year is not None and ew_decade == '':
+    if ew_year is not None and ew_decade is None:
         forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "inputs/raw/", forecast_accuracy_file_yearly), index_col=[0, 1]).squeeze()
         if ew_year not in forecast_accuracy.index.get_level_values('year'):
             raise ValueError(f"Forecast accuracy data not available for year {ew_year}.")
         ew_factor = forecast_accuracy.xs(ew_year, level='year') / forecast_accuracy.xs(forecast_accuracy.index.get_level_values('year').max(), level='year')
-    elif ew_year is None and ew_decade != '':
+    elif ew_year is None and ew_decade is not None:
         forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "inputs/raw/", forecast_accuracy_file_decadal), index_col=[0, 1]).squeeze()
         if ew_decade not in forecast_accuracy.index.get_level_values('decade'):
             raise ValueError(f"Forecast accuracy data not available for decade {ew_decade}.")
@@ -658,14 +687,39 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
     return disaster_preparedness_
 
 
-def gather_data(intermediate_dir_=None, force_recompute_=False, hazard_protection_='FLOPROS', reduction_vul_=.2,
-                income_elasticity_eta_=1.5, discount_rate_rho_=.06, max_increased_spending_=.05,
-                fa_threshold_=.9, axfin_impact_=.1, no_exposure_bias_=False, reconstruction_capital_='prv',
-                ew_year_=2018, ew_decade_='', scale_self_employment_=1, scale_non_diversified_income_=1,
-                min_diversified_share_=0, scale_gdp_pc_pp_=1, pol_opt_=None, verbose=True, countries=None,
-                scale_liquidity_=1, hazards_='all'):
+def prepare_scenario(scenario_params):
     root_dir = os.path.dirname(os.path.abspath(__file__))
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
+
+    # unpack scenario parameters
+    if scenario_params is None:
+        scenario_params = {}
+
+    # Parameter dicts
+    run_params = scenario_params.get('run_params', {})
+    macro_params = scenario_params.get('macro_params', {})
+    hazard_params = scenario_params.get('hazard_params', {})
+    policy_params = scenario_params.get('policy_params', {})
+
+    # Set defaults
+    run_params['outpath'] = run_params.get('intermediate_dir', None)
+    run_params['force_recompute'] = run_params.get('force_recompute', False)
+    run_params['verbose'] = run_params.get('verbose', True)
+    run_params['countries'] = run_params.get('countries', 'all')
+    run_params['hazards'] = run_params.get('hazards', 'all')
+
+    macro_params['income_elasticity_eta'] = macro_params.get('income_elasticity_eta', 1.5)
+    macro_params['discount_rate_rho'] = macro_params.get('discount_rate_rho', .06)
+    macro_params['max_increased_spending'] = macro_params.get('max_increased_spending', .05)
+    macro_params['axfin_impact'] = macro_params.get('axfin_impact', .1)
+    macro_params['reconstruction_capital'] = macro_params.get('reconstruction_capital', 'prv')
+    macro_params['ew_year'] = macro_params.get('ew_year', 2018)
+    macro_params['ew_decade'] = macro_params.get('ew_decade', None)
+    macro_params['reduction_vul'] = macro_params.get('reduction_vul', .2)
+
+    hazard_params['hazard_protection'] = hazard_params.get('hazard_protection', 'FLOPROS')
+    hazard_params['no_exposure_bias'] = hazard_params.get('no_exposure_bias', False)
+    hazard_params['fa_threshold'] = hazard_params.get('fa_threshold', .9)
 
     timestamp = time()
     # read WB data
@@ -674,12 +728,12 @@ def gather_data(intermediate_dir_=None, force_recompute_=False, hazard_protectio
         include_remittances=True,
         use_additional_data=True,
         drop_incomplete=True,
-        force_recompute=force_recompute_,
-        verbose=verbose
+        force_recompute=run_params['force_recompute'],
+        verbose=run_params['verbose']
     )
 
     # print duration
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -687,18 +741,15 @@ def gather_data(intermediate_dir_=None, force_recompute_=False, hazard_protectio
     liquidity_and_axfin = load_findex_liquidity_and_axfin(
         root_dir_=root_dir,
         any_to_wb_=any_to_wb,
-        force_recompute_=force_recompute_,
-        verbose=verbose
+        force_recompute_=run_params['force_recompute'],
+        verbose_=run_params['verbose'],
+        scale_liquidity_=policy_params.pop('scale_liquidity', None),
     )
-    liquidity_and_axfin['liquidity'] *= scale_liquidity_
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
     cat_info = pd.merge(wb_data_cat_info, liquidity_and_axfin, left_index=True, right_index=True, how='inner')
-
-    # scale GDPpc
-    wb_data_macro['gdp_pc_pp'] *= scale_gdp_pc_pp_
 
     n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
@@ -707,12 +758,12 @@ def gather_data(intermediate_dir_=None, force_recompute_=False, hazard_protectio
         any_to_wb_=any_to_wb,
         include_hfa_data=True,
         guess_missing_countries=True,
-        ew_year=ew_year_,
-        ew_decade=ew_decade_,
-        force_recompute=force_recompute_,
-        verbose=verbose
+        ew_year=macro_params['ew_year'],
+        ew_decade=macro_params['ew_decade'],
+        force_recompute=run_params['force_recompute'],
+        verbose=run_params['verbose']
     )
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -721,19 +772,19 @@ def gather_data(intermediate_dir_=None, force_recompute_=False, hazard_protectio
         root_dir_=root_dir,
         any_to_wb_=any_to_wb,
         finance_preparedness_=disaster_preparedness.finance_pre,
-        verbose=verbose,
-        force_recompute=force_recompute_,
+        verbose=run_params['verbose'],
+        force_recompute=run_params['force_recompute'],
     )
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
     # load average productivity of capital
     avg_prod_k = gather_capital_data(
         root_dir_=root_dir,
-        force_recompute=force_recompute_
+        force_recompute=run_params['force_recompute']
     ).avg_prod_k
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -741,70 +792,68 @@ def gather_data(intermediate_dir_=None, force_recompute_=False, hazard_protectio
     capital_shares = calc_reconstruction_share_sigma(
         root_dir_=root_dir,
         any_to_wb_=any_to_wb,
-        reconstruction_capital_=reconstruction_capital_,
-        scale_self_employment=scale_self_employment_,
-        verbose=verbose,
-        force_recompute=force_recompute_,
+        reconstruction_capital_=macro_params['reconstruction_capital'],
+        scale_self_employment=policy_params.pop('scale_self_employment', None),
+        verbose=run_params['verbose'],
+        force_recompute=run_params['force_recompute'],
     )
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
-    # compute exposure and adjust vulnerability (per income category) for excess exposure
-    exposure_fa, vulnerability_adjusted_, vulnerability_unadjusted_ = compute_exposure_and_vulnerability(
+    # compute exposure and vulnerability
+    hazard_ratios = compute_exposure_and_vulnerability(
         root_dir_=root_dir,
-        fa_threshold_=fa_threshold_,
+        force_recompute_=run_params['force_recompute'],
+        verbose=run_params['verbose'],
+        fa_threshold_=hazard_params['fa_threshold'],
         n_quantiles=n_quantiles,
-        force_recompute_=force_recompute_,
-        verbose=verbose,
-        apply_exposure_bias=not no_exposure_bias_,
+        apply_exposure_bias=not hazard_params['no_exposure_bias'],
         population_data=wb_data_macro['pop'],
+        scale_exposure=policy_params.pop('scale_exposure', None),
+        scale_vulnerability=policy_params.pop('scale_vulnerability', None),
+        early_warning_data=disaster_preparedness.ew,
+        no_ew_hazards="Earthquake+Tsunami",
+        reduction_vul=macro_params['reduction_vul'],
     )
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
-
-    # expand the early warning to all hazard rp's, income categories, and countries; set to 0 for specific hazrads
-    # (Earthquake and Tsunami)
-    early_warning_per_hazard = get_early_warning_per_hazard(exposure_fa.index, disaster_preparedness.ew)
-
-    # concatenate exposure, vulnerability and early warning into one dataframe
-    hazard_ratios = pd.concat((exposure_fa, vulnerability_adjusted_, early_warning_per_hazard), axis=1).dropna()
-    hazard_ratios["v_ew"] = hazard_ratios["v"] * (1 - reduction_vul_ * hazard_ratios["ew"])
 
     # get data per income categories
-    cat_info, tau_tax = get_cat_info_and_tau_tax(
+    macro, cat_info, tau_tax = get_cat_info_and_tau_tax(
         cat_info_=cat_info,
         wb_data_macro_=wb_data_macro,
         avg_prod_k_=avg_prod_k,
         n_quantiles_=n_quantiles,
-        axfin_impact_=axfin_impact_,
-        scale_non_diversified_income_=scale_non_diversified_income_,
-        min_diversified_share_=min_diversified_share_
+        axfin_impact_=macro_params['axfin_impact'],
+        scale_non_diversified_income_=policy_params.pop('scale_non_diversified_income', None),
+        min_diversified_share_=policy_params.pop('min_diversified_share', None),
+        scale_income_=policy_params.pop('scale_income', None),
     )
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
     hazard_protection = load_protection(
         index_=hazard_ratios.index,
         root_dir_=root_dir,
-        protection_data=hazard_protection_,
+        protection_data=hazard_params['hazard_protection'],
         min_rp=0
     )
-    if force_recompute_:
+    if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
-    macro = wb_data_macro
     macro = macro.join(disaster_preparedness, how='left')
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
-    macro = macro.join(capital_shares, how='left')
-    macro['rho'] = discount_rate_rho_
-    macro['max_increased_spending'] = max_increased_spending_
-    macro['income_elasticity_eta'] = income_elasticity_eta_
+    macro['rho'] = macro_params['discount_rate_rho']
+    macro['max_increased_spending'] = macro_params['max_increased_spending']
+    macro['income_elasticity_eta'] = macro_params['income_elasticity_eta']
+
+    cat_info = cat_info.join(capital_shares, how='left')
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)
@@ -812,148 +861,66 @@ def gather_data(intermediate_dir_=None, force_recompute_=False, hazard_protectio
     hazard_ratios.dropna(inplace=True)
     hazard_protection.dropna(inplace=True)
 
-    common_regions = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index and c in hazard_protection.index]
-    if countries is not None:
-        countries = countries.split('+')
-        if len(np.intersect1d(countries, common_regions)) == 0:
+    # retain common (and selected) countries only
+    countries = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index and c in hazard_protection.index]
+    if run_params['countries'] != 'all':
+        if len(np.intersect1d(countries, run_params['countries'].split('+'))) == 0:
             print("None of the selected countries found in data. Keeping all countries.")
         else:
-            common_regions = np.intersect1d(countries, common_regions)
-    macro = macro.loc[common_regions]
-    cat_info = cat_info.loc[common_regions]
-    hazard_ratios = hazard_ratios.loc[common_regions]
-    hazard_protection = hazard_protection.loc[common_regions]
+            countries = np.intersect1d(countries, run_params['countries'].split('+'))
+            if len(countries) < len(run_params['countries'].split('+')):
+                print("Not all selected countries found in data.")
+    macro = macro.loc[countries]
+    cat_info = cat_info.loc[countries]
+    hazard_ratios = hazard_ratios.loc[countries]
+    hazard_protection = hazard_protection.loc[countries]
 
-    if hazards_ != 'all':
-        hazard_ratios = hazard_ratios[hazard_ratios.index.get_level_values('hazard').isin(hazards_.split('+'))]
-        hazard_protection = hazard_protection[hazard_protection.index.get_level_values('hazard').isin(hazards_.split('+'))]
-
-    if pol_opt_ == '':
-        pol_name = None
-        pol_opt_param = None
-    else:
-        pol_name = pol_opt_.split('+')[0]
-        if pol_name == 'None':
-            pol_name = None
-        pol_opt_param = pol_opt_.split('+')[1]
-        if pol_opt_param == 'None':
-            pol_opt_param = None
-        else:
-            pol_opt_param = float(pol_opt_param)
-
-    # apply policy
-    scenario_macro, scenario_cat_info, scenario_hazard_ratios, pol_name, pol_desc = apply_policy(
-        macro_=macro.copy(deep=True),
-        cat_info_=cat_info.copy(deep=True),
-        hazard_ratios_=hazard_ratios.copy(deep=True),
-        policy_name=pol_name,
-        policy_opt=pol_opt_param
-    )
-
+    # retain selected hazards only
+    if run_params['hazards'] != 'all':
+        hazards = run_params['hazards'].split('+')
+        hazard_ratios = hazard_ratios[hazard_ratios.index.get_level_values('hazard').isin(hazards)]
+        hazard_protection = hazard_protection[hazard_protection.index.get_level_values('hazard').isin(hazards)]
 
     # Save all data
-    print(scenario_macro.shape[0], 'countries in analysis')
-
-    if intermediate_dir_ is not None:
-        sim_name = pol_name
-        sim_name += f"_EW-{ew_year_ if ew_decade_ == '' else ew_decade_}" if (
-                    ew_year_ != 2018 or ew_decade_ != '') else ''
-        sim_name += '_no-EB' if no_exposure_bias_ else ''
-        sim_name += f"_scale_self_employment_{scale_self_employment_}" if scale_self_employment_ != 1. else ''
-        sim_name += f"_scale_non_diversified_income_{scale_non_diversified_income_}" if scale_non_diversified_income_ != 1 else ''
-        sim_name += f"_min_diversified_share-{min_diversified_share_}" if min_diversified_share_ != 0 else ''
-        sim_name += f"_scale_GDPpc_{scale_gdp_pc_pp_}" if scale_gdp_pc_pp_ != 1 else ''
-
-        outpath = str(os.path.join(intermediate_dir_, 'scenarios', sim_name).replace(' ', '_'))
-        if not os.path.exists(outpath):
-            os.makedirs(outpath)
-
-        # save adjusted vulnerability by country and income category
-        pd.merge(
-            vulnerability_unadjusted_.rename({'v': 'v_unadj'}),
-            pd.merge(vulnerability_adjusted_.rename({'v': 'v_adj'}), scenario_hazard_ratios.v_ew,
-                     left_index=True, right_index=True, how='inner'),
-            left_index=True, right_index=True, how='inner',
-        ).to_csv(
-            os.path.join(outpath, "scenario__vulnerability.csv"),
-            encoding="utf-8",
-            header=True
-        )
-
+    print(macro.shape[0], 'countries in analysis')
+    if run_params['outpath'] is not None:
+        if not os.path.exists(run_params['outpath']):
+            os.makedirs(run_params['outpath'])
         # save protection by country and hazard
         hazard_protection.to_csv(
-            os.path.join(outpath, "scenario__hazard_protection.csv"),
+            os.path.join(run_params['outpath'], "scenario__hazard_protection.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save macro-economic country economic data
-        scenario_macro.to_csv(
-            os.path.join(outpath, "scenario__macro.csv"),
+        macro.to_csv(
+            os.path.join(run_params['outpath'], "scenario__macro.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
-        scenario_cat_info.to_csv(
-            os.path.join(outpath, "scenario__cat_info.csv"),
+        cat_info.to_csv(
+            os.path.join(run_params['outpath'], "scenario__cat_info.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save exposure, vulnerability, and access to early warning by country, hazard, return period, income category
-        scenario_hazard_ratios.to_csv(
-            os.path.join(outpath, "scenario__hazard_ratios.csv"),
+        hazard_ratios.to_csv(
+            os.path.join(run_params['outpath'], "scenario__hazard_ratios.csv"),
             encoding="utf-8",
             header=True
         )
-    return scenario_macro, scenario_cat_info, scenario_hazard_ratios, hazard_protection
+    return macro, cat_info, hazard_ratios, hazard_protection
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script parameters')
-    parser.add_argument('--hazard_protection', type=str, default='FLOPROS', help='Select hazard protection data.')
-    parser.add_argument('--drop_unused_data', type=bool, default=True, help='Drop unused data')
-    parser.add_argument('--reduction_vul', type=float, default=0.2, help='Reduction in vulnerability')
-    parser.add_argument('--income_elasticity_eta', type=float, default=1.5, help='Income elasticity')
-    parser.add_argument('--discount_rate_rho', type=float, default=0.06, help='Discount rate')
-    parser.add_argument('--max_increased_spending', type=float, default=0.05, help='Maximum support')
-    parser.add_argument('--fa_threshold', type=float, default=.9, help='FA threshold')
-    parser.add_argument('--axfin_impact', type=float, default=0.1, help='Increase of the fraction of diversified '
-                                                                        'income through financial inclusion')
-    parser.add_argument('--root_dir', type=str, default=os.getcwd(), help='Root directory')
-    parser.add_argument('--force_recompute', action='store_true', help='Force recomputation of data.')
-    parser.add_argument('--no_exposure_bias', action='store_true', help='Do not apply exposure bias.')
-    parser.add_argument('--reconstruction_capital', type=str, default='prv', help="Fraction of the reconstruction"
-                                                                                  " capital that needs to be paid for "
-                                                                                  "by households. Options: 'prv' / "
-                                                                                  "'prv_oth'.")
-    parser.add_argument('--scale_self_employment', type=float, default=1., help='Factor to scale self-employment rate.')
-    parser.add_argument('--scale_non_diversified_income', type=float, default=1, help='Scale the share of income that does not come from diversified sources.')
-    parser.add_argument('--min_diversified_share', type=float, default=0, help='Set lower bound for the share of income diversified sources.')
-    parser.add_argument('--scale_gdp_pc_pp', type=float, default=1, help='Scale per capita GDP.')
-    parser.add_argument('--ew_year', type=int, default=2018, help='Year of early warning data')
-    parser.add_argument('--ew_decade', type=str, default=None, help='Decade of early warning data')
-    parser.add_argument('--pol_opt', type=str, default='None+None', help='Policy selection')
-    parser.add_argument('--do_not_execute', action='store_true', help='Do not execute the script. '
-                                                                      'Only load the parameters.')
-    parser.add_argument('--verbose', action='store_true', help='Print additional information')
-    parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
-    parser.add_argument('--countries', type=str, default=None, help='List of countries to include in the analysis.')
-    parser.add_argument('--scale_liquidity', type=float, default=1, help='Reduce available liquidity by some factor.')
-    parser.add_argument('--hazards', type=str, default='all', help='Hazards to include in the analysis.')
+    parser.add_argument('settings', type=str, help='Path to the settings file')
     args = parser.parse_args()
 
-    if not args.do_not_execute:
-        scenario_macro_data, scenario_cat_info_data, scenario_hazard_ratios_data, scenario_hazard_protection_data = gather_data(
-            force_recompute_=args.force_recompute, hazard_protection_=args.hazard_protection,
-            reduction_vul_=args.reduction_vul, income_elasticity_eta_=args.income_elasticity_eta,
-            discount_rate_rho_=args.discount_rate_rho, max_increased_spending_=args.max_increased_spending,
-            fa_threshold_=args.fa_threshold, axfin_impact_=args.axfin_impact,
-            no_exposure_bias_=args.no_exposure_bias, reconstruction_capital_=args.reconstruction_capital,
-            ew_year_=args.ew_year if args.ew_year != -1 else None, ew_decade_=args.ew_decade,
-            scale_self_employment_=args.scale_self_employment,
-            scale_non_diversified_income_=args.scale_non_diversified_income,
-            min_diversified_share_=args.min_diversified_share, scale_gdp_pc_pp_=args.scale_gdp_pc_pp,
-            pol_opt_=args.pol_opt, verbose=args.verbose, countries=args.countries,
-            scale_liquidity_=args.scale_liquidity, hazards_=args.hazards)
+    scenario_macro_data, scenario_cat_info_data, scenario_hazard_ratios_data, scenario_hazard_protection_data = prepare_scenario(
+        scenario_params=yaml.safe_load(open(args.settings, 'r'))['scenario_params']
+    )

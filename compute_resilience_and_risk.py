@@ -6,18 +6,22 @@ import warnings
 import pandas as pd
 import time
 import yaml
-from prepare_scenario import gather_data
+from prepare_scenario import prepare_scenario
 
 warnings.filterwarnings("always", category=UserWarning)
 
 
-def run_model(run_params, scenario_params, pds_params):
-    # Run parameters
-    outpath_ = run_params['outpath']
-    simulation_name_ = run_params['simulation_name']
-    num_cores = run_params.get('num_cores', None)
+def run_model(settings: dict):
+    print("Running global Unbreakable model\n")
 
-    print("Running global Unbreakable model")
+    model_params, scenario_params = settings['model_params'], settings['scenario_params']
+
+    # Run parameters
+    run_params = model_params['run_params']
+    pds_params = model_params['pds_params']
+
+    outpath_ = run_params['outpath']
+    num_cores = run_params.get('num_cores', None)
 
     # Options and parameters
     event_level = ["iso3", "hazard", "rp"]  # levels of index at which one event happens
@@ -25,32 +29,8 @@ def run_model(run_params, scenario_params, pds_params):
     helped_cats = pd.Index(["helped", "not_helped"], name="helped_cat")
     poor_cat = 'q1'
 
-    if scenario_params is None:
-        scenario_params = {}
-    macro, cat_info, hazard_ratios, hazard_protection = gather_data(
-        intermediate_dir_=run_params.get('intermediate_dir', None),
-        force_recompute_=scenario_params.get('force_recompute', False),
-        hazard_protection_=scenario_params.get('hazard_protection', "FLOPROS"),
-        reduction_vul_=scenario_params.get('reduction_vul', .2),
-        income_elasticity_eta_=scenario_params.get('income_elasticity_eta', 1.5),
-        discount_rate_rho_=scenario_params.get('discount_rate_rho', .06),
-        max_increased_spending_=scenario_params.get('max_increased_spending', .05),
-        fa_threshold_=scenario_params.get('fa_threshold', .9),
-        axfin_impact_=scenario_params.get('axfin_impact', .1),
-        no_exposure_bias_=scenario_params.get('no_exposure_bias', False),
-        reconstruction_capital_=scenario_params.get('reconstruction_capital', 'prv'),
-        ew_year_=scenario_params.get('ew_year', 2018),
-        ew_decade_=scenario_params.get('ew_decade', None),
-        scale_self_employment_=scenario_params.get('scale_self_employment', 1),
-        scale_non_diversified_income_=scenario_params.get('scale_non_diversified_income', 1),
-        min_diversified_share_=scenario_params.get('min_diversified_share', 0),
-        scale_gdp_pc_pp_=scenario_params.get('scale_gdp_pc_pp', 1),
-        pol_opt_=scenario_params.get('pol_opt', ''),
-        verbose=run_params.get('verbose', False),
-        countries=scenario_params.get('countries', None),
-        scale_liquidity_=scenario_params.get('scale_liquidity', 1),
-        hazards_=scenario_params.get('hazards', 'all'),
-    )
+    # Generate scenario data
+    macro, cat_info, hazard_ratios, hazard_protection = prepare_scenario(scenario_params=scenario_params)
 
     # compute
     # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
@@ -111,7 +91,7 @@ def run_model(run_params, scenario_params, pds_params):
     date_time_string = ''
     if run_params.get('append_date', True):
         date_time_string = time.strftime("%Y-%m-%d_%H-%M_")
-    folder_name = os.path.join(outpath_, date_time_string + simulation_name_)
+    folder_name = os.path.join(outpath_, date_time_string)
 
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
@@ -136,6 +116,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.settings, "r") as file:
-        params = yaml.safe_load(file)
+        settings_dict = yaml.safe_load(file)
 
-    run_model(params['run_params'], params['scenario_params'], params['pds_params'])
+    run_model(settings_dict)
