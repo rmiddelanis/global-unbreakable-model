@@ -289,7 +289,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
             exposure_fa_=hazard_ratios['fa'],
             use_avg_pe_=True,
             population_data_=population_data
-        )
+        ).clip(lower=0, upper=1)
 
     for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
         if policy_dict is not None:
@@ -702,7 +702,7 @@ def prepare_scenario(scenario_params):
     policy_params = scenario_params.get('policy_params', {})
 
     # Set defaults
-    run_params['outpath'] = run_params.get('intermediate_dir', None)
+    run_params['outpath'] = run_params.get('outpath', None)
     run_params['force_recompute'] = run_params.get('force_recompute', False)
     run_params['verbose'] = run_params.get('verbose', True)
     run_params['countries'] = run_params.get('countries', 'all')
