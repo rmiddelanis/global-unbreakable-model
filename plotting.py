@@ -32,10 +32,10 @@ from recovery_optimizer import baseline_consumption_c_h, delta_c_h_of_t, delta_k
 import seaborn as sns
 
 INCOME_GROUP_COLORS = {
-    'LIC': plt.get_cmap('tab10')(0),
-    'LMIC': plt.get_cmap('tab10')(1),
-    'UMIC': plt.get_cmap('tab10')(2),
-    'HIC': plt.get_cmap('tab10')(3),
+    'LICs': plt.get_cmap('tab10')(0),
+    'LMICs': plt.get_cmap('tab10')(1),
+    'UMICs': plt.get_cmap('tab10')(2),
+    'HICs': plt.get_cmap('tab10')(3),
 }
 
 HAZARD_COLORS = {
@@ -567,7 +567,7 @@ def plot_fig_2(data_, world_, exclude_countries=None, bins_list=None, cmap='viri
             add_regression(s_ax, data_, scatter_x_var, variable)
 
         sns_plot = sns.scatterplot(data=data_, x=scatter_x_var, y=variable, ax=s_ax,
-                                   hue='Country income group', hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'], alpha=.5,
+                                   hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], alpha=.5,
                                    palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS, s=10,
                                    legend='brief' if i == 1 else False)
@@ -666,7 +666,7 @@ def plot_fig_3(results_data_, cat_info_data_, outfile=None, show=False, numberin
     # Scatter plot
     sns_scatter = sns.scatterplot(data=results_data_, x='gini_index', y='resilience', hue='Country income group', style='Country income group',
                                   palette=INCOME_GROUP_COLORS, ax=ax_scatter, legend=True, markers=INCOME_GROUP_MARKERS, alpha=.5, s=10,
-                                  hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'])
+                                  hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'])
     sns.move_legend(sns_scatter, 'upper right', bbox_to_anchor=(1, 1), frameon=False, title=None, handletextpad=-.25)
     # Adjust legend markers to have full opacity
     for legend_handle in sns_scatter.legend_.legend_handles:
@@ -781,7 +781,7 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=100, outfile=None, show=Tr
             orient='h',
             showfliers=False,
             hue='Country income group',
-            hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'],
+            hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
             legend=legend,
             width=.5,
             palette=INCOME_GROUP_COLORS,
@@ -846,7 +846,7 @@ def plot_supfig_7(results_data_, cat_info_data_, plot_rp=100, outfile=None, show
         data=plot_data,
         x='resilience', y='t_reco_ctry', hue='Country income group', style='Country income group',
         palette=INCOME_GROUP_COLORS, ax=ax, legend=True, markers=INCOME_GROUP_MARKERS, alpha=.5, s=10,
-        hue_order=['LIC', 'LMIC', 'UMIC', 'HIC']
+        hue_order=['LICs', 'LMICs', 'UMICs', 'HICs']
     )
     ax.set_xlabel('Socio-economic resilience [%]')
     ax.set_ylabel('Average recovery\nduration [y]')
@@ -880,15 +880,15 @@ def plot_hazard_detail_supfig(cat_info_data_, income_groups_, plot_rp=100, outfi
         helped_slice = pd.IndexSlice[:, hazard, plot_rp, :, 'a', 'helped']
         not_helped_slice = pd.IndexSlice[:, hazard, plot_rp, :, 'a', 'not_helped']
         errorbar = lambda x: tuple(np.percentile(x, [25, 75]))
-        sns.barplot(plot_data.loc[not_helped_slice], x='Country income group', y='t_reco_95', hue='income_cat', order=['LIC', 'LMIC', 'UMIC', 'HIC'], ax=axs_col[0], err_kws={'linewidth': 0.75}, legend=False, estimator='median', errorbar=errorbar)
-        sns.barplot(plot_data.loc[helped_slice], x='Country income group', y='t_reco_95', hue='income_cat', order=['LIC', 'LMIC', 'UMIC', 'HIC'], ax=axs_col[1], err_kws={'linewidth': 0.75}, legend=legend, estimator='median', errorbar=errorbar)
+        sns.barplot(plot_data.loc[not_helped_slice], x='Country income group', y='t_reco_95', hue='income_cat', order=['LICs', 'LMICs', 'UMICs', 'HICs'], ax=axs_col[0], err_kws={'linewidth': 0.75}, legend=False, estimator='median', errorbar=errorbar)
+        sns.barplot(plot_data.loc[helped_slice], x='Country income group', y='t_reco_95', hue='income_cat', order=['LICs', 'LMICs', 'UMICs', 'HICs'], ax=axs_col[1], err_kws={'linewidth': 0.75}, legend=legend, estimator='median', errorbar=errorbar)
 
         axs_col[0].set_title(hazard)
 
         axs_col[1].set_xlabel('')
         axs_col[1].set_ylabel('')
 
-        for ig in ['LIC', 'LMIC', 'UMIC', 'HIC']:
+        for ig in ['LICs', 'LMICs', 'UMICs', 'HICs']:
             axs_col[0].text(ig, .95, f"({int(plot_data.loc[not_helped_slice].groupby('Country income group')['t_reco_95'].count().loc[ig] / 5)})", ha='center', va='top',
                             transform=blended_transform_factory(axs_col[0].transData, axs_col[0].transAxes), fontsize=7)
 
@@ -934,7 +934,7 @@ def plot_supfig_8(cat_info_data_, outfile=None, show=False, plot_rp=100, numberi
         y='t_reco',
         # hue='hazard',
         hue='Country income group',
-        hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'],
+        hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
         errorbar=None,
         estimator='median',
         alpha=.5,
@@ -962,7 +962,7 @@ def plot_supfig_8(cat_info_data_, outfile=None, show=False, plot_rp=100, numberi
         y='t_reco',
         # hue='hazard',
         hue='Country income group',
-        hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'],
+        hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
         errorbar=None,
         estimator='median',
         alpha=1,
@@ -1034,7 +1034,7 @@ def plot_supfig_5(results_data_, outfile=None, show=False):
     # Scatter plot
     sns_scatter = sns.scatterplot(data=results_data_, x='risk_to_assets', y='risk', hue='Country income group', style='Country income group',
                                   palette=INCOME_GROUP_COLORS, ax=axs[0], legend=False, markers=INCOME_GROUP_MARKERS, alpha=.5, s=10,
-                                  hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'])
+                                  hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'])
     axs[0].set_xlabel(NAME_DICT['risk_to_assets'])
     axs[0].set_ylabel(NAME_DICT['risk'])
 
@@ -1045,7 +1045,7 @@ def plot_supfig_5(results_data_, outfile=None, show=False):
                                   style='Country income group',
                                   palette=INCOME_GROUP_COLORS, ax=axs[1], legend=True, markers=INCOME_GROUP_MARKERS,
                                   alpha=.5, s=10,
-                                  hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'])
+                                  hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'])
     sns.move_legend(sns_scatter, 'best', frameon=False, title=None, handletextpad=-.25)
 
     # Adjust legend markers to have full opacity
@@ -1087,7 +1087,7 @@ def plot_supfig_6(results_data_, outfile=None, show=False):
         markers=INCOME_GROUP_MARKERS,
         alpha=.5,
         s=10,
-        hue_order=['LIC', 'LMIC', 'UMIC', 'HIC']
+        hue_order=['LICs', 'LMICs', 'UMICs', 'HICs']
     )
     ax.legend(title=None, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     add_regression(
@@ -1162,15 +1162,15 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
         hue='hazard',
         ax=axs[2],
         errorbar=None,
-        order=['LIC', 'LMIC', 'UMIC', 'HIC'],
+        order=['LICs', 'LMICs', 'UMICs', 'HICs'],
         estimator='median',
         palette=HAZARD_COLORS,
     )
 
     # plot median country recovery duration for each Country income group
-    for x_val, mean_val in enumerate(duration_ctry.groupby('Country income group').t_reco_ctry.median().loc[['LIC', 'LMIC', 'UMIC', 'HIC']].values.flatten()):
+    for x_val, mean_val in enumerate(duration_ctry.groupby('Country income group').t_reco_ctry.median().loc[['LICs', 'LMICs', 'UMICs', 'HICs']].values.flatten()):
         axs[2].plot([x_val - .4, x_val + .4], [mean_val, mean_val], color='black', lw=1)
-        print(f"Median recovery duration for {mean_val} in {['LIC', 'LMIC', 'UMIC', 'HIC'][x_val]}")
+        print(f"Median recovery duration for {mean_val} in {['LICs', 'LMICs', 'UMICs', 'HICs'][x_val]}")
 
     axs[2].set_ylabel('Median recovery duration\nby country income group [y]')
     axs[2].set_xlabel('Country income group')
@@ -1198,7 +1198,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
     #     x='income_cat',
     #     y='t_reco',
     #     hue='Country income group',
-    #     hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'],
+    #     hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
     #     errorbar=None,
     #     estimator='median',
     #     alpha=.5,
@@ -1210,7 +1210,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
     #     x='income_cat',
     #     y='t_reco',
     #     hue='Country income group',
-    #     hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'],
+    #     hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
     #     errorbar=None,
     #     estimator='median',
     #     alpha=1,
@@ -1222,7 +1222,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
         x='income_cat',
         y='t_reco',
         hue='Country income group',
-        hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'],
+        hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
         errorbar=None,
         estimator='median',
         alpha=1,
@@ -1311,7 +1311,7 @@ def print_stats(results_data_):
 
     # print the stats of the resilience by Country income group
     print('Resilience by Country income group:')
-    print(results_data_.groupby('Country income group').resilience.describe().loc[['LIC', 'LMIC', 'UMIC', 'HIC']])
+    print(results_data_.groupby('Country income group').resilience.describe().loc[['LICs', 'LMICs', 'UMICs', 'HICs']])
 
 
 def print_results_table(results_data_):
@@ -1872,7 +1872,7 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
         legend = False
         if ax == axs[0, -1]:
             legend = True
-        sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'], legend=legend, palette=INCOME_GROUP_COLORS,
+        sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=legend, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
         # ax.scatter(capital_shares[x], capital_shares[y], marker='o', alpha=.5, s=10)
         for i, label in enumerate(capital_shares.index):
@@ -1888,7 +1888,7 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
                                       ('self_employment', 'k_oth_share')],
                                 [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
         x_ = capital_shares[x]
-        sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'], legend=False, palette=INCOME_GROUP_COLORS,
+        sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
         # ax.scatter(x_, capital_shares[y], marker='o', alpha=.5, s=10)
         for i, label in enumerate(capital_shares.index):
@@ -1901,7 +1901,7 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
     plt.show(block=False)
 
     fig, ax = plt.subplots(figsize=(7 * centimeter, 6 * centimeter))
-    sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='self_employment', alpha=.5, hue='Country income group', hue_order=['LIC', 'LMIC', 'UMIC', 'HIC'], palette=INCOME_GROUP_COLORS,
+    sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='self_employment', alpha=.5, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS, s=10)
     ax.legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     ax.set_xlabel('GDP per capita [$1,000 PPP]')
@@ -2176,10 +2176,10 @@ def compute_national_recovery_duration(cat_info_data_, outpath=None):
 
 def load_data(simulation_paths_, input_data_dir_):
     rename_income_groups = {
-        'Low income': 'LIC',
-        'Lower middle income': 'LMIC',
-        'Upper middle income': 'UMIC',
-        'High income': 'HIC'
+        'Low income': 'LICs',
+        'Lower middle income': 'LMICs',
+        'Upper middle income': 'UMICs',
+        'High income': 'HICs'
     }
     income_groups_ = load_income_groups().replace(rename_income_groups)
     income_groups_ = income_groups_.rename({'Income group': 'Country income group'}, axis=1)
