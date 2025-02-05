@@ -36,11 +36,11 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     # capital losses and total capital losses
     cat_info_event_ia["dk"] = cat_info_event_ia[["k", "v_ew"]].prod(axis=1, skipna=False)  # capital potentially be damaged
 
-    # compute reconstruction capital share
-    cat_info_event_ia["dk_reco"] = cat_info_event_ia[["dk", "reconstruction_share_sigma_h"]].prod(axis=1)
-
     cat_info_event_ia.loc[pd.IndexSlice[:, :, :, :, 'na'], "dk"] = 0
     # cat_info_event_ia.loc[(cat_info_event_ia.affected_cat == 'na'), "dk"] = 0
+
+    # compute reconstruction capital share
+    cat_info_event_ia["dk_reco"] = cat_info_event_ia[["dk", "reconstruction_share_sigma_h"]].prod(axis=1)
 
     # "national" losses
     macro_event_["dk_ctry"] = agg_to_event_level(cat_info_event_ia, "dk", event_level)
@@ -52,7 +52,6 @@ def calculate_response(macro_event, cat_info_event_ia, event_level, helped_cats,
                        pds_variant="unif_poor", pds_borrowing_ability="data", loss_measure="dk_reco", pds_shareable=.2):
     cat_info_event_iah = concat_categories(cat_info_event_ia, cat_info_event_ia, index=helped_cats)
     cat_info_event_iah["help_received"] = 0.0
-    cat_info_event_iah["help_fee"] = 0.0
 
     macro_event, cat_info_event_iah = compute_response(
         macro_event=macro_event,
@@ -154,6 +153,9 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds
     elif pds_variant == "unif_poor_only":
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped') & (cat_info_event_iah_.income_cat == poor_cat), "help_needed"] = pds_shareable * cat_info_event_iah_.xs(('helped', 'a', 'q1'), level=('helped_cat', 'affected_cat', 'income_cat'))[loss_measure]
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped') | (~cat_info_event_iah_.income_cat == poor_cat), "help_received"] = 0
+    elif pds_variant == "proportional":
+        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_needed"] = pds_shareable * cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), loss_measure]
+        cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'not_helped'), "help_needed"] = 0
 
     # Step 2: total need (cost) for all helped hh = sum over help_needed for helped hh
     macro_event_["need"] = agg_to_event_level(cat_info_event_iah_, "help_needed", event_level)
@@ -204,8 +206,8 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds
         cat_info_event_iah_.loc[(cat_info_event_iah_.helped_cat == 'helped'), "help_received"] = macro_event_["unif_aid"]
         cat_info_event_iah_.loc[
             (cat_info_event_iah_.helped_cat == 'not_helped') | (~cat_info_event_iah_.income_cat.isin(poor_cat)), "help_received"] = 0
-    elif pds_variant == "prop":
-        cat_info_event_iah_["help_received"] = macro_event_["aid"] / macro_event_["need"] * cat_info_event_iah_["help_received"]
+    elif pds_variant == "proportional":
+        cat_info_event_iah_["help_received"] = (macro_event_["aid"] / macro_event_["need"] * cat_info_event_iah_["help_needed"]).fillna(0)
 
     cat_info_event_iah_.drop(['income_cat', 'helped_cat', 'affected_cat'], axis=1, inplace=True)
     return macro_event_, cat_info_event_iah_
