@@ -69,7 +69,7 @@ def assign_vulnerability(material, resistance_system, height, mapping, verbose=T
 
 
 def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path_, vuln_class_mapping_,
-                    vulnerability_class_output_=None, weight_by='replacement_cost', verbose=True):
+                    vulnerability_class_output_=None, weight_by='total_replacement_cost', verbose=True):
     """
         This function gathers GEM (Global Exposure Model) data from the GEM repository directory, decodes the taxonomy
         strings, assigns vulnerabilities based on the decoded taxonomy, and optionally outputs the distribution of
@@ -94,7 +94,9 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
         'ID_0': 'iso3', 'NAME_0': 'country', 'OCCUPANCY': 'building_type', 'MACRO_TAXO': 'macro_taxonomy',
         'TAXONOMY': 'taxonomy', 'BUILDINGS': 'n_buildings',  # 'DWELLINGS': 'n_dwellings',
         # 'OCCUPANTS_PER_ASSET': 'occupants_per_asset', 'TOTAL_AREA_SQM': 'total_area_sqm',
-        'TOTAL_REPL_COST_USD': 'replacement_cost',
+        'TOTAL_REPL_COST_USD': 'total_replacement_cost',
+        'COST_CONTENTS_USD': 'contents_cost', 'COST_STRUCTURAL_USD': 'structural_cost',
+        'COST_NONSTRUCTURAL_USD': 'nonstructural_cost',
 
     }
     index_vars = ['ID_0', 'NAME_0', 'OCCUPANCY', 'MACRO_TAXO', 'TAXONOMY']
@@ -223,19 +225,19 @@ def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True
 
 
 if __name__ == '__main__':
-    gem_repo_root_dir = '../global_exposure_model/'
+    gem_repo_root_dir = './inputs/raw/GEM_vulnerability/global_exposure_model/'
     vulnarebility_class_mapping = "./inputs/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx"
     hazus_gem_mapping_path = './inputs/raw/GEM_vulnerability/hazus-gem_mapping.csv'
     gem_fields_path = "./inputs/raw/GEM_vulnerability/gem_taxonomy_fields.json"
-    vulnerability_class_output = './inputs/raw/GEM_vulnerability/country_vulnerability_classes.csv'
+    # vulnerability_class_output = './inputs/raw/GEM_vulnerability/country_vulnerability_classes.csv'
     gem_data, vuln_class_shares = gather_gem_data(
         gem_repo_root_dir_=gem_repo_root_dir,
         hazus_gem_mapping_path_=hazus_gem_mapping_path,
         gem_fields_path_=gem_fields_path,
         vuln_class_mapping_=vulnarebility_class_mapping,
-        vulnerability_class_output_=vulnerability_class_output,
-        weight_by='replacement_cost',
-        verbose=False
+        vulnerability_class_output_=None,
+        weight_by='total_replacement_cost',
+        verbose=True
     )
     print(gem_data)
     print(vuln_class_shares)

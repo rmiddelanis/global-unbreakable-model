@@ -1,9 +1,8 @@
 # This script provides data input for the resilience indicator multihazard model.
 # The script was developed by Robin Middelanis based on previous work by Adrien Vogt-Schilb and Jinqiang Chen.
 import argparse
-
-import numpy as np
 import yaml
+from scipy.optimize import curve_fit
 
 from gather_findex_data import get_liquidity_from_findex, gather_axfin_data
 from gather_gem_data import gather_gem_data
@@ -14,10 +13,23 @@ import pandas as pd
 from lib import get_country_name_dicts, df_to_iso3
 from wb_api_wrapper import get_wb_mrv
 from time import time
+from sklearn.metrics import r2_score
+
+
+def load_income_groups(root_dir_):
+    income_groups_file = "WB_country_classification/country_classification.xlsx"
+    income_groups = pd.read_excel(os.path.join(root_dir_, "inputs/raw/", income_groups_file), header=0)[["Code", "Region", "Income group"]]
+    income_groups = income_groups.dropna().rename({'Code': 'iso3'}, axis=1)
+    income_groups = income_groups.set_index('iso3').squeeze()
+    income_groups.loc['VEN'] = ['Latin America & Caribbean', 'Upper middle income']
+    income_groups.rename({'Income group': 'Country income group'}, axis=1, inplace=True)
+    income_groups.replace({'Low income': 'LICs', 'Lower middle income': 'LMICs', 'Upper middle income': 'UMICs', 'High income': 'HICs'}, inplace=True)
+    return income_groups
 
 
 def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_,
-                             scale_non_diversified_income_=None, min_diversified_share_=None, scale_income_=None):
+                             scale_non_diversified_income_=None, min_diversified_share_=None, scale_income_=None,
+                             scale_gini_index_=None):
     print("Computing diversified income share and tax...")
     cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
     if scale_non_diversified_income_ is not None:
@@ -29,6 +41,10 @@ def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles
         scope = min_diversified_share_['scope'].split('+')
         parameter = min_diversified_share_['parameter']
         cat_info_.loc[pd.IndexSlice[:, scope], 'diversified_share'] = cat_info_['diversified_share'].clip(lower=parameter)
+
+    # reduces the gini index by redistributing a certain percentage of each quintile's income equally among all quintiles
+    if scale_gini_index_ is not None:
+        cat_info_.income_share = cat_info_.income_share * scale_gini_index_['parameter'] + (cat_info_.income_share * (1 - scale_gini_index_['parameter'])).groupby('iso3').sum() / n_quantiles_
 
     cat_info_['n'] = 1 / n_quantiles_
     cat_info_['c'] = cat_info_.income_share / cat_info_.n * wb_data_macro_.gdp_pc_pp
@@ -134,65 +150,226 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True
     return liquidity_and_axfin
 
 
-def calc_reconstruction_share_sigma(root_dir_, any_to_wb_, scale_self_employment=None,
-                                    imf_capital_data_file="IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx",
-                                    reconstruction_capital_='prv', verbose=True, force_recompute=True,
-                                    labor_share_data_file="ILO_labor_share_of_GDP/LAP_2GDP_NOC_RT_A-filtered-2024-04-23.csv"):
+def calc_real_estate_share_of_value_added(root_dir, any_to_wb):
+    value_added = pd.read_csv(os.path.join(root_dir, "inputs/raw/undata_ntl_accounts/2025-02-13_value_added_by_industry.csv"))[['Country or Area', 'Item', 'Year', 'Series', 'SNA System', 'Fiscal Year Type', 'Value']]
+    value_added.rename({'Country or Area': 'country'}, axis=1, inplace=True)
+    # value_added = value_added[(value_added['SNA System'] == 2008) & (value_added['Fiscal Year Type'] == 'Western calendar year')].drop(['SNA System', 'Fiscal Year Type'], axis=1)
+
+    # prioritize the Western calendare year if available, select the FY type with the highest priority
+    value_added['FY_prio'] = value_added['Fiscal Year Type'].replace({
+        'Western calendar year': 6,
+        'Fiscal year beginning 21 March': 5,
+        'Fiscal year ending 30 September': 4,
+        'Fiscal year beginning 1 April': 3,
+        'Fiscal year ending 15 July': 2,
+        'Fiscal year beginning 1 July': 1,
+        'Fiscal year ending 30 June': 0,
+    })
+    value_added = value_added.loc[value_added.groupby(['country', 'Item', 'Year', 'Series']).FY_prio.idxmax()].drop(['FY_prio', 'Fiscal Year Type'], axis=1)
+
+    # keep both values of 1993 and 2008 SNA systems, then select the most recent series (4 digit numbers are the 2008
+    # system, while 3 digit numbers are the 1993 system). "A higher number indicates more recent data"
+    # retain the most recent available series
+    value_added = value_added.loc[value_added.groupby(['country', 'Item', 'Year']).Series.idxmax()].drop(['Series', 'SNA System'], axis=1)
+
+    value_added = value_added.set_index(['country', 'Item', 'Year']).Value.rename('Value Added')
+
+    # add Zanziar to Tanzania
+    tza = (value_added.loc['Tanzania - Mainland'] + value_added.loc['Zanzibar']).dropna().reset_index()
+    tza['country'] = 'Tanzania'
+    tza = tza.set_index(['country', 'Item', 'Year'])['Value Added']
+    value_added = pd.concat([value_added, tza]).drop(['Tanzania - Mainland', 'Zanzibar'], level='country')
+
+    # compute the share of real estate activities to GDP
+    real_est_gdp_share = value_added.xs('Real estate activities', level='Item') / value_added.xs('Equals: GROSS DOMESTIC PRODUCT', level='Item')
+    real_est_value_added_share = value_added.xs('Real estate activities', level='Item') / value_added.xs('Equals: VALUE ADDED, GROSS, at basic prices', level='Item')
+    merged = pd.merge(real_est_value_added_share, real_est_gdp_share, left_index=True, right_index=True, how='outer')
+
+    merged.drop('Sint Maarten', inplace=True)
+
+    real_est_value_added_share = merged.iloc[:, 0].fillna(merged.iloc[:, 1]).dropna().rename('real_estate_share_of_value_added').reset_index()
+
+    # retain only the most recent year
+    real_est_value_added_share = real_est_value_added_share.loc[real_est_value_added_share.groupby('country').Year.idxmax()].drop('Year', axis=1)
+
+    # replace country names with iso3 codes
+    real_est_value_added_share = df_to_iso3(real_est_value_added_share, 'country', any_to_wb, verbose_=True).set_index('iso3').drop('country', axis=1)
+
+    return real_est_value_added_share
+
+
+def load_home_ownership_rates(root_dir, any_to_wb):
+    hor_oecd = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="OECD", header=0)
+    hor_eurostat = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="Eurostat", header=0)
+    hor_cahf = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="CAHF", header=0)
+    hor_word_pop_review = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="World Population Review", header=0)
+    hor_ceo_world = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="CEOWorld", header=0)
+
+    hor = None
+    for df in [hor_oecd, hor_eurostat, hor_cahf, hor_word_pop_review, hor_ceo_world]:
+        df.columns.name = 'income_cat'
+        df = df_to_iso3(df, 'country', any_to_wb, verbose_=False).dropna()
+        df = df.set_index('iso3').drop('country', axis=1).stack().rename('home_ownership_rate')
+        if hor is None:
+            hor = df
+        else:
+            hor = pd.merge(hor, df, left_index=True, right_index=True, how='outer')
+            hor['home_ownership_rate'] = hor['home_ownership_rate_x'].fillna(hor['home_ownership_rate_y'])
+            hor.drop(['home_ownership_rate_x', 'home_ownership_rate_y'], axis=1, inplace=True)
+    return hor
+
+
+def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb):
+    estat_capital_industry = pd.read_csv(os.path.join(root_dir, "inputs/raw/Eurostat/eurostat__nama_10_nfa_st__capital_stock.csv"))[['nace_r2', 'asset10', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
+    estat_capital_industry.rename({'OBS_VALUE': 'capital_stock', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
+    estat_capital_industry = df_to_iso3(estat_capital_industry, 'country', any_to_wb, verbose_=False)
+    estat_capital_industry = estat_capital_industry.set_index(['iso3', 'year', 'nace_r2', 'asset10'])['capital_stock']
+    estat_capital_industry *= 1e6
+
+    estat_k_total = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']].rename('K_total')
+
+    estat_k_real_est_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Real estate activities', 'Total fixed assets (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
+    estat_k_real_est_share = estat_k_real_est_share.rename('k_real_estate_share')
+
+    estat_k_real_est_dwellings_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Real estate activities', 'Dwellings (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
+    estat_k_real_est_dwellings_share = estat_k_real_est_dwellings_share.rename('k_real_estate_dwellings_share')
+
+    estat_k_owner_occ_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Imputed rents of owner-occupied dwellings', 'Total fixed assets (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
+    estat_k_owner_occ_share = estat_k_owner_occ_share.rename('k_owner_occ_share')
+    estat_k_owner_occ_share.drop(['AUT', 'BGR'], inplace=True) # zero values
+
+    estat_k_owner_occ_dwellings_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Imputed rents of owner-occupied dwellings', 'Dwellings (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
+    estat_k_owner_occ_dwellings_share = estat_k_owner_occ_dwellings_share.rename('k_owner_occ_dwellings_share')
+    estat_k_owner_occ_dwellings_share.drop(['AUT', 'BGR'], inplace=True)  # zero values
+    estat_k_owner_occ_dwellings_share.drop(('CYP', 2020), inplace=True)  # zero values
+
+    estat_capital_sector = pd.read_csv(os.path.join(root_dir, "inputs/raw/Eurostat/eurostat__nama_10_nfa_bs__capital_stock.csv"))[['sector', 'asset10', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
+    estat_capital_sector.rename({'OBS_VALUE': 'capital_stock', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
+    estat_capital_sector = df_to_iso3(estat_capital_sector, 'country', any_to_wb, verbose_=False)
+    estat_capital_sector = estat_capital_sector.set_index(['iso3', 'year', 'sector', 'asset10'])['capital_stock']
+    estat_capital_sector *= 1e6
+    estat_k_pub_share = estat_capital_sector.loc[pd.IndexSlice[:, :, 'General government', 'Total fixed assets (net)']] / estat_capital_sector.loc[pd.IndexSlice[:, :, 'Total economy', 'Total fixed assets (net)']]
+    estat_k_pub_share = estat_k_pub_share.rename('k_pub_share')
+
+    etat_value_added = pd.read_csv(os.path.join(root_dir, "inputs/raw/Eurostat/eurostat__nama_10_a64__value_added.csv"))[['nace_r2', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
+    etat_value_added.rename({'OBS_VALUE': 'value_added', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
+    etat_value_added = df_to_iso3(etat_value_added, 'country', any_to_wb, verbose_=False)
+    etat_value_added = etat_value_added.set_index(['iso3', 'year', 'nace_r2'])['value_added']
+    etat_value_added *= 1e6
+
+    estat_real_estate_share_of_value_added = etat_value_added.xs('Real estate activities', level='nace_r2') / etat_value_added.xs('Total - all NACE activities', level='nace_r2')
+    estat_real_estate_share_of_value_added = estat_real_estate_share_of_value_added.rename('real_estate_share_of_value_added')
+
+    estat_owner_occ_rents_share_of_gdp = etat_value_added.xs('Imputed rents of owner-occupied dwellings', level='nace_r2') / etat_value_added.xs('Total - all NACE activities', level='nace_r2')
+    estat_owner_occ_rents_share_of_gdp = estat_owner_occ_rents_share_of_gdp.rename('owner_occupied_rents_share_of_value_added')
+
+    estat_avg_prod_k = etat_value_added.xs('Total - all NACE activities', level='nace_r2') / estat_capital_industry.xs('Total - all NACE activities', level='nace_r2').xs('Total fixed assets (gross)', level='asset10')
+    estat_avg_prod_k = estat_avg_prod_k.dropna().rename('avg_prod_k')
+
+    k_data = pd.concat([estat_k_total, estat_k_real_est_share, estat_k_real_est_dwellings_share, estat_k_owner_occ_share, estat_k_owner_occ_dwellings_share], axis=1)
+    va_data = pd.concat([estat_real_estate_share_of_value_added, estat_owner_occ_rents_share_of_gdp], axis=1)
+    estat_data = pd.merge(k_data, va_data, left_index=True,right_index=True, how='outer').dropna(how='all')
+    estat_data = pd.merge(estat_data, estat_avg_prod_k, left_index=True, right_index=True, how='outer')
+    estat_data = pd.merge(estat_data, estat_k_pub_share, left_index=True, right_index=True, how='outer')
+
+    def kappa_hous_m(idx, m_):
+        real_estate_share_theta_h = estat_data.loc[idx, 'real_estate_share_of_value_added']
+        return m_ * real_estate_share_theta_h
+    m_fit_data = estat_data.dropna(subset=['real_estate_share_of_value_added', 'k_real_estate_share'])
+    m_opt_result = curve_fit(kappa_hous_m, m_fit_data.index, m_fit_data['k_real_estate_share'], p0=1)
+    m_opt = m_opt_result[0][0]
+    m_pred = kappa_hous_m(m_fit_data.index, m_opt)
+    m_rmse = np.sqrt(np.mean((m_pred - m_fit_data['k_real_estate_share']) ** 2))
+    m_r2 = r2_score(m_fit_data['k_real_estate_share'], m_pred)
+    pearson_corr_m = m_fit_data['k_real_estate_share'].corr(m_pred)
+    return m_opt
+
+
+def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
+                      verbose=True, force_recompute=True,
+                      guess_missing_countries=False):
     capital_shares_before_adjustment_path = os.path.join(root_dir_, "inputs/processed/capital_shares.csv")
     if not force_recompute and os.path.exists(capital_shares_before_adjustment_path):
         print("Loading capital shares from file...")
         capital_shares = pd.read_csv(capital_shares_before_adjustment_path, index_col='iso3')
     else:
         print("Recomputing capital shares...")
+        imf_capital_data_file = "IMF_capital/IMFInvestmentandCapitalStockDataset2021.xlsx"
         imf_data = pd.read_excel(os.path.join(root_dir_, "inputs/raw/", imf_capital_data_file), sheet_name='Dataset')
-        imf_data = imf_data.rename(columns={'isocode': 'iso3'}).set_index(['iso3'])[['year', 'kgov_n', 'kpriv_n', 'kppp_n']]
-        imf_data['kpub_n'] = imf_data[['kgov_n', 'kppp_n']].sum(axis=1, skipna=True)
-        imf_data = imf_data.replace(0, np.nan)
-        imf_data = imf_data.rename({'kpriv_n': 'knonpub_n'}, axis=1)[['year', 'kpub_n', 'knonpub_n']].dropna(axis=0, how='any')
-        imf_data = imf_data.iloc[imf_data.reset_index().groupby('iso3').year.idxmax()].drop('year', axis=1)
-        imf_data['k_pub_share'] = imf_data['kpub_n'] / (imf_data['knonpub_n'] + imf_data['kpub_n'])
+        imf_data = imf_data.rename(columns={'isocode': 'iso3'}).set_index(['iso3', 'year'])
 
-        labor_share_of_gdp = pd.read_csv(os.path.join(root_dir_, "inputs/raw/", labor_share_data_file))
-        labor_share_of_gdp = labor_share_of_gdp.rename({'ref_area.label': 'country'}, axis=1).set_index('country').obs_value
-        labor_share_of_gdp = labor_share_of_gdp.rename('labor_share_of_gdp') / 100
-        labor_share_of_gdp.drop(['MENA', 'Central Africa'], inplace=True)
+        imf_data_n = imf_data[['kgov_n', 'kpriv_n', 'kppp_n']].dropna(subset=['kgov_n', 'kpriv_n']).fillna(0)
+        k_pub_share_n = (imf_data_n[['kgov_n', 'kppp_n']].sum(axis=1) / imf_data_n.sum(axis=1)).dropna()
 
-        capital_share = (1 - labor_share_of_gdp).rename('capital_elasticity_alpha')
-        capital_share = df_to_iso3(capital_share.reset_index(), 'country', any_to_wb_, verbose_=verbose)
-        capital_share = capital_share.dropna().set_index('iso3')['capital_elasticity_alpha']
+        imf_data_ppp = imf_data[['kgov_rppp', 'kpriv_rppp', 'kppp_rppp']].dropna(subset=['kgov_rppp', 'kpriv_rppp']).fillna(0)
+        k_pub_share_ppp = (imf_data_ppp[['kgov_rppp', 'kppp_rppp']].sum(axis=1) / imf_data_ppp.sum(axis=1)).dropna()
+
+        k_pub_share = pd.merge(k_pub_share_ppp.rename(0), k_pub_share_n.rename(1), left_index=True, right_index=True, how='outer')
+        k_pub_share = k_pub_share[0].fillna(k_pub_share[1]).rename('k_pub_share')
+        k_pub_share = k_pub_share.reset_index().loc[k_pub_share.reset_index().groupby('iso3').year.idxmax()].set_index('iso3')['k_pub_share']
+
+        # avg_prod_k_n = (imf_data.dropna(subset=['GDP_n', 'kgov_n', 'kpriv_n'])['GDP_n'] / imf_data.dropna(subset=['GDP_n', 'kgov_n', 'kpriv_n'])[['kgov_n', 'kpriv_n', 'kppp_n']].sum(axis=1, skipna=True)).dropna()
+        # avg_prod_k_ppp = (imf_data.dropna(subset=['GDP_rppp', 'kgov_rppp', 'kpriv_rppp'])['GDP_rppp'] / imf_data.dropna(subset=['GDP_rppp', 'kgov_rppp', 'kpriv_rppp'])[['kgov_rppp', 'kpriv_rppp', 'kppp_rppp']].sum(axis=1, skipna=True)).dropna()
+        # avg_prod_k = pd.merge(avg_prod_k_ppp.rename(0), avg_prod_k_n.rename(1), left_index=True, right_index=True, how='outer')
+        # avg_prod_k = avg_prod_k[0].fillna(avg_prod_k[1]).rename('avg_prod_k')
+        # avg_prod_k = avg_prod_k.replace(np.inf, np.nan).dropna()
+        # avg_prod_k = avg_prod_k.reset_index().loc[avg_prod_k.reset_index().groupby('iso3').year.idxmax()].set_index('iso3')['avg_prod_k']
+
+        # labor_share_data_file = "ILO_labor_share_of_GDP/LAP_2GDP_NOC_RT_A-filtered-2024-04-23.csv"
+        # labor_share_of_gdp = pd.read_csv(os.path.join(root_dir_, "inputs/raw/", labor_share_data_file))
+        # labor_share_of_gdp = labor_share_of_gdp.rename({'ref_area.label': 'country'}, axis=1).set_index('country').obs_value
+        # labor_share_of_gdp = labor_share_of_gdp.rename('labor_share_of_gdp') / 100
+        #
+        # labor_share_of_gdp.drop(['MENA', 'Central Africa'], inplace=True)
+        # capital_share_of_gdp = (1 - labor_share_of_gdp).rename('capital_share_of_gdp')
+        # capital_share_of_gdp = df_to_iso3(capital_share_of_gdp.reset_index(), 'country', any_to_wb_, verbose_=verbose)
+        # capital_share_of_gdp = capital_share_of_gdp.dropna().set_index('iso3')['capital_share_of_gdp']
 
         self_employment = get_wb_mrv('SL.EMP.SELF.ZS', 'self_employment') / 100
         self_employment = df_to_iso3(self_employment.reset_index(), 'country', any_to_wb_, verbose_=verbose).dropna(subset='iso3')
         self_employment = self_employment.set_index('iso3').drop('country', axis=1).squeeze()
 
-        capital_shares = pd.merge(capital_share, imf_data.k_pub_share, left_index=True, right_index=True, how='inner')
-        capital_shares = pd.merge(capital_shares, self_employment, left_index=True, right_index=True, how='inner')
+        home_ownership_rates = load_home_ownership_rates(root_dir_, any_to_wb_)
+        home_ownership_rates = home_ownership_rates.unstack('income_cat').mean(axis=1).rename('home_ownership_rate').squeeze()
+
+        real_estate_share_of_value_added = calc_real_estate_share_of_value_added(root_dir_, any_to_wb_).squeeze()
+        real_est_k_to_va_shares_ratio = estimate_real_est_k_to_va_shares_ratio(root_dir_, any_to_wb_)
+
+        # capital_shares = pd.merge(capital_share_of_gdp, k_pub_share, left_index=True, right_index=True, how='inner')
+        capital_shares = pd.merge(self_employment, k_pub_share, left_index=True, right_index=True, how='outer')
+        capital_shares = pd.merge(home_ownership_rates, capital_shares, left_index=True, right_index=True, how='outer')
+        capital_shares = pd.merge(real_estate_share_of_value_added, capital_shares, left_index=True, right_index=True, how='outer')
+        capital_shares['real_est_k_to_va_shares_ratio'] = real_est_k_to_va_shares_ratio
 
         capital_shares.to_csv(capital_shares_before_adjustment_path)
 
-    new_index = pd.MultiIndex.from_product([capital_shares.index, ['q1', 'q2', 'q3', 'q4', 'q5']],
-                                           names=['iso3', 'income_cat'])
-    capital_shares = capital_shares.reindex(capital_shares.index.repeat(5)).reset_index(drop=True)
-    capital_shares.index = new_index
+    # new_index = pd.MultiIndex.from_product([capital_shares.index, ['q1', 'q2', 'q3', 'q4', 'q5']],
+    #                                        names=['iso3', 'income_cat'])
+    # capital_shares = capital_shares.reindex(capital_shares.index.repeat(5)).reset_index(drop=True)
+    # capital_shares.index = new_index
 
     if scale_self_employment is not None:
-        capital_shares.loc[pd.IndexSlice[:, scale_self_employment['scope'].split('+')], 'self_employment'] *= scale_self_employment['parameter']
+        # capital_shares.loc[pd.IndexSlice[:, scale_self_employment['scope'].split('+')], 'self_employment'] *= scale_self_employment['parameter']
+        capital_shares['self_employment'] *= scale_self_employment['parameter']
 
-    denominator = capital_shares.capital_elasticity_alpha + capital_shares.self_employment * (
-                1 - capital_shares.capital_elasticity_alpha)
-    capital_shares['k_oth_share'] = capital_shares.capital_elasticity_alpha * (
-                1 - capital_shares.k_pub_share) / denominator
-    capital_shares['k_prv_share'] = (1 - capital_shares.k_pub_share) * capital_shares.self_employment * (
-                1 - capital_shares.capital_elasticity_alpha) / denominator
+    # fill na-values with the median of the respective country income group
 
-    if reconstruction_capital_ == 'prv':
-        capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share
-    elif reconstruction_capital_ == 'prv_oth':
-        capital_shares['reconstruction_share_sigma_h'] = capital_shares.k_prv_share + capital_shares.k_oth_share
 
-    capital_shares = capital_shares[['self_employment', 'k_pub_share', 'k_prv_share', 'k_oth_share', 'reconstruction_share_sigma_h']]
+    if guess_missing_countries:
+        income_groups = load_income_groups(root_dir_)
+        merged = pd.merge(capital_shares['real_estate_share_of_value_added'], income_groups,
+                          left_index=True, right_index=True, how='outer')
+        capital_shares['real_estate_share_of_value_added'] = capital_shares['real_estate_share_of_value_added'].fillna(
+            merged.groupby('Country income group')['real_estate_share_of_value_added'].transform('median'))
 
-    return capital_shares
+
+    capital_shares['k_real_est_share'] = capital_shares['real_estate_share_of_value_added'] * capital_shares['real_est_k_to_va_shares_ratio']
+    capital_shares['k_labor_share'] = 1 - capital_shares['k_pub_share'] - capital_shares['k_real_est_share'] * capital_shares['home_ownership_rate']
+    capital_shares['k_self_share'] = capital_shares['k_labor_share'] * capital_shares['self_employment']
+    capital_shares['k_priv_share'] = capital_shares['k_labor_share'] * (1 - capital_shares['self_employment'])
+    capital_shares['k_household_share'] = capital_shares['k_real_est_share'] * capital_shares['home_ownership_rate'] + capital_shares['k_self_share']
+
+    return capital_shares.dropna(subset='k_household_share')
 
 
 def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population_data_=None,
@@ -239,14 +416,21 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
             verbose=verbose,
         )
 
-        # load building vulnerability classification and compute vulnerability per income class
-        vulnerability_unadjusted_ = load_vulnerability_data(
+        # load GEM data
+        _, gem_building_classes = load_gem_data(
             root_dir_=root_dir_,
+            force_recompute=True,
+            verbose=verbose,
+        )
+
+        # load building vulnerability classification and compute vulnerability per income class
+        vulnerability_unadjusted_ = process_vulnerability_data(
+            root_dir_=root_dir_,
+            building_classes=gem_building_classes,
             n_quantiles_=n_quantiles,
             use_gmd_to_distribute=True,
             fill_missing_gmd_with_country_average=False,
             vulnerability_bounds='gem_extremes',
-            verbose=verbose
         )
 
         exposure_fa_ = (hazard_loss_rel / vulnerability_unadjusted_.xs('tot', level='income_cat')).dropna().rename('fa')
@@ -256,28 +440,29 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
         # merge vulnerability with hazard_ratios
         fa_v_merged = pd.merge(exposure_fa_, vulnerability_quintiles, left_index=True, right_index=True)
 
+        fa_v_merged['fa'] = fa_v_merged['fa'].clip(lower=0, upper=fa_threshold_)
         # clip f_a to fa_threshold; increase v s.th. \Delta K = f_a * v is constant
-        if np.any(fa_v_merged.fa > fa_threshold_):
-            excess_exposure = fa_v_merged.loc[fa_v_merged.fa > fa_threshold_, 'fa']
-            if verbose:
-                print(f"Exposure values f_a are above fa_threshold for {len(excess_exposure)} entries. Setting them to "
-                      f"fa_threshold={fa_threshold_} and adjusting vulnerability accordingly.")
-            r = excess_exposure / fa_threshold_  # ratio by which fa is above fa_threshold
-            r.name = 'r'
-            # set f_a to fa_threshold
-            fa_v_merged.loc[excess_exposure.index, 'fa'] = fa_threshold_
-            # increase v s.th. \Delta K = f_a * v does not change
-            fa_v_merged.loc[excess_exposure.index, 'v'] = fa_v_merged.loc[excess_exposure.index, 'v'] * r
-            if verbose:
-                print("Adjusted exposure and vulnerability with factor r:")
-                print(pd.concat((fa_v_merged.loc[excess_exposure.index].rename({'fa': 'fa_new', 'v': 'v_new'}, axis=1), r),
-                                axis=1))
-            if np.any(fa_v_merged.loc[excess_exposure.index, 'v'] > .99):
-                excess_vulnerability = fa_v_merged.loc[excess_exposure.index, 'v'][fa_v_merged.loc[excess_exposure.index, 'v'] > .99]
-                fa_v_merged.loc[excess_vulnerability.index, 'v'] = .99
-                if verbose:
-                    print(f"The adjustment of exposure and vulnerability resulted in excess vulnerability for some entries.")
-                    print(f"Clipped excess vulnerability to .99 for {len(excess_vulnerability)} entries.")
+        # if np.any(fa_v_merged.fa > fa_threshold_):
+        #     excess_exposure = fa_v_merged.loc[fa_v_merged.fa > fa_threshold_, 'fa']
+        #     if verbose:
+        #         print(f"Exposure values f_a are above fa_threshold for {len(excess_exposure)} entries. Setting them to "
+        #               f"fa_threshold={fa_threshold_} and adjusting vulnerability accordingly.")
+        #     r = excess_exposure / fa_threshold_  # ratio by which fa is above fa_threshold
+        #     r.name = 'r'
+        #     # set f_a to fa_threshold
+        #     fa_v_merged.loc[excess_exposure.index, 'fa'] = fa_threshold_
+        #     # increase v s.th. \Delta K = f_a * v does not change
+        #     fa_v_merged.loc[excess_exposure.index, 'v'] = fa_v_merged.loc[excess_exposure.index, 'v'] * r
+        #     if verbose:
+        #         print("Adjusted exposure and vulnerability with factor r:")
+        #         print(pd.concat((fa_v_merged.loc[excess_exposure.index].rename({'fa': 'fa_new', 'v': 'v_new'}, axis=1), r),
+        #                         axis=1))
+        #     if np.any(fa_v_merged.loc[excess_exposure.index, 'v'] > .99):
+        #         excess_vulnerability = fa_v_merged.loc[excess_exposure.index, 'v'][fa_v_merged.loc[excess_exposure.index, 'v'] > .99]
+        #         fa_v_merged.loc[excess_vulnerability.index, 'v'] = .99
+        #         if verbose:
+        #             print(f"The adjustment of exposure and vulnerability resulted in excess vulnerability for some entries.")
+        #             print(f"Clipped excess vulnerability to .99 for {len(excess_vulnerability)} entries.")
 
         hazard_ratios = fa_v_merged[['fa', 'v']]
         hazard_ratios.to_csv(hazard_ratios_path)
@@ -289,7 +474,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
             exposure_fa_=hazard_ratios['fa'],
             use_avg_pe_=True,
             population_data_=population_data
-        ).clip(lower=0, upper=1)
+        ).clip(lower=0, upper=fa_threshold_)
 
     for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
         if policy_dict is not None:
@@ -312,34 +497,16 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
     return hazard_ratios
 
 
-def load_vulnerability_data(
+def process_vulnerability_data(
         root_dir_,
+        building_classes,
         n_quantiles_=5,
         use_gmd_to_distribute=True,
         fill_missing_gmd_with_country_average=False,
         vulnerability_bounds='gem_extremes',
-        gem_repo_root_dir="inputs/raw/GEM_vulnerability/global_exposure_model",
-        hazus_gem_mapping_path="inputs/raw/GEM_vulnerability/hazus-gem_mapping.csv",
-        gem_fields_path = "./inputs/raw/GEM_vulnerability/gem_taxonomy_fields.json",
-        vulnarebility_class_mapping = "./inputs/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx",
         building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
         gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling quintile vul ratio.xlsx",
-        verbose=True
 ):
-    # load distribution of vulnerability classes per country
-    _, building_classes = gather_gem_data(
-        gem_repo_root_dir_=os.path.join(root_dir_, gem_repo_root_dir),
-        hazus_gem_mapping_path_=hazus_gem_mapping_path,
-        gem_fields_path_=gem_fields_path,
-        vuln_class_mapping_=vulnarebility_class_mapping,
-        vulnerability_class_output_=None,
-        weight_by='replacement_cost',
-        verbose=verbose
-    )
-    building_classes.columns.names = ['hazard', 'vulnerability_class']
-    building_classes = building_classes.droplevel('country', axis=0)
-    if 'default' in building_classes.columns:
-        building_classes = building_classes.drop('default', axis=1, level=0)
 
     # load vulnerability of building classes
     building_class_vuln = pd.read_csv(os.path.join(root_dir_, "inputs/raw/", building_class_vuln_path), index_col=0)
@@ -631,7 +798,6 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
 
 
 def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True, guess_missing_countries=True, ew_year=2018, ew_decade=None,
-                                    income_groups_file="WB_country_classification/country_classification.xlsx",
                                     forecast_accuracy_file_yearly="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_yearly.csv",
                                     forecast_accuracy_file_decadal="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_decadal.csv",
                                     force_recompute=True, verbose=True):
@@ -658,16 +824,13 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         ).mean(axis=1)
         disaster_preparedness_ = pd.merge(disaster_preparedness_, hfa_data.finance_pre, left_index=True, right_index=True, how='outer')
     if guess_missing_countries:
-        income_groups = pd.read_excel(os.path.join(root_dir_, "inputs/raw/", income_groups_file), header=0)[["Code", "Region", "Income group"]]
-        income_groups = income_groups.dropna().rename({'Code': 'iso3'}, axis=1)
-        income_groups = income_groups.set_index('iso3').squeeze()
-        income_groups.loc['VEN'] = ['Latin America & Caribbean', 'Upper middle income']
+        income_groups = load_income_groups(root_dir_)
         if verbose:
-            print("Manually setting region and income group for VEN to 'LAC' and 'UM'.")
+            print("Guessing missing countries' disaster preparedness data based on income group and region averages.")
         merged = pd.merge(disaster_preparedness_, income_groups, left_index=True, right_index=True, how='outer')
-        fill_values = merged.groupby(['Region', 'Income group']).mean()
-        fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Income group').mean())
-        merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Income group'])] if not x[['Region', 'Income group']].isna().any() else x, axis=1))
+        fill_values = merged.groupby(['Region', 'Country income group']).mean()
+        fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Country income group').mean())
+        merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Country income group'])] if not x[['Region', 'Country income group']].isna().any() else x, axis=1))
         disaster_preparedness_ = merged[disaster_preparedness_.columns]
     if ew_year is not None and ew_decade is None:
         forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "inputs/raw/", forecast_accuracy_file_yearly), index_col=[0, 1]).squeeze()
@@ -685,6 +848,47 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
     disaster_preparedness_ = disaster_preparedness_.dropna()
     disaster_preparedness_.to_csv(outpath)
     return disaster_preparedness_
+
+
+def load_gem_data(
+        root_dir_,
+        gem_repo_root_dir="inputs/raw/GEM_vulnerability/global_exposure_model",
+        hazus_gem_mapping_path="inputs/raw/GEM_vulnerability/hazus-gem_mapping.csv",
+        gem_fields_path = "./inputs/raw/GEM_vulnerability/gem_taxonomy_fields.json",
+        vulnarebility_class_mapping = "./inputs/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx",
+        verbose=True,
+        force_recompute=False,
+    ):
+    # residential_share_path = os.path.join(root_dir_, "inputs/processed/gem_residential_buildings_share.csv")
+    # gem_building_classes_path = os.path.join(root_dir_, "inputs/processed/gem_buildling_classes.csv")
+    # if not force_recompute and os.path.exists(residential_share_path) and os.path.exists(gem_building_classes_path):
+    #     print("Loading GEM data from file...")
+    #     residential_share = pd.read_csv(residential_share_path, index_col='iso3').squeeze()
+    #     gem_building_classes = pd.read_csv(gem_building_classes_path, index_col=[0], header=[0, 1])
+    #     return residential_share, gem_building_classes
+
+    # load distribution of vulnerability classes per country
+    gem_res, gem_building_classes = gather_gem_data(
+        gem_repo_root_dir_=os.path.join(root_dir_, gem_repo_root_dir),
+        hazus_gem_mapping_path_=os.path.join(root_dir_, hazus_gem_mapping_path),
+        gem_fields_path_=os.path.join(root_dir_, gem_fields_path),
+        vuln_class_mapping_=os.path.join(root_dir_, vulnarebility_class_mapping),
+        vulnerability_class_output_=None,
+        weight_by='total_replacement_cost',
+        verbose=verbose
+    )
+    gem_building_classes.columns.names = ['hazard', 'vulnerability_class']
+    gem_building_classes = gem_building_classes.droplevel('country', axis=0)
+    if 'default' in gem_building_classes.columns:
+        gem_building_classes = gem_building_classes.drop('default', axis=1, level=0)
+
+    residential_share = gem_res.groupby(['iso3', 'building_type']).total_replacement_cost.sum().xs('Res', level='building_type') / gem_res.groupby(['iso3']).total_replacement_cost.sum()
+    residential_share.rename('residential_share', inplace=True)
+
+    # residential_share.to_csv(residential_share_path)
+    # gem_building_classes.to_csv(gem_building_classes_path)
+
+    return residential_share, gem_building_classes
 
 
 def prepare_scenario(scenario_params):
@@ -712,7 +916,7 @@ def prepare_scenario(scenario_params):
     macro_params['discount_rate_rho'] = macro_params.get('discount_rate_rho', .06)
     macro_params['max_increased_spending'] = macro_params.get('max_increased_spending', .05)
     macro_params['axfin_impact'] = macro_params.get('axfin_impact', .1)
-    macro_params['reconstruction_capital'] = macro_params.get('reconstruction_capital', 'prv')
+    macro_params['reconstruction_capital'] = macro_params.get('reconstruction_capital', 'self_hous')
     macro_params['ew_year'] = macro_params.get('ew_year', 2018)
     macro_params['ew_decade'] = macro_params.get('ew_decade', None)
     macro_params['reduction_vul'] = macro_params.get('reduction_vul', .2)
@@ -789,13 +993,13 @@ def prepare_scenario(scenario_params):
         timestamp = time()
 
     # Load capital shares
-    capital_shares = calc_reconstruction_share_sigma(
+    capital_shares = calc_asset_shares(
         root_dir_=root_dir,
         any_to_wb_=any_to_wb,
-        reconstruction_capital_=macro_params['reconstruction_capital'],
         scale_self_employment=policy_params.pop('scale_self_employment', None),
         verbose=run_params['verbose'],
         force_recompute=run_params['force_recompute'],
+        guess_missing_countries=True,
     )
     if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
@@ -830,6 +1034,7 @@ def prepare_scenario(scenario_params):
         scale_non_diversified_income_=policy_params.pop('scale_non_diversified_income', None),
         min_diversified_share_=policy_params.pop('min_diversified_share', None),
         scale_income_=policy_params.pop('scale_income', None),
+        scale_gini_index_=policy_params.pop('scale_gini_index', None),
     )
     if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")

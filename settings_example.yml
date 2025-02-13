@@ -20,14 +20,13 @@ scenario_params:
     discount_rate_rho: .06
     max_increased_spending: .05
     axfin_impact: .1
-    reconstruction_capital: 'prv'
     ew_year: 2018
     ew_decade: null
     reduction_vul: .2
   hazard_params:
     hazard_protection: 'FLOPROS'
     no_exposure_bias: False
-    fa_threshold: .9
+    fa_threshold: .99
   policy_params:
     scale_self_employment:
       parameter: 1
@@ -52,3 +51,5 @@ scenario_params:
       parameter: 1
       scope: q1+q2+q3+q4+q5
       scale_total: False
+    scale_gini_index:
+      parameter: 1

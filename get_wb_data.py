@@ -3,6 +3,7 @@ import argparse
 import os
 from lib import get_country_name_dicts, df_to_iso3
 from wb_api_wrapper import *
+import numpy as np
 
 
 def clean_merge_update(df_, series_other_, any_to_wb):
@@ -69,10 +70,11 @@ def get_wb_data(root_dir, include_remittances=True, use_additional_data=False, d
     # World Development Indicators
     gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp
     pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population
-    urbanization_rate = get_wb_mrv("SP.URB.TOTL.IN.ZS", "urbanization_rate") / 100
+    # urbanization_rate = get_wb_mrv("SP.URB.TOTL.IN.ZS", "urbanization_rate") / 100
 
     # create output data frames
-    macro_df_ = pd.concat([gdp_pc_pp, pop, urbanization_rate], axis=1).reset_index()
+    # macro_df_ = pd.concat([gdp_pc_pp, pop, urbanization_rate], axis=1).reset_index()
+    macro_df_ = pd.concat([gdp_pc_pp, pop], axis=1).reset_index()
     macro_df_.country = macro_df_.country.replace(any_to_wb)
     macro_df_ = macro_df_.dropna(subset='country').set_index('country')
 

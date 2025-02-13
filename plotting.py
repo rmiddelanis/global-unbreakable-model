@@ -1,6 +1,5 @@
 import argparse
 import itertools
-import json
 import os
 import string
 
@@ -9,8 +8,6 @@ import tqdm
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import BoundaryNorm
 import matplotlib.colors as mcolors
-from matplotlib.lines import lineStyles
-from matplotlib.offsetbox import AnchoredText
 from matplotlib.transforms import blended_transform_factory
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle, Polygon
@@ -28,6 +25,7 @@ import cartopy.crs as ccrs
 from lib import get_country_name_dicts
 from lib_compute_resilience_and_risk import agg_to_event_level
 from lib_prepare_scenario import average_over_rp
+from prepare_scenario import load_income_groups
 from recovery_optimizer import baseline_consumption_c_h, delta_c_h_of_t, delta_k_h_eff_of_t
 import seaborn as sns
 
@@ -178,7 +176,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
             delta_tax_sp_=q_data.tau_tax,
             delta_k_h_eff_=q_data.dk,
             lambda_h_=q_data.lambda_h,
-            sigma_h_=q_data.reconstruction_share_sigma_h,
+            sigma_h_=q_data.k_household_share,
             savings_s_h_=q_data.liquidity,
             delta_i_h_pds_=0,
             delta_c_h_max_=np.nan,
@@ -214,7 +212,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
         plot_data.loc[q, 'dw'] = q_data.dw
         plot_data.loc[q, 'k'] = q_data.k
         plot_data.loc[q, 'dk'] = plot_data.loc[q, 'k'] * q_data.v_ew
-        plot_data.loc[q, 'dk_reco'] = plot_data.loc[q, 'dk'] * q_data.reconstruction_share_sigma_h
+        plot_data.loc[q, 'dk_reco'] = plot_data.loc[q, 'dk'] * q_data.k_household_share
         plot_data.loc[q, 'dk_reco-savings'] = plot_data.loc[q, 'dk_reco'] - plot_data.loc[q, 'dc_savings']
 
     plot_data.loc['q_avg', ['k', 'y_bl', 'tr_bl', 'c_bl', 'dc_income_sp', 'c_income_sp']] = plot_data[['k', 'y_bl', 'tr_bl', 'c_bl', 'dc_income_sp', 'c_income_sp']].mean()
@@ -435,7 +433,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
     ).loc[pd.IndexSlice[iso3, hazard, plot_rp, 'q1', 'a', 'not_helped']]
 
     plot_recovery(10, inset_plot_data.avg_prod_k, inset_plot_data.tau_tax, inset_plot_data.k, inset_plot_data.dk,
-                  inset_plot_data.lambda_h, inset_plot_data.reconstruction_share_sigma_h, inset_plot_data.liquidity,
+                  inset_plot_data.lambda_h, inset_plot_data.k_household_share, inset_plot_data.liquidity,
                   0, np.nan, inset_plot_data.recovery_params, inset_plot_data.gamma_SP * inset_plot_data.n,
                   inset_plot_data.diversified_share, axs=[inset_ax], show_ylabel=True, plot_capital=False,
                   ylims=[(0, inset_plot_data.c * 1.05), None], plot_legend=False)
@@ -644,7 +642,7 @@ def plot_fig_2(data_, world_, exclude_countries=None, bins_list=None, cmap='viri
 
     # Save or show the plot
     if outfile:
-        plt.savefig(outfile, dpi=600, bbox_inches='tight', transparent=True, pad_inches=0)
+        plt.savefig(outfile, dpi=900, bbox_inches='tight', transparent=True, pad_inches=0)
     if show:
         plt.show(block=False)
         return
@@ -736,15 +734,18 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=100, outfile=None, show=Tr
 
     policy_scenarios = {
         'reduce_total_exposure_0.05': '1: Reduce total exposure by 5%',
-        'reduce_poor_exposure_0.05': '2: Reduce total exposure by 5%\ntargeting the poor',
+        'reduce_poor_exposure_0.05': '2: Reduce total exposure by 5%\n    targeting the poor',
         'reduce_total_vulnerability_0.05': '3: Reduce total vulnerability by 5%',
-        'reduce_poor_vulnerability_0.05': '4: Reduce total vulnerability by 5%\ntargeting the poor',
+        'reduce_poor_vulnerability_0.05': '4: Reduce total vulnerability by 5%\n    targeting the poor',
         # 'increase_gdp_pc_0.05': '5: Increase GDP by 5%',
         'increase_gdp_pc_and_liquidity_0.05': '5: Increase GDP and liquidity by 5%',
-        'reduce_self_employment_0.1': '6: Reduce self-employment\nrate by 10%',
-        'reduce_non_diversified_income_0.1': '7: Reduce non-diversified\nincome by 10%',
-        'pds20': '8: Imperfect PDS aiming at\n20% of asset losses of the poor',
-        'pds20_perfect': '9: PDS aiming at 20% with\nperfect targeting and borrowing',
+        'reduce_gini_10': '6: Equally redistribute 10%\n    of all income',
+        'reduce_self_employment_0.1': '7: Reduce self-employment\n    rate by 10%',
+        'reduce_non_diversified_income_0.1': '8: Reduce non-diversified\n    income by 10%',
+        # 'pds20': '8: Imperfect PDS aiming at\n    20% of asset losses of the poor',
+        'pds50': '9: Imperfect PDS aiming at\n    40% of asset losses of the poor',
+        # 'pds20_perfect': '9: PDS aiming at 20% of asset\n    losses of the poor with perfect\n    targeting and borrowing',
+        'insurance20': '10: National insurance program\n      covering 20% of all asset losses',
     }
     ref_data = results_data_['baseline'].copy()
     ref_data['t_reco_95_avg'] = cat_info_data_['baseline'].loc[pd.IndexSlice[:, :, plot_rp, :, 'a', :], ['t_reco_95', 'n']].groupby('iso3').apply(lambda x: np.average(x['t_reco_95'], weights=x['n']))
@@ -815,7 +816,8 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=100, outfile=None, show=Tr
     axs[-1].legend(title=None, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
 
     for ax_idx, ax in enumerate(axs):
-        ax.text(0, 1.01, f'{chr(97 + ax_idx)}', ha='center', va='bottom', fontsize=8, fontweight='bold', transform=blended_transform_factory(ax.transData, ax.transAxes))
+        # ax.text(0, 1.01, f'{chr(97 + ax_idx)}', ha='center', va='bottom', fontsize=8, fontweight='bold', transform=blended_transform_factory(ax.transData, ax.transAxes))
+        ax.text(0.5, 1.01, f'{chr(97 + ax_idx)}', ha='center', va='bottom', fontsize=8, fontweight='bold', transform=ax.transAxes)
 
     plt.tight_layout(pad=0, w_pad=2, h_pad=2)
 
@@ -849,7 +851,7 @@ def plot_supfig_7(results_data_, cat_info_data_, plot_rp=100, outfile=None, show
         hue_order=['LICs', 'LMICs', 'UMICs', 'HICs']
     )
     ax.set_xlabel('Socio-economic resilience [%]')
-    ax.set_ylabel('Average recovery\nduration [y]')
+    ax.set_ylabel('Average recovery\nduration [yr]')
 
     add_regression(ax, plot_data, 'resilience', 't_reco_ctry', p_val_pos='upper left')
 
@@ -895,8 +897,8 @@ def plot_hazard_detail_supfig(cat_info_data_, income_groups_, plot_rp=100, outfi
     axs[-1, -1].legend(title=None, frameon=False)#bbox_to_anchor=(1, 1), loc='upper left', frameon=False, title='Income\nquintile')
 
     axs[1, 2].set_xlabel('Country income group')
-    axs[0, 0].set_ylabel('Recovery duration of\nnot-helped households [y]')
-    axs[1, 0].set_ylabel('Recovery duration of\nhelped households [y]')
+    axs[0, 0].set_ylabel('Recovery duration of\nnot-helped households [yr]')
+    axs[1, 0].set_ylabel('Recovery duration of\nhelped households [yr]')
 
     plt.tight_layout(pad=.2, w_pad=1.01, h_pad=.5)
 
@@ -991,7 +993,7 @@ def plot_supfig_8(cat_info_data_, outfile=None, show=False, plot_rp=100, numberi
     #     ax=axs[0],
     # )
     axs[0].legend(title=None, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
-    axs[0].set_ylabel('Recovery duration [y]')
+    axs[0].set_ylabel('Recovery duration [yr]')
 
     # available_funds = cat_info_data_['baseline'][['liquidity', 'dk_reco', 'help_received', 'n']]
     # available_funds = available_funds.drop('n', axis=1).mul(available_funds.n, axis=0)
@@ -1107,7 +1109,7 @@ def plot_supfig_6(results_data_, outfile=None, show=False):
         plt.close()
 
 
-def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, plot_rp=100, show=False, numbering=True):
+def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, show=False, numbering=True):
     fig_width = single_col_width * centimeter
     fig_height = 2 * fig_width
     fig = plt.figure(figsize=(fig_width, fig_height))
@@ -1118,7 +1120,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
     for i in range(1, 4):
         axs.append(fig.add_subplot(gs[i]))
 
-    plot_data = cat_info_data_.loc[pd.IndexSlice[:, :, plot_rp, :, 'a', :], ['t_reco_95', 'n']]
+    plot_data = cat_info_data_.xs('a', level='affected_cat')[['t_reco_95', 'n']]
     plot_data = plot_data[plot_data.n > 0]
 
     # Create a truncated version of the colormap that starts at 20% and goes up to 100%
@@ -1131,7 +1133,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
         plot_data.groupby('iso3').apply(lambda x: x.prod(axis=1).sum() / x.n.sum()).rename('t_reco_ctry'),
         income_groups['Country income group'],
         left_index=True,
-        right_index=True
+        right_index=True,
     )
     print("Longest recovery durations")
     print(duration_ctry.sort_values(by='t_reco_ctry', ascending=False).head(10))
@@ -1152,7 +1154,13 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
 
     # plot median country recovery duration by hazard for each Country income group
     duration_ctry_hazard = plot_data.groupby(['iso3', 'hazard']).apply(lambda x: x.prod(axis=1).sum() / x.n.sum())
-    duration_ctry_hazard = pd.merge(duration_ctry_hazard.rename('t_reco_ctry_hazard'), income_groups_['Country income group'], left_index=True, right_index=True, how='inner')
+    duration_ctry_hazard = pd.merge(
+        duration_ctry_hazard.rename('t_reco_ctry_hazard'),
+        income_groups_['Country income group'],
+        left_index=True,
+        right_index=True,
+        how='inner'
+    )
     duration_ctry_hazard.groupby(['Country income group', 'hazard']).describe()
 
     sns.barplot(
@@ -1172,19 +1180,9 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
         axs[2].plot([x_val - .4, x_val + .4], [mean_val, mean_val], color='black', lw=1)
         print(f"Median recovery duration for {mean_val} in {['LICs', 'LMICs', 'UMICs', 'HICs'][x_val]}")
 
-    axs[2].set_ylabel('Median recovery duration\nby country income group [y]')
+    axs[2].set_ylabel('Median recovery duration\nby country income group [yr]')
     axs[2].set_xlabel('Country income group')
     axs[2].legend(frameon=False, title=None, bbox_to_anchor=(1, 1), loc='upper left')
-
-    # quintile_data_helped_cat = pd.merge(
-    #     plot_data.groupby(['iso3', 'income_cat', 'helped_cat']).apply(lambda x: x.prod(axis=1).sum() / x.n.sum()).rename('t_reco'),
-    #     income_groups_['Country income group'],
-    #     left_index=True,
-    #     right_index=True,
-    # )
-    #
-    # print("Change in recovery duration for helped households:")
-    # print(1 - quintile_data_helped_cat.xs('helped', level='helped_cat').groupby(['income_cat', 'Country income group']).median() / quintile_data_helped_cat.xs('not_helped', level='helped_cat').groupby(['income_cat', 'Country income group']).median())
 
     quintile_data_total = pd.merge(
         plot_data.groupby(['iso3', 'income_cat']).apply(lambda x: x.prod(axis=1).sum() / x.n.sum()).rename('t_reco'),
@@ -1193,30 +1191,6 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
         right_index=True,
     )
 
-    # sns.barplot(
-    #     data=quintile_data_helped_cat.xs('not_helped', level='helped_cat'),
-    #     x='income_cat',
-    #     y='t_reco',
-    #     hue='Country income group',
-    #     hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
-    #     errorbar=None,
-    #     estimator='median',
-    #     alpha=.5,
-    #     legend=False,
-    #     ax=axs[3],
-    # )
-    # sns.barplot(
-    #     data=quintile_data_helped_cat.xs('helped', level='helped_cat'),
-    #     x='income_cat',
-    #     y='t_reco',
-    #     hue='Country income group',
-    #     hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'],
-    #     errorbar=None,
-    #     estimator='median',
-    #     alpha=1,
-    #     legend=False,
-    #     ax=axs[3],
-    # )
     sns.barplot(
         data=quintile_data_total,
         x='income_cat',
@@ -1237,7 +1211,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
 
     axs[2].legend(title=None, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     axs[3].legend(title=None, frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
-    axs[3].set_ylabel('Median recovery duration\nby household income quintile [y]')
+    axs[3].set_ylabel('Median recovery duration\nby household income quintile [yr]')
     axs[3].set_xlabel('Household income quintile')
 
     plt.tight_layout(pad=.2, w_pad=0, h_pad=1.08)
@@ -1247,7 +1221,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
     axs[0].set_position([.05, m_y0, .9, 1 - m_y0])
 
     # Map axis label
-    fig.text(0, 0.5, 'Average recovery\nduration [y]', fontsize=7, transform=blended_transform_factory(fig.transFigure, axs[0].transAxes), rotation=90, va='top', ha='center', rotation_mode='anchor')
+    fig.text(0, 0.5, 'Average recovery\nduration [yr]', fontsize=7, transform=blended_transform_factory(fig.transFigure, axs[0].transAxes), rotation=90, va='top', ha='center', rotation_mode='anchor')
 
     # Adjust the position of the colorbar
     cbar_y0 = axs[1].get_position().y0
@@ -1259,7 +1233,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, outfile=None, p
             fig.text(0, 1, f'{chr(97 + idx)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=blended_transform_factory(fig.transFigure, ax.transAxes))
 
     if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+        plt.savefig(outfile, dpi=900, bbox_inches='tight')
     if show:
         plt.show(block=False)
 
@@ -1273,14 +1247,14 @@ def plot_recovery_comparison(macro_baseline, cat_info_baseline, macro_no_liquidi
 
     plot_data_no_liquidity = pd.merge(macro_no_liquidity, cat_info_no_liquidity, left_index=True, right_index=True).loc[tuple(household_ + ['not_helped'])]
     plot_recovery(6, plot_data_no_liquidity.avg_prod_k, plot_data_no_liquidity.tau_tax, plot_data_no_liquidity.k, plot_data_no_liquidity.dk,
-                  plot_data_no_liquidity.lambda_h, plot_data_no_liquidity.reconstruction_share_sigma_h, plot_data_no_liquidity.liquidity, plot_data_no_liquidity.help_received, np.nan,
+                  plot_data_no_liquidity.lambda_h, plot_data_no_liquidity.k_household_share, plot_data_no_liquidity.liquidity, plot_data_no_liquidity.help_received, np.nan,
                   plot_data_no_liquidity.recovery_params, plot_data_no_liquidity.gamma_SP * plot_data_no_liquidity.n, plot_data_no_liquidity.diversified_share,
                   ylims=[(-1000, 5500), None],
                   title=f"without liquidity", fig=fig, axs=axs[:, 0], plot_legend=False)
 
     data_baseline = pd.merge(macro_baseline, cat_info_baseline, left_index=True, right_index=True).loc[tuple(household_ + ['helped'])]
     plot_recovery(6, data_baseline.avg_prod_k, data_baseline.tau_tax, data_baseline.k, data_baseline.dk,
-                  data_baseline.lambda_h, data_baseline.reconstruction_share_sigma_h, data_baseline.liquidity, data_baseline.help_received, np.nan,
+                  data_baseline.lambda_h, data_baseline.k_household_share, data_baseline.liquidity, data_baseline.help_received, np.nan,
                   data_baseline.recovery_params, data_baseline.gamma_SP * data_baseline.n, data_baseline.diversified_share,
                   ylims=[(-1000, 5500), None],
                   title=f"with liquidity", fig=fig, axs=axs[:, 1], show_ylabel=False)
@@ -1312,6 +1286,10 @@ def print_stats(results_data_):
     # print the stats of the resilience by Country income group
     print('Resilience by Country income group:')
     print(results_data_.groupby('Country income group').resilience.describe().loc[['LICs', 'LMICs', 'UMICs', 'HICs']])
+
+    # print minimum and maximum resilience of each Country income group
+    print('Minimum and maximum resilience of each Country income group:')
+    print(results_data_.groupby('Country income group').resilience.agg(['min', 'max', 'idxmin', 'idxmax']))
 
 
 def print_results_table(results_data_):
@@ -1538,12 +1516,14 @@ def plot_fast_slow_recovery_example_figure():
     plt.tight_layout()
 
 
-def load_income_groups():
-    income_groups_ = pd.read_excel(os.path.join(input_data_dir, 'WB_country_classification/country_classification.xlsx'), header=0)[["Code", "Region", "Income group"]]
-    income_groups_ = income_groups_.dropna().rename({'Code': 'iso3'}, axis=1)
-    income_groups_ = income_groups_.set_index('iso3').squeeze()
-    income_groups_.loc['VEN'] = ['Latin America & Caribbean', 'Upper middle income']
-    return income_groups_
+# def load_income_groups():
+#     income_groups_ = pd.read_excel(os.path.join(input_data_dir, 'WB_country_classification/country_classification.xlsx'), header=0)[["Code", "Region", "Income group"]]
+#     income_groups_ = income_groups_.dropna().rename({'Code': 'iso3'}, axis=1)
+#     income_groups_ = income_groups_.set_index('iso3').squeeze()
+#     income_groups_.loc['VEN'] = ['Latin America & Caribbean', 'Upper middle income']
+#     income_groups_.rename({'Income group': 'Country income group'}, axis=1, inplace=True)
+#     income_groups_.replace({'Low income': 'LICs', 'Lower middle income': 'LMICs', 'Upper middle income': 'UMICs', 'High income': 'HICs'}, inplace=True)
+#     return income_groups_
 
 
 def plot_ew_impact_over_time(ensemble_dir, outpath_=None):
@@ -1836,7 +1816,7 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
         axs[1].plot([0, 0], [0, dk_eff[0]], color=linecolor, label='__none__')
         axs[1].plot(t_, dk_eff, color=linecolor, label='Effective capital loss')
 
-    axs[-1].set_xlabel('Time [y]')
+    axs[-1].set_xlabel('Time [yr]')
 
     if show_ylabel:
         axs[0].set_ylabel('Consumption [$PPP]')
@@ -1862,50 +1842,85 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
     plt.tight_layout()
 
 
-def plot_supfigs_3_4(results_data_, outpath_=None):
-    capital_shares = results_data_[['k_pub_share', 'k_prv_share', 'k_oth_share', 'self_employment', 'gdp_pc_pp', 'Country income group']].copy()
-    capital_shares[['k_pub_share', 'k_prv_share', 'k_oth_share', 'self_employment']] *= 100
+def plot_supfigs_3_4(capital_shares_, outpath_=None):
+    capital_shares = capital_shares_.copy()
+    # include_owner_occ_hous_share = False
+    # if 'real_estate_share_of_value_added' in capital_shares.columns:
+    #     include_owner_occ_hous_share = True
+    #     capital_shares[['k_pub_share', 'k_priv_share', 'k_hous_share', 'k_self_share', 'self_employment', 'real_estate_share_of_value_added']] *= 100
+    #     fig, axs = plt.subplots(ncols=4, nrows=3, figsize=(double_col_width * centimeter, 16 * centimeter), sharex=False, sharey='row')
+    # else:
+    #     capital_shares[['k_pub_share', 'k_priv_share', 'k_hous_share', 'k_self_share', 'self_employment']] *= 100
+    #     fig, axs = plt.subplots(ncols=4, nrows=2, figsize=(double_col_width * centimeter, 13 * centimeter), sharex=False, sharey='row')
+    capital_shares[['k_pub_share', 'k_priv_share', 'k_household_share', 'real_estate_share_of_value_added', 'home_ownership_rate']] *= 100
+    fig, axs = plt.subplots(ncols=3, nrows=3, figsize=(double_col_width * centimeter, 13 * centimeter), sharex=False, sharey='row')
     capital_shares['gdp_pc_pp'] /= 1e3
-    fig, axs = plt.subplots(ncols=3, nrows=2, figsize=(double_col_width * centimeter, 14 * centimeter), sharex=False, sharey='row')
-    for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_prv_share'),
-                                      ('gdp_pc_pp', 'k_oth_share')], [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
+
+    for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_priv_share'), ('gdp_pc_pp', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
         legend = False
         if ax == axs[0, -1]:
             legend = True
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=legend, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
         # ax.scatter(capital_shares[x], capital_shares[y], marker='o', alpha=.5, s=10)
-        for i, label in enumerate(capital_shares.index):
-            ax.text(capital_shares[x][i], capital_shares[y][i], label, fontsize=6)
-            ax.set_xlabel('GDP per capita [$1,000 PPP]')
-            ax.set_title(name)
+        for label in capital_shares.index:
+            ax.text(capital_shares[x].loc[label], capital_shares[y].loc[label], label, fontsize=6)
+        ax.set_xlabel('GDP per capita [$1,000 PPP]')
+        ax.set_title(name)
     axs[0, -1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     axs[0, 0].set_ylabel('share [%]')
-    plt.tight_layout()
 
-    for ax, (x, y), name in zip(axs[1, :], [('self_employment', 'k_pub_share'),
-                                      ('self_employment', 'k_prv_share'),
-                                      ('self_employment', 'k_oth_share')],
-                                [r'$\kappa^{public}$', r'$\kappa^{households}$', r'$\kappa^{firms}$']):
+    for ax, (x, y), name in zip(axs[1, :], [('self_employment', 'k_pub_share'), ('self_employment', 'k_priv_share'), ('self_employment', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
         x_ = capital_shares[x]
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
         # ax.scatter(x_, capital_shares[y], marker='o', alpha=.5, s=10)
-        for i, label in enumerate(capital_shares.index):
-            ax.text(x_[i], capital_shares[y][i], label, fontsize=6)
+        for label in capital_shares.index:
+            ax.text(x_.loc[label], capital_shares[y].loc[label], label, fontsize=6)
             ax.set_xlabel('self employment rate [%]')
         axs[1, 0].set_ylabel('share [%]')
+
+    # for ax, (x, y), name in zip(axs[2, :], [('real_estate_share_of_value_added', 'k_pub_share'), ('real_estate_share_of_value_added', 'k_priv_share'), ('real_estate_share_of_value_added', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+    #     x_ = capital_shares[x]
+    #     sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
+    #                                style='Country income group', markers=INCOME_GROUP_MARKERS)
+    #     # ax.scatter(x_, capital_shares[y], marker='o', alpha=.5, s=10)
+    #     for label in capital_shares.index:
+    #         ax.text(x_.loc[label], capital_shares[y].loc[label], label, fontsize=6)
+    #         ax.set_xlabel('Real-estate \nshare of GDP [%]')
+    #     axs[2, 0].set_ylabel('share [%]')
+
+    for ax, (x, y), name in zip(axs[2, :], [('home_ownership_rate', 'k_pub_share'), ('home_ownership_rate', 'k_priv_share'), ('home_ownership_rate', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+        x_ = capital_shares[x]
+        sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
+                                   style='Country income group', markers=INCOME_GROUP_MARKERS)
+        # ax.scatter(x_, capital_shares[y], marker='o', alpha=.5, s=10)
+        for label in capital_shares.index:
+            ax.text(x_.loc[label], capital_shares[y].loc[label], label, fontsize=6)
+            ax.set_xlabel('Home ownership rate [%]')
+        axs[2, 0].set_ylabel('share [%]')
+
     plt.tight_layout()
     if outpath_ is not None:
         fig.savefig(os.path.join(outpath_, f"supfig_3.pdf"), dpi=300, bbox_inches='tight')
     plt.show(block=False)
 
-    fig, ax = plt.subplots(figsize=(7 * centimeter, 6 * centimeter))
+    fig, axs = plt.subplots(figsize=(single_col_width * centimeter, single_col_width * centimeter))
+    axs = [axs]
     sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='self_employment', alpha=.5, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], palette=INCOME_GROUP_COLORS,
-                                   style='Country income group', markers=INCOME_GROUP_MARKERS, s=10)
-    ax.legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
-    ax.set_xlabel('GDP per capita [$1,000 PPP]')
-    ax.set_ylabel('self employment rate [%]')
+                    style='Country income group', markers=INCOME_GROUP_MARKERS, s=10, ax=axs[0])
+    axs[0].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
+    axs[0].set_xlabel('GDP per capita [$1,000 PPP]')
+    axs[0].set_ylabel('self employment rate [%]')
+
+    # if include_owner_occ_hous_share:
+    #     sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='home_ownership_rate', alpha=.5, hue='Country income group',
+    #                     hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], palette=INCOME_GROUP_COLORS,
+    #                     style='Country income group', markers=INCOME_GROUP_MARKERS, s=10, ax=axs[1])
+    #     axs[1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
+    #     axs[1].set_xlabel('GDP per capita [$1,000 PPP]')
+    #     axs[1].set_ylabel('home ownership rate [%]')
+    #     add_regression(axs[1], capital_shares, 'gdp_pc_pp', 'home_ownership_rate')
     plt.tight_layout()
     if outpath_ is not None:
         fig.savefig(os.path.join(outpath_, f"supfig_4.pdf"), dpi=300, bbox_inches='tight')
@@ -1924,12 +1939,12 @@ def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Flood', plot_rp=1
 
     plot_data['dw_currency'] = plot_data.dw / (plot_data.gdp_pc_pp**(-plot_data.income_elasticity_eta))
     plot_data[['c', 'k', 'gdp_pc_pp', 'dk', 'dw_currency']] /= 1e3
-    plot_data['k_non_hh'] = plot_data.k * (1 - plot_data.reconstruction_share_sigma_h)
-    plot_data['dk_non_hh'] = plot_data.dk * (1 - plot_data.reconstruction_share_sigma_h)
+    plot_data['k_non_hh'] = plot_data.k * (1 - plot_data.k_household_share)
+    plot_data['dk_non_hh'] = plot_data.dk * (1 - plot_data.k_household_share)
     plot_data['c_labor'] = plot_data.k * plot_data.avg_prod_k * (1 - plot_data.tau_tax)
     plot_data[['v_ew', 'fa']] *= 100
 
-    print("Exposure:\n", plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped'], 'fa'])
+    print("Characteristics:\n", plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped'], ['fa', 't_reco_95']])
     print("Wellbeing losses [bn USD]:\n", plot_data[['dw_currency', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
 
     fig1_1 = plot_fig_1_1(plot_data)
@@ -1953,11 +1968,11 @@ def plot_fig_1_2(plot_data):
         title = f"{country}-q5"
         recovery_params = [(k / 1e3, l) for (k, l) in country_data.recovery_params]
         plot_recovery(3, country_data.avg_prod_k, country_data.tau_tax, country_data.k, country_data.dk,
-                      country_data.lambda_h, country_data.reconstruction_share_sigma_h, country_data.liquidity / 1e3,
+                      country_data.lambda_h, country_data.k_household_share, country_data.liquidity / 1e3,
                       0, np.nan, recovery_params, country_data.gamma_SP * country_data.n,
                       country_data.diversified_share, axs=[ax], show_ylabel=not legend, plot_capital=False,
                       plot_legend=False, linecolor=c, shading_color='dimgrey',
-                      ylims=[(-2.500, 10.000), None], title=title)
+                      ylims=[(0, 10.000), None], title=title)
     axs[0].set_ylabel('Consumption [$PPP 1,000]')
     legend = axs[-1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     handles = legend.legend_handles
@@ -2080,7 +2095,7 @@ def plot_fig_1_1(plot_data):
     )
     reco_twnx.set_ylabel(None)
     ax.set_ylabel(None)
-    ax.set_title('Recovery time\n[y]')
+    ax.set_title('Recovery time\n[yr]')
 
     # # plot exposure
     # ax = axs[1, 2]
@@ -2098,7 +2113,7 @@ def plot_fig_1_1(plot_data):
         x='income_cat', y='dw_currency', ax=ax, hue='iso3', legend=False
     )
     ax.set_ylabel(None)
-    ax.set_title('Wellbeing losses, exposed\n[$PPP 1,000]')
+    ax.set_title('Wellbeing losses, affected\n[$PPP 1,000]')
 
     # plot wellbeing losses of exposed households
     ax = axs[1, 3]
@@ -2107,7 +2122,7 @@ def plot_fig_1_1(plot_data):
         x='income_cat', y='dw_currency', ax=ax, hue='iso3', legend=False
     )
     ax.set_ylabel(None)
-    ax.set_title('Wellbeing losses, not exposed\n[$PPP 1,000]')
+    ax.set_title('Wellbeing losses, non-affected\n[$PPP 1,000]')
 
     # # plot wellbeing losses in consumption equivalent
     # ax = axs[1, 2]
@@ -2174,17 +2189,10 @@ def compute_national_recovery_duration(cat_info_data_, outpath=None):
     return result#, durations
 
 
-def load_data(simulation_paths_, input_data_dir_):
-    rename_income_groups = {
-        'Low income': 'LICs',
-        'Lower middle income': 'LMICs',
-        'Upper middle income': 'UMICs',
-        'High income': 'HICs'
-    }
-    income_groups_ = load_income_groups().replace(rename_income_groups)
-    income_groups_ = income_groups_.rename({'Income group': 'Country income group'}, axis=1)
+def load_data(simulation_paths_, model_root_dir_):
+    gini_index_ = pd.read_csv(os.path.join(model_root_dir_, "inputs/raw/WB_socio_economic_data/gini_index.csv"), index_col=0)
 
-    gini_index_ = pd.read_csv(os.path.join(input_data_dir_, "./WB_socio_economic_data/gini_index.csv"), index_col=0)
+    income_groups_ = load_income_groups(model_root_dir_)
 
     cat_info_data_ = {
         k: pd.read_csv(os.path.join(v, "iah.csv"), index_col=[0, 1, 2, 3, 4, 5]) for k, v in
@@ -2216,8 +2224,8 @@ def load_data(simulation_paths_, input_data_dir_):
         results_data_[k] = pd.merge(results_data_[k], income_groups_, left_on='iso3', right_index=True, how='left')
 
     # read WB data
-    wb_data_macro_ = pd.read_csv(os.path.join(input_data_dir, "WB_socio_economic_data/wb_data_macro.csv")).set_index('iso3')
-    wb_data_cat_info_ = pd.read_csv(os.path.join(input_data_dir, "WB_socio_economic_data/wb_data_cat_info.csv")).set_index(
+    wb_data_macro_ = pd.read_csv(os.path.join(model_root_dir_, "inputs/raw/WB_socio_economic_data/wb_data_macro.csv")).set_index('iso3')
+    wb_data_cat_info_ = pd.read_csv(os.path.join(model_root_dir_, "inputs/raw/WB_socio_economic_data/wb_data_cat_info.csv")).set_index(
         ['iso3', 'income_cat'])
     name_dict_ = {
         'resilience': 'socio-economic resilience [%]',
@@ -2242,24 +2250,27 @@ if __name__ == '__main__':
 
     outpath = args.outpath
     os.makedirs(outpath, exist_ok=True)
-    input_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inputs', 'raw')
+    model_root_dir = os.path.dirname(os.path.abspath(__file__))
 
     simulation_paths = {
         'baseline': '0_baseline',
-        'reduce_total_exposure_0.05': '1_reduce_total_exposure/q1+q2+q3+q4+q5/0.95',
-        'reduce_poor_exposure_0.05': '1_reduce_total_exposure/q1/0.95',
-        'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/q1+q2+q3+q4+q5/0.95',
-        'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/q1/0.95',
-        'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
-        'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
-        'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
-        'pds20': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.2',
-        'pds20_perfect': '9_post_disaster_support_perfect/q1+q2+q3+q4+q5/0.2',
-        'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
+        # 'reduce_total_exposure_0.05': '1_reduce_total_exposure/q1+q2+q3+q4+q5/0.95',
+        # 'reduce_poor_exposure_0.05': '1_reduce_total_exposure/q1/0.95',
+        # 'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/q1+q2+q3+q4+q5/0.95',
+        # 'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/q1/0.95',
+        # 'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
+        # 'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
+        # 'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
+        # 'pds40': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.4',
+        # # 'pds50': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.5',
+        # # 'pds20_perfect': '8a_post_disaster_support_perfect/q1+q2+q3+q4+q5/0.2',
+        # 'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
+        # 'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
+        # 'reduce_gini_10': '11_scale_gini_index/0.9',
     }
     simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
-    income_groups, gini_index, cat_info_data, macro_data, results_data, wb_data_macro, wb_data_cat_info, name_dict, any_to_wb, iso3_to_wb, iso2_iso3 = load_data(simulation_paths, input_data_dir)
+    income_groups, gini_index, cat_info_data, macro_data, results_data, wb_data_macro, wb_data_cat_info, name_dict, any_to_wb, iso3_to_wb, iso2_iso3 = load_data(simulation_paths, model_root_dir)
 
     gadm_world = gpd.read_file("/Users/robin/data/GADM/gadm_410-levels.gpkg", layer='ADM_0').set_crs(4326).to_crs('World_Robinson')
     gadm_world = gadm_world[~gadm_world.COUNTRY.isin(['Antarctica', 'Caspian Sea'])]
@@ -2278,11 +2289,11 @@ if __name__ == '__main__':
         plot_fig_2(
             data_=results_data['baseline'],
             world_=gadm_world,
-            bins_list={'resilience': [30, 40, 50, 60, 70, 80, 90, 100], 'risk': [0, .25, .5, 1, 2, 6],
+            bins_list={'resilience': [10, 20, 30, 40, 50, 60, 70, 80], 'risk': [0, .25, .5, 1, 2, 6],
                        'risk_to_assets': [0, .125, .25, .5, 1, 3]},
             cmap={'resilience': 'Reds_r', 'risk': 'Reds', 'risk_to_assets': 'Reds'},
             annotate=['HTI', 'TJK'],
-            outfile=f"{outpath}/fig_2.png",
+            outfile=f"{outpath}/fig_2.pdf",
             log_xaxis=True,
             run_ols=True,
             show=True,
@@ -2299,10 +2310,10 @@ if __name__ == '__main__':
         plot_fig_4(
             cat_info_data_=cat_info_data['baseline'],
             income_groups_=income_groups,
-            map_bins=[0, .5, 1, 2, 4, 7],
+            # map_bins=[0, .5, 1, 2, 4, 7],
+            map_bins=[1, 2.5, 5, 10, 25],
             world_=gadm_world,
-            plot_rp=100,
-            outfile=f"{outpath}/fig_4.png",
+            outfile=f"{outpath}/fig_4.pdf",
             show=True,
         )
 
@@ -2324,7 +2335,7 @@ if __name__ == '__main__':
         )
 
         plot_supfigs_3_4(
-            results_data_=results_data['baseline'],
+            capital_shares_=results_data['baseline'][['k_pub_share', 'k_priv_share', 'k_self_share', 'k_hous_share', 'owner_occ_housing_share_of_gdp_imputed', 'self_employment', 'gdp_pc_pp', 'Country income group']].copy(),
             outpath_=outpath,
         )
 

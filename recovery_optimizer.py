@@ -1017,7 +1017,7 @@ def run_experiment(sigma_h, delta_c_h_max, tolerance=1e-2, index=None,
         raise ValueError("Invalid delta_c_h_max parameter. Choose from 'None' or 'factor{value}'.")
 
     if sigma_h == 'data':
-        data['sigma_h'] = data['reconstruction_share_sigma_h']
+        data['sigma_h'] = data['k_household_share']
     elif 'factor' in sigma_h:
         data['sigma_h'] = float(sigma_h.replace('factor:', '')) * data['delta_k_h_eff']
     else:
