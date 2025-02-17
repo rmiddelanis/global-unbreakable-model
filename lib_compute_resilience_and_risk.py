@@ -23,7 +23,7 @@ def reshape_input(macro, cat_info, hazard_ratios, event_level):
     return macro_event, cat_info_event
 
 
-def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
+def compute_dk(macro_event, cat_info_event, event_level, affected_cats):
     macro_event_ = copy.deepcopy(macro_event)
     cat_info_event_ = copy.deepcopy(cat_info_event)
     cat_info_event_ia = concat_categories(cat_info_event_, cat_info_event_, index=affected_cats)
@@ -40,7 +40,7 @@ def compute_dK(macro_event, cat_info_event, event_level, affected_cats):
     # cat_info_event_ia.loc[(cat_info_event_ia.affected_cat == 'na'), "dk"] = 0
 
     # compute reconstruction capital share
-    cat_info_event_ia["dk_reco"] = cat_info_event_ia[["dk", "k_household_share"]].prod(axis=1)
+    cat_info_event_ia["dk_reco"] = cat_info_event_ia["dk"] * macro_event["k_household_share"]
 
     # "national" losses
     macro_event_["dk_ctry"] = agg_to_event_level(cat_info_event_ia, "dk", event_level)
@@ -217,9 +217,10 @@ def compute_response(macro_event, cat_info_event_iah, event_level, poor_cat, pds
 def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_max=np.nan, num_cores=None):
     opt_data = pd.merge(
         macro_event.rename(columns={'avg_prod_k': 'productivity_pi', 'rho': 'discount_rate_rho',
-                                    'tau_tax': 'delta_tax_sp', 'income_elasticity_eta': 'eta'}),
+                                    'tau_tax': 'delta_tax_sp', 'income_elasticity_eta': 'eta',
+                                    'k_household_share': 'sigma_h'}),
         cat_info_event_iah.rename(columns={'k': 'k_h_eff', 'dk': 'delta_k_h_eff', 'liquidity': 'savings_s_h',
-                                           'help_received': 'delta_i_h_pds', 'k_household_share': 'sigma_h'}),
+                                           'help_received': 'delta_i_h_pds'}),
         left_index=True, right_index=True
     )[['productivity_pi', 'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff', 'savings_s_h',
        'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'diversified_share']]
@@ -270,7 +271,7 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
 
 
 def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):#, long_term_horizon_=None):
-    cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - cat_info_event_iah['k_household_share'])
+    cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - macro_event['k_household_share'])
     hh_fee_share = cat_info_event_iah["c"] / agg_to_event_level(cat_info_event_iah, "c", event_level)
     cat_info_event_iah['help_fee'] = hh_fee_share * agg_to_event_level(cat_info_event_iah, 'help_received', event_level)
     cat_info_event_iah['reco_fee'] = hh_fee_share * agg_to_event_level(cat_info_event_iah, 'dk_pub', event_level)

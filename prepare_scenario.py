@@ -1054,11 +1054,10 @@ def prepare_scenario(scenario_params):
     macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
+    macro = macro.join(capital_shares, how='left')
     macro['rho'] = macro_params['discount_rate_rho']
     macro['max_increased_spending'] = macro_params['max_increased_spending']
     macro['income_elasticity_eta'] = macro_params['income_elasticity_eta']
-
-    cat_info = cat_info.join(capital_shares, how='left')
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)

@@ -758,9 +758,16 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=None, outfile=None, show=T
     differences = pd.concat(differences)
 
     # compute avoided wellbeing losses over avoided asset losses by country income group
-    reduced_assets_impact = differences[differences.scenario.isin(list(policy_scenarios.values())[:5])].copy()
+    reduced_assets_impact = differences[differences.scenario.isin(list(policy_scenarios.values())[:6])].copy()
     reduced_assets_impact['avoided_dw_over_avoided_dk'] = reduced_assets_impact['risk'] / reduced_assets_impact['risk_to_assets']
     print(reduced_assets_impact.groupby(['scenario', 'Country income group']).avoided_dw_over_avoided_dk.describe())
+
+    pds40_return = (results_data_['baseline'][['risk', 'gdp_pc_pp']].prod(axis=1) - results_data_['pds40'][['risk', 'gdp_pc_pp']].prod(axis=1)) / 100 / results_data_['pds40']['help_received']
+    insurance20_return = (results_data_['baseline'][['risk', 'gdp_pc_pp']].prod(axis=1) - results_data_['insurance20'][['risk', 'gdp_pc_pp']].prod(axis=1)) / 100 / results_data_['insurance20']['help_received']
+    returns_merged = pd.merge(
+        pd.concat([pds40_return.rename('pds40'), insurance20_return.rename('incurance20')], axis=1),
+        income_groups, left_index=True, right_index=True
+    )
 
     for ax, (var, var_name) in zip(axs, variables.items()):
         legend = False
@@ -1125,7 +1132,7 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, plot_rp, outfil
     # plot median country recovery duration for each Country income group
     for x_val, mean_val in enumerate(duration_ctry.groupby('Country income group').t_reco_avg.median().loc[['LICs', 'LMICs', 'UMICs', 'HICs']].values.flatten()):
         axs[2].plot([x_val - .4, x_val + .4], [mean_val, mean_val], color='black', lw=1)
-        print(f"Median recovery duration for {mean_val} in {['LICs', 'LMICs', 'UMICs', 'HICs'][x_val]}")
+        print(f"Median recovery duration for {['LICs', 'LMICs', 'UMICs', 'HICs'][x_val]}: {mean_val}")
 
     axs[2].set_ylabel('Median recovery duration\nby country income group [yr]')
     axs[2].set_xlabel('Country income group')
@@ -1794,7 +1801,8 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
 def plot_supfigs_3_4(results_data_, outpath_=None):
     capital_shares = results_data_.copy()
     fig, axs = plt.subplots(ncols=3, nrows=3, figsize=(double_col_width * centimeter, 16 * centimeter), sharex=False, sharey='row')
-    capital_shares[['k_pub_share', 'k_priv_share', 'k_household_share', 'real_estate_share_of_value_added', 'home_ownership_rate', 'self_employment']] *= 100
+    capital_shares['owner_occ_share_of_value_added'] = capital_shares['real_estate_share_of_value_added'] * capital_shares['home_ownership_rate']
+    capital_shares[['k_pub_share', 'k_priv_share', 'k_household_share', 'real_estate_share_of_value_added', 'home_ownership_rate', 'self_employment', 'owner_occ_share_of_value_added']] *= 100
     capital_shares['gdp_pc_pp'] /= 1e3
 
     for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_priv_share'), ('gdp_pc_pp', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
@@ -1819,13 +1827,17 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
             ax.set_xlabel('self employment rate [%]')
         axs[1, 0].set_ylabel('share [%]')
 
-    for ax, (x, y), name in zip(axs[2, :], [('home_ownership_rate', 'k_pub_share'), ('home_ownership_rate', 'k_priv_share'), ('home_ownership_rate', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+    # for ax, (x, y), name in zip(axs[2, :], [('home_ownership_rate', 'k_pub_share'), ('home_ownership_rate', 'k_priv_share'), ('home_ownership_rate', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+    for ax, (x, y), name in zip(axs[2, :], [('owner_occ_share_of_value_added', 'k_pub_share'), ('owner_occ_share_of_value_added', 'k_priv_share'), ('owner_occ_share_of_value_added', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+    # for ax, (x, y), name in zip(axs[2, :], [('real_estate_share_of_value_added', 'k_pub_share'), ('real_estate_share_of_value_added', 'k_priv_share'), ('real_estate_share_of_value_added', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
         x_ = capital_shares[x]
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
         for label in capital_shares.index:
             ax.text(x_.loc[label], capital_shares[y].loc[label], label, fontsize=6)
-            ax.set_xlabel('Home ownership rate [%]')
+            # ax.set_xlabel('Home ownership rate [%]')
+            ax.set_xlabel('Owner-occupied share\nof value added [%]')
+            # ax.set_xlabel('Real-estate share of GDP [%]')
         axs[2, 0].set_ylabel('share [%]')
 
     plt.tight_layout()
@@ -1840,12 +1852,14 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
     axs[0].set_xlabel('GDP per capita [$1,000 PPP]')
     axs[0].set_ylabel('self employment rate [%]')
 
-    sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='home_ownership_rate', alpha=.5, hue='Country income group',
+    # sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='home_ownership_rate', alpha=.5, hue='Country income group',
+    sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='owner_occ_share_of_value_added', alpha=.5, hue='Country income group',
                     hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], palette=INCOME_GROUP_COLORS,
                     style='Country income group', markers=INCOME_GROUP_MARKERS, s=10, ax=axs[1])
     axs[1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     axs[1].set_xlabel('GDP per capita [$1,000 PPP]')
-    axs[1].set_ylabel('home ownership rate [%]')
+    # axs[1].set_ylabel('home ownership rate [%]')
+    axs[1].set_ylabel('Owner-occupied share of value added [%]')
     plt.tight_layout()
     if outpath_ is not None:
         fig.savefig(os.path.join(outpath_, f"supfig_4.pdf"), dpi=300, bbox_inches='tight')
@@ -1870,6 +1884,7 @@ def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Flood', plot_rp=1
     plot_data[['v_ew', 'fa']] *= 100
 
     print("Characteristics:\n", plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped'], ['fa', 't_reco_95']])
+    print("Asset losses [bn USD]:\n", plot_data[['dk', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
     print("Wellbeing losses [bn USD]:\n", plot_data[['dw_currency', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
 
     fig1_1 = plot_fig_1_1(plot_data)

@@ -43,7 +43,7 @@ def run_model(settings: dict):
 
     # calculate the potential damage to capital, and consumption
     # adds 'dk', 'dc', 'dc_npv_pre' to cat_info_event_ia, also adds aggregated 'dk' to macro_event
-    macro_event, cat_info_event_ia = compute_dK(
+    macro_event, cat_info_event_ia = compute_dk(
         macro_event=macro_event,
         cat_info_event=cat_info_event,
         event_level=event_level,

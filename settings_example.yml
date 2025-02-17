@@ -1,7 +1,7 @@
 model_params:
   run_params:
     append_date: False
-    outpath: '/Users/robin/Documents/Karriere/Jobs/2023_The_World_Bank/03_projects/01_Unbreakable/04_paper/01_simulation_data/0_baseline'
+    outpath: './output/'
     verbose: False
   pds_params:
     pds_variant: 'no'
