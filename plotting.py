@@ -768,6 +768,7 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=None, outfile=None, show=T
         pd.concat([pds40_return.rename('pds40'), insurance20_return.rename('incurance20')], axis=1),
         income_groups, left_index=True, right_index=True
     )
+    print(returns_merged.groupby('Country income group')[['pds40', 'incurance20']].describe())
 
     for ax, (var, var_name) in zip(axs, variables.items()):
         legend = False
@@ -1805,7 +1806,7 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
     capital_shares[['k_pub_share', 'k_priv_share', 'k_household_share', 'real_estate_share_of_value_added', 'home_ownership_rate', 'self_employment', 'owner_occ_share_of_value_added']] *= 100
     capital_shares['gdp_pc_pp'] /= 1e3
 
-    for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_priv_share'), ('gdp_pc_pp', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+    for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_priv_share'), ('gdp_pc_pp', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
         legend = False
         if ax == axs[0, -1]:
             legend = True
@@ -1818,7 +1819,7 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
     axs[0, -1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     axs[0, 0].set_ylabel('share [%]')
 
-    for ax, (x, y), name in zip(axs[1, :], [('self_employment', 'k_pub_share'), ('self_employment', 'k_priv_share'), ('self_employment', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+    for ax, (x, y), name in zip(axs[1, :], [('self_employment', 'k_pub_share'), ('self_employment', 'k_priv_share'), ('self_employment', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
         x_ = capital_shares[x]
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
@@ -1827,9 +1828,9 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
             ax.set_xlabel('self employment rate [%]')
         axs[1, 0].set_ylabel('share [%]')
 
-    # for ax, (x, y), name in zip(axs[2, :], [('home_ownership_rate', 'k_pub_share'), ('home_ownership_rate', 'k_priv_share'), ('home_ownership_rate', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
-    for ax, (x, y), name in zip(axs[2, :], [('owner_occ_share_of_value_added', 'k_pub_share'), ('owner_occ_share_of_value_added', 'k_priv_share'), ('owner_occ_share_of_value_added', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
-    # for ax, (x, y), name in zip(axs[2, :], [('real_estate_share_of_value_added', 'k_pub_share'), ('real_estate_share_of_value_added', 'k_priv_share'), ('real_estate_share_of_value_added', 'k_household_share')], [r'$\kappa^{public}$', r'$\kappa^{firms}$', r'$\kappa^{households}$']):
+    # for ax, (x, y), name in zip(axs[2, :], [('home_ownership_rate', 'k_pub_share'), ('home_ownership_rate', 'k_priv_share'), ('home_ownership_rate', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
+    for ax, (x, y), name in zip(axs[2, :], [('owner_occ_share_of_value_added', 'k_pub_share'), ('owner_occ_share_of_value_added', 'k_priv_share'), ('owner_occ_share_of_value_added', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
+    # for ax, (x, y), name in zip(axs[2, :], [('real_estate_share_of_value_added', 'k_pub_share'), ('real_estate_share_of_value_added', 'k_priv_share'), ('real_estate_share_of_value_added', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
         x_ = capital_shares[x]
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
@@ -2126,9 +2127,6 @@ def load_data(simulation_paths_, model_root_dir_):
         simulation_paths_.items()
     }
 
-    # for k in macro_data_.keys():
-    #     macro_data_[k] = pd.merge(macro_data_[k], compute_national_recovery_duration(cat_info_data_[k]), left_index=True, right_index=True)
-
     results_data_ = {
         k: pd.read_csv(os.path.join(v, "results.csv"), index_col=0) for k, v in
         simulation_paths_.items()
@@ -2141,10 +2139,6 @@ def load_data(simulation_paths_, model_root_dir_):
         results_data_[k]['log_gdp_pc_pp'] = np.log(results_data_[k]['gdp_pc_pp'])
         results_data_[k] = pd.merge(results_data_[k], income_groups_, left_on='iso3', right_index=True, how='left')
 
-    # read WB data
-    wb_data_macro_ = pd.read_csv(os.path.join(model_root_dir_, "inputs/raw/WB_socio_economic_data/wb_data_macro.csv")).set_index('iso3')
-    wb_data_cat_info_ = pd.read_csv(os.path.join(model_root_dir_, "inputs/raw/WB_socio_economic_data/wb_data_cat_info.csv")).set_index(
-        ['iso3', 'income_cat'])
     name_dict_ = {
         'resilience': 'socio-economic resilience [%]',
         'risk': 'risk to wellbeing [% of GDP]',
@@ -2156,7 +2150,7 @@ def load_data(simulation_paths_, model_root_dir_):
     }
     any_to_wb_, iso3_to_wb_, iso2_iso3_ = get_country_name_dicts("./")
 
-    return income_groups_, gini_index_, cat_info_data_, macro_data_, results_data_, wb_data_macro_, wb_data_cat_info_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_
+    return income_groups_, gini_index_, cat_info_data_, macro_data_, results_data_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_
 
 
 if __name__ == '__main__':
@@ -2188,7 +2182,7 @@ if __name__ == '__main__':
     }
     simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
-    income_groups, gini_index, cat_info_data, macro_data, results_data, wb_data_macro, wb_data_cat_info, name_dict, any_to_wb, iso3_to_wb, iso2_iso3 = load_data(simulation_paths, model_root_dir)
+    income_groups, gini_index, cat_info_data, macro_data, results_data, name_dict, any_to_wb, iso3_to_wb, iso2_iso3 = load_data(simulation_paths, model_root_dir)
 
     gadm_world = gpd.read_file("/Users/robin/data/GADM/gadm_410-levels.gpkg", layer='ADM_0').set_crs(4326).to_crs('World_Robinson')
     gadm_world = gadm_world[~gadm_world.COUNTRY.isin(['Antarctica', 'Caspian Sea'])]
