@@ -151,7 +151,7 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True
 
 
 def calc_real_estate_share_of_value_added(root_dir, any_to_wb):
-    value_added = pd.read_csv(os.path.join(root_dir, "inputs/raw/undata_ntl_accounts/2025-02-13_value_added_by_industry.csv"))[['Country or Area', 'Item', 'Year', 'Series', 'SNA System', 'Fiscal Year Type', 'Value']]
+    value_added = pd.read_csv(os.path.join(root_dir, "inputs/raw/UNdata/2025-02-13_value_added_by_industry.csv"))[['Country or Area', 'Item', 'Year', 'Series', 'SNA System', 'Fiscal Year Type', 'Value']]
     value_added.rename({'Country or Area': 'country'}, axis=1, inplace=True)
     # value_added = value_added[(value_added['SNA System'] == 2008) & (value_added['Fiscal Year Type'] == 'Western calendar year')].drop(['SNA System', 'Fiscal Year Type'], axis=1)
 
@@ -199,14 +199,36 @@ def calc_real_estate_share_of_value_added(root_dir, any_to_wb):
 
 
 def load_home_ownership_rates(root_dir, any_to_wb):
+    un_tenure = pd.read_csv(os.path.join(root_dir, "inputs/raw/UNdata/2025-02-18_household_tenure.csv"))
+    un_tenure.rename(columns={'Country or Area': 'country'}, inplace=True)
+    un_tenure = un_tenure[['country', 'Year', 'Area', 'Type of housing unit', 'Tenure', 'Value']].dropna()
+    un_tenure = un_tenure[un_tenure.Area == 'Total'].drop('Area', axis=1)
+
+    un_tenure = un_tenure.set_index(['country', 'Year', 'Type of housing unit', 'Tenure']).Value
+
+    un_hor = (un_tenure.xs('Member of household owns the housing unit', level='Tenure') / un_tenure.xs('Total', level='Tenure')).dropna()
+
+    un_hor = un_hor.reset_index()
+
+    un_hor['Type_prio'] = un_hor['Type of housing unit'].replace({
+        'Total': 4,
+        'Conventional dwellings': 3,
+        'Other housing units': 2,
+        'Unknown (type of housing unit)': 1,
+    })
+    un_hor = un_hor.loc[un_hor.groupby(['country', 'Year'])['Type_prio'].idxmax()].drop(['Type_prio', 'Type of housing unit'], axis=1)
+    un_hor = un_hor.loc[un_hor.groupby('country').Year.idxmax()].drop('Year', axis=1)
+
+    un_hor = df_to_iso3(un_hor, 'country', any_to_wb, verbose_=False).dropna().set_index('iso3').Value.rename('home_ownership_rate')
+
     hor_oecd = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="OECD", header=0)
     hor_eurostat = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="Eurostat", header=0)
     hor_cahf = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="CAHF", header=0)
-    hor_word_pop_review = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="World Population Review", header=0)
-    hor_ceo_world = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="CEOWorld", header=0)
+    # hor_word_pop_review = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="World Population Review", header=0)
+    # hor_ceo_world = pd.read_excel(os.path.join(root_dir, "inputs/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="CEOWorld", header=0)
 
     hor = None
-    for df in [hor_oecd, hor_eurostat, hor_cahf, hor_word_pop_review, hor_ceo_world]:
+    for df in [hor_oecd, hor_eurostat, hor_cahf]:#, hor_word_pop_review]:#, hor_ceo_world]:
         df.columns.name = 'income_cat'
         df = df_to_iso3(df, 'country', any_to_wb, verbose_=False).dropna()
         df = df.set_index('iso3').drop('country', axis=1).stack().rename('home_ownership_rate')
@@ -216,6 +238,8 @@ def load_home_ownership_rates(root_dir, any_to_wb):
             hor = pd.merge(hor, df, left_index=True, right_index=True, how='outer')
             hor['home_ownership_rate'] = hor['home_ownership_rate_x'].fillna(hor['home_ownership_rate_y'])
             hor.drop(['home_ownership_rate_x', 'home_ownership_rate_y'], axis=1, inplace=True)
+    hor = pd.merge(hor.unstack('income_cat').mean(axis=1).rename('home_ownership_rate'), un_hor, left_index=True, right_index=True, how='outer')
+    hor = hor['home_ownership_rate_x'].fillna(hor['home_ownership_rate_y']).rename('home_ownership_rate')
     return hor
 
 
@@ -226,51 +250,52 @@ def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb):
     estat_capital_industry = estat_capital_industry.set_index(['iso3', 'year', 'nace_r2', 'asset10'])['capital_stock']
     estat_capital_industry *= 1e6
 
-    estat_k_total = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']].rename('K_total')
+    # estat_k_total = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']].rename('K_total')
 
     estat_k_real_est_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Real estate activities', 'Total fixed assets (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
     estat_k_real_est_share = estat_k_real_est_share.rename('k_real_estate_share')
 
-    estat_k_real_est_dwellings_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Real estate activities', 'Dwellings (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
-    estat_k_real_est_dwellings_share = estat_k_real_est_dwellings_share.rename('k_real_estate_dwellings_share')
+    # estat_k_real_est_dwellings_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Real estate activities', 'Dwellings (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
+    # estat_k_real_est_dwellings_share = estat_k_real_est_dwellings_share.rename('k_real_estate_dwellings_share')
 
-    estat_k_owner_occ_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Imputed rents of owner-occupied dwellings', 'Total fixed assets (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
-    estat_k_owner_occ_share = estat_k_owner_occ_share.rename('k_owner_occ_share')
-    estat_k_owner_occ_share.drop(['AUT', 'BGR'], inplace=True) # zero values
+    # estat_k_owner_occ_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Imputed rents of owner-occupied dwellings', 'Total fixed assets (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
+    # estat_k_owner_occ_share = estat_k_owner_occ_share.rename('k_owner_occ_share')
+    # estat_k_owner_occ_share.drop(['AUT', 'BGR'], inplace=True) # zero values
 
-    estat_k_owner_occ_dwellings_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Imputed rents of owner-occupied dwellings', 'Dwellings (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
-    estat_k_owner_occ_dwellings_share = estat_k_owner_occ_dwellings_share.rename('k_owner_occ_dwellings_share')
-    estat_k_owner_occ_dwellings_share.drop(['AUT', 'BGR'], inplace=True)  # zero values
-    estat_k_owner_occ_dwellings_share.drop(('CYP', 2020), inplace=True)  # zero values
+    # estat_k_owner_occ_dwellings_share = estat_capital_industry.loc[pd.IndexSlice[:, :, 'Imputed rents of owner-occupied dwellings', 'Dwellings (gross)']] / estat_capital_industry.loc[pd.IndexSlice[:, :, 'Total - all NACE activities', 'Total fixed assets (gross)']]
+    # estat_k_owner_occ_dwellings_share = estat_k_owner_occ_dwellings_share.rename('k_owner_occ_dwellings_share')
+    # estat_k_owner_occ_dwellings_share.drop(['AUT', 'BGR'], inplace=True)  # zero values
+    # estat_k_owner_occ_dwellings_share.drop(('CYP', 2020), inplace=True)  # zero values
 
-    estat_capital_sector = pd.read_csv(os.path.join(root_dir, "inputs/raw/Eurostat/eurostat__nama_10_nfa_bs__capital_stock.csv"))[['sector', 'asset10', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
-    estat_capital_sector.rename({'OBS_VALUE': 'capital_stock', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
-    estat_capital_sector = df_to_iso3(estat_capital_sector, 'country', any_to_wb, verbose_=False)
-    estat_capital_sector = estat_capital_sector.set_index(['iso3', 'year', 'sector', 'asset10'])['capital_stock']
-    estat_capital_sector *= 1e6
-    estat_k_pub_share = estat_capital_sector.loc[pd.IndexSlice[:, :, 'General government', 'Total fixed assets (net)']] / estat_capital_sector.loc[pd.IndexSlice[:, :, 'Total economy', 'Total fixed assets (net)']]
-    estat_k_pub_share = estat_k_pub_share.rename('k_pub_share')
+    # estat_capital_sector = pd.read_csv(os.path.join(root_dir, "inputs/raw/Eurostat/eurostat__nama_10_nfa_bs__capital_stock.csv"))[['sector', 'asset10', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
+    # estat_capital_sector.rename({'OBS_VALUE': 'capital_stock', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
+    # estat_capital_sector = df_to_iso3(estat_capital_sector, 'country', any_to_wb, verbose_=False)
+    # estat_capital_sector = estat_capital_sector.set_index(['iso3', 'year', 'sector', 'asset10'])['capital_stock']
+    # estat_capital_sector *= 1e6
+    # estat_k_pub_share = estat_capital_sector.loc[pd.IndexSlice[:, :, 'General government', 'Total fixed assets (net)']] / estat_capital_sector.loc[pd.IndexSlice[:, :, 'Total economy', 'Total fixed assets (net)']]
+    # estat_k_pub_share = estat_k_pub_share.rename('k_pub_share')
 
-    etat_value_added = pd.read_csv(os.path.join(root_dir, "inputs/raw/Eurostat/eurostat__nama_10_a64__value_added.csv"))[['nace_r2', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
-    etat_value_added.rename({'OBS_VALUE': 'value_added', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
-    etat_value_added = df_to_iso3(etat_value_added, 'country', any_to_wb, verbose_=False)
-    etat_value_added = etat_value_added.set_index(['iso3', 'year', 'nace_r2'])['value_added']
-    etat_value_added *= 1e6
+    estat_value_added = pd.read_csv(os.path.join(root_dir, "inputs/raw/Eurostat/eurostat__nama_10_a64__value_added.csv"))[['nace_r2', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
+    estat_value_added.rename({'OBS_VALUE': 'value_added', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
+    estat_value_added = df_to_iso3(estat_value_added, 'country', any_to_wb, verbose_=False)
+    estat_value_added = estat_value_added.set_index(['iso3', 'year', 'nace_r2'])['value_added']
+    estat_value_added *= 1e6
 
-    estat_real_estate_share_of_value_added = etat_value_added.xs('Real estate activities', level='nace_r2') / etat_value_added.xs('Total - all NACE activities', level='nace_r2')
+    estat_real_estate_share_of_value_added = estat_value_added.xs('Real estate activities', level='nace_r2') / estat_value_added.xs('Total - all NACE activities', level='nace_r2')
     estat_real_estate_share_of_value_added = estat_real_estate_share_of_value_added.rename('real_estate_share_of_value_added')
 
-    estat_owner_occ_rents_share_of_gdp = etat_value_added.xs('Imputed rents of owner-occupied dwellings', level='nace_r2') / etat_value_added.xs('Total - all NACE activities', level='nace_r2')
-    estat_owner_occ_rents_share_of_gdp = estat_owner_occ_rents_share_of_gdp.rename('owner_occupied_rents_share_of_value_added')
+    # estat_owner_occ_rents_share_of_gdp = estat_value_added.xs('Imputed rents of owner-occupied dwellings', level='nace_r2') / estat_value_added.xs('Total - all NACE activities', level='nace_r2')
+    # estat_owner_occ_rents_share_of_gdp = estat_owner_occ_rents_share_of_gdp.rename('owner_occupied_rents_share_of_value_added')
 
-    estat_avg_prod_k = etat_value_added.xs('Total - all NACE activities', level='nace_r2') / estat_capital_industry.xs('Total - all NACE activities', level='nace_r2').xs('Total fixed assets (gross)', level='asset10')
-    estat_avg_prod_k = estat_avg_prod_k.dropna().rename('avg_prod_k')
+    # estat_avg_prod_k = estat_value_added.xs('Total - all NACE activities', level='nace_r2') / estat_capital_industry.xs('Total - all NACE activities', level='nace_r2').xs('Total fixed assets (gross)', level='asset10')
+    # estat_avg_prod_k = estat_avg_prod_k.dropna().rename('avg_prod_k')
 
-    k_data = pd.concat([estat_k_total, estat_k_real_est_share, estat_k_real_est_dwellings_share, estat_k_owner_occ_share, estat_k_owner_occ_dwellings_share], axis=1)
-    va_data = pd.concat([estat_real_estate_share_of_value_added, estat_owner_occ_rents_share_of_gdp], axis=1)
-    estat_data = pd.merge(k_data, va_data, left_index=True,right_index=True, how='outer').dropna(how='all')
-    estat_data = pd.merge(estat_data, estat_avg_prod_k, left_index=True, right_index=True, how='outer')
-    estat_data = pd.merge(estat_data, estat_k_pub_share, left_index=True, right_index=True, how='outer')
+    # k_data = pd.concat([estat_k_total, estat_k_real_est_share, estat_k_real_est_dwellings_share, estat_k_owner_occ_share, estat_k_owner_occ_dwellings_share], axis=1)
+    # va_data = pd.concat([estat_real_estate_share_of_value_added, estat_owner_occ_rents_share_of_gdp], axis=1)
+    # estat_data = pd.merge(k_data, va_data, left_index=True,right_index=True, how='outer').dropna(how='all')
+    # estat_data = pd.merge(estat_data, estat_avg_prod_k, left_index=True, right_index=True, how='outer')
+    # estat_data = pd.merge(estat_data, estat_k_pub_share, left_index=True, right_index=True, how='outer')
+    estat_data = pd.merge(estat_real_estate_share_of_value_added, estat_k_real_est_share, left_index=True,right_index=True, how='outer').dropna(how='all')
 
     def kappa_hous_m(idx, m_):
         real_estate_share_theta_h = estat_data.loc[idx, 'real_estate_share_of_value_added']
@@ -279,9 +304,6 @@ def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb):
     m_opt_result = curve_fit(kappa_hous_m, m_fit_data.index, m_fit_data['k_real_estate_share'], p0=1)
     m_opt = m_opt_result[0][0]
     m_pred = kappa_hous_m(m_fit_data.index, m_opt)
-    m_rmse = np.sqrt(np.mean((m_pred - m_fit_data['k_real_estate_share']) ** 2))
-    m_r2 = r2_score(m_fit_data['k_real_estate_share'], m_pred)
-    pearson_corr_m = m_fit_data['k_real_estate_share'].corr(m_pred)
     return m_opt
 
 
@@ -330,7 +352,7 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         self_employment = self_employment.set_index('iso3').drop('country', axis=1).squeeze()
 
         home_ownership_rates = load_home_ownership_rates(root_dir_, any_to_wb_)
-        home_ownership_rates = home_ownership_rates.unstack('income_cat').mean(axis=1).rename('home_ownership_rate').squeeze()
+        # home_ownership_rates = home_ownership_rates.unstack('income_cat').mean(axis=1).rename('home_ownership_rate').squeeze()
 
         real_estate_share_of_value_added = calc_real_estate_share_of_value_added(root_dir_, any_to_wb_).squeeze()
         real_est_k_to_va_shares_ratio = estimate_real_est_k_to_va_shares_ratio(root_dir_, any_to_wb_)
@@ -357,10 +379,12 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
 
     if guess_missing_countries:
         income_groups = load_income_groups(root_dir_)
-        merged = pd.merge(capital_shares['real_estate_share_of_value_added'], income_groups,
+        merged = pd.merge(capital_shares, income_groups,
                           left_index=True, right_index=True, how='outer')
         capital_shares['real_estate_share_of_value_added'] = capital_shares['real_estate_share_of_value_added'].fillna(
             merged.groupby('Country income group')['real_estate_share_of_value_added'].transform('median'))
+        capital_shares['home_ownership_rate'] = capital_shares['home_ownership_rate'].fillna(
+            merged.groupby('Country income group')['home_ownership_rate'].transform('median'))
 
 
     capital_shares['k_real_est_share'] = capital_shares['real_estate_share_of_value_added'] * capital_shares['real_est_k_to_va_shares_ratio']
