@@ -1837,7 +1837,7 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
         for label in capital_shares.index:
             ax.text(x_.loc[label], capital_shares[y].loc[label], label, fontsize=6)
             # ax.set_xlabel('Home ownership rate [%]')
-            ax.set_xlabel('Owner-occupied share\nof value added [%]')
+            ax.set_xlabel('Owner-occupied housing share\nof value added [%]')
             # ax.set_xlabel('Real-estate share of GDP [%]')
         axs[2, 0].set_ylabel('share [%]')
 
