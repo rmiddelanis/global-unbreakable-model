@@ -72,7 +72,7 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
     return findex_data
 
 
-def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, write_output_=False, verbose=True):
+def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, verbose=True):
     # fin17a (2021): "Saved using an account at a financial institution"
     # fin17a (2017): "In the PAST 12 MONTHS, have you, personally, saved or set aside any money by using an
     #                   account at a bank or another type of formal financial institution (This can include
@@ -106,14 +106,10 @@ def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, write_output_=F
     axfin_data = df_to_iso3(axfin_data.reset_index('country'), 'country', any_to_wb_, verbose_=verbose)
     axfin_data = axfin_data.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat'])
 
-    # If an output path is provided, save the result to a CSV file at that path
-    if write_output_:
-        axfin_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_axfin.csv'))
-
     return axfin_data
 
 
-def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, write_output_=False, drop_refused=True, verbose=True):
+def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, drop_refused=True, verbose=True):
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}
 
     # Gather the data from the FINDEX datasets
@@ -165,9 +161,6 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, write_o
 
     liquidity_data = df_to_iso3(liquidity_data.reset_index('country'), 'country', any_to_wb_, verbose_=verbose)
     liquidity_data = liquidity_data.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat'])
-
-    if write_output_:
-        liquidity_data.to_csv(os.path.join(root_dir_, 'inputs', 'FINDEX', 'findex_liquidity.csv'))
 
     return liquidity_data
 
