@@ -1,5 +1,4 @@
-# This script provides data input for the resilience indicator multihazard model.
-# The script was developed by Robin Middelanis based on previous work by Adrien Vogt-Schilb and Jinqiang Chen.
+
 import argparse
 import yaml
 from scipy.optimize import curve_fit
@@ -13,7 +12,6 @@ import pandas as pd
 from lib import get_country_name_dicts, df_to_iso3
 from wb_api_wrapper import get_wb_mrv
 from time import time
-from sklearn.metrics import r2_score
 
 
 def load_income_groups(root_dir_):
