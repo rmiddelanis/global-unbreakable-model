@@ -1,3 +1,3 @@
-[submodule "inputs/raw/GEM_vulnerability/global_exposure_model"]
-	path = inputs/raw/GEM_vulnerability/global_exposure_model
+[submodule "global_exposure_model"]
+	path = scenario/data/raw/GEM_vulnerability/global_exposure_model
 	url = https://github.com/gem/global_exposure_model.git
