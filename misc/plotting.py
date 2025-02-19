@@ -868,6 +868,87 @@ def plot_supfig_7(results_data_, cat_info_data_, plot_rp=None, outfile=None, sho
         plt.close()
 
 
+def plot_supfig_7a(cat_info_data_, outfile=None, numbering=True, show=True):
+    # select rp=10 because liquidity and dk_reco are constant over rp
+    plot_data = cat_info_data_.loc[pd.IndexSlice[:, :, 10, :, 'a', 'not_helped'], ['dk_reco', 'liquidity']]
+    plot_data = plot_data.droplevel(['affected_cat', 'helped_cat', 'rp'])
+
+    liquidity_over_dk_reco = (plot_data.liquidity / plot_data.dk_reco).rename('liquidity_over_dk_reco').to_frame()
+    liquidity_rel = plot_data.xs('Earthquake', level='hazard').liquidity / plot_data.xs('Earthquake', level='hazard').groupby('iso3').liquidity.mean()
+    liquidity_rel = liquidity_rel.rename('liquidity').to_frame()
+
+    fig_width = double_col_width * centimeter
+    fig_heigt = fig_width / 2
+    fig, axs = plt.subplots(figsize=(fig_width, fig_heigt), ncols=2)
+
+    sns.boxplot(data=liquidity_over_dk_reco, x='income_cat', y='liquidity_over_dk_reco', hue='hazard', ax=axs[0])
+    axs[0].legend(frameon=False)
+    sns.boxplot(data=liquidity_rel, x='income_cat', y='liquidity', ax=axs[1])
+
+    for ax in axs:
+        ax.set_xlabel('Household income quintile')
+    axs[0].set_ylabel('Liquidity relative to reconstruction cost')
+    axs[1].set_ylabel('Liquidity relative to average liquidity')
+
+    plt.tight_layout(h_pad=1.08)
+
+    if numbering:
+        for i, ax in enumerate(axs):
+            ax.text(-.15, 1, f'{chr(97 + i)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax.transAxes)
+
+    if outfile:
+        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+
+    if show:
+        plt.show(block=False)
+
+
+
+def plot_supfig_9(cat_info_data_, outfile=None, show=True, numbering=True):
+    # select rp=10 because liquidity and dk_reco are constant over rp
+    plot_data = cat_info_data_.loc[pd.IndexSlice[:, :, 10, :, 'a', 'not_helped'], 'v_ew']
+    plot_data = plot_data.droplevel(['affected_cat', 'helped_cat', 'rp'])
+
+    # v_rel = (plot_data / plot_data.groupby(['iso3', 'hazard']).mean()).rename('v_rel').to_frame()
+    v_rel = plot_data.rename('v_rel')
+
+    v_rel = pd.merge(
+        v_rel, income_groups['Country income group'], left_index=True, right_index=True
+    )
+
+    fig_width = double_col_width * centimeter
+    fig_heigt = fig_width * .75
+    fig, axs = plt.subplots(figsize=(fig_width, fig_heigt), ncols=3, nrows=2, sharey=True, sharex=False)
+    axs.flatten()[-1].remove()
+
+    # for cig, ax in zip(['LICs', 'LMICs', 'UMICs', 'HICs'], axs):
+    for idx, (hazard, ax) in enumerate(zip(plot_data.index.get_level_values('hazard').unique(), axs.flatten())):
+        legend = idx == 2
+        # sns.boxplot(data=v_rel[v_rel['Country income group'] == cig], x='income_cat', y='v_rel', hue='hazard', ax=ax,
+        #             legend=legend, showfliers=False)
+        sns.boxplot(data=v_rel.xs(hazard, level='hazard'), x='income_cat', y='v_rel', hue='Country income group', ax=ax,
+                    legend=legend, showfliers=False, hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'])
+        if legend:
+            ax.legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1))
+        ax.set_ylabel('Household vulnerability')
+        ax.set_xlabel('Household income quintile')
+        ax.set_title(hazard)
+
+    plt.tight_layout(h_pad=1.08)
+
+    if numbering:
+        for i, ax in enumerate(axs.flatten()):
+            ax.text(-.05, 1.08, f'{chr(97 + i)}', ha='left', va='top', fontsize=8, fontweight='bold',
+                    transform=ax.transAxes)
+
+    if outfile:
+        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+
+    if show:
+        plt.show(block=False)
+
+
+
 def plot_hazard_detail_supfig(cat_info_data_, income_groups_, plot_rp=100, outfile=None, show=False):
     hazards = cat_info_data_.index.get_level_values('hazard').unique()
     fig_width = double_col_width * centimeter
@@ -2278,12 +2359,25 @@ if __name__ == '__main__':
             show=True,
         )
 
+        plot_supfig_7a(
+            cat_info_data_=cat_info_data['baseline'],
+            outfile=f"{outpath}/supfig_7a.pdf",
+            numbering=True,
+            show=True,
+        )
+
         plot_supfig_8(
             cat_info_data_=cat_info_data['noLiquidity'],
             outfile=f"{outpath}/supfig_8.pdf",
             show=True,
             numbering=False,
             plot_rp=None,
+        )
+
+        plot_supfig_9(
+            cat_info_data_=cat_info_data['baseline'],
+            outfile=f"{outpath}/supfig_9.pdf",
+            show=True,
         )
 
     print_stats(results_data['baseline'])
