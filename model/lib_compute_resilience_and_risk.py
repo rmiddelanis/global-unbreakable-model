@@ -4,15 +4,13 @@ import pandas as pd
 from misc.helpers import concat_categories, average_over_rp
 from model.recovery_optimizer import optimize_data, recompute_data_with_tax
 
-pd.set_option('display.width', 220)
 
 def reshape_input(macro, cat_info, hazard_ratios, event_level):
     # Broadcast macro to event level
     macro_event = pd.merge(macro, hazard_ratios.iloc[:, 0].unstack('income_cat'), left_index=True, right_index=True)[macro.columns]
     macro_event = macro_event.reorder_levels(event_level).sort_index()
 
-    cat_info_event = pd.merge(hazard_ratios[['fa', 'v_ew']], cat_info, left_index=True,
-                              right_index=True)
+    cat_info_event = pd.merge(hazard_ratios[['fa', 'v_ew']], cat_info, left_index=True, right_index=True)
     cat_info_event = cat_info_event.reorder_levels(event_level + ["income_cat"]).sort_index()
 
     return macro_event, cat_info_event
@@ -308,7 +306,7 @@ def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, delt
 
 
 def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_protection_,
-                   is_local_welfare=True, return_stats=True):#, long_term_horizon_=None):
+                   is_local_welfare=True, return_stats=True):
     # generate output df
     out = pd.DataFrame(index=macro_event.index)
 
@@ -322,22 +320,12 @@ def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_p
     out["dk_tot"] = out["dk"] * macro_event["pop"]
     out["dw_tot"] = out["dw"] * macro_event["pop"]
 
-    if return_stats:
-        stats = np.setdiff1d(cat_info_event_iah.columns, event_level + ['helped_cat', 'affected_cat', 'income_cat',
-                                                                        'has_received_help_from_PDS_cat', 'recovery_params'])
-        df_stats = agg_to_event_level(cat_info_event_iah, stats, event_level)
-        print("stats are " + ",".join(stats))
-        out[df_stats.columns] = df_stats
-
     # aggregate losses
     # Averages over return periods to get dk_{hazard} and dW_{hazard}
     out = average_over_rp(out, hazard_protection_)
 
     # Sums over hazard dk, dW (gets one line per economy)
-    # TODO: average over axfin, social, gamma_SP does not really carry any meaning. Should be dropped.
-    out = out.groupby(level="iso3").aggregate(
-        {c: 'sum' if c not in ['axfin', 'social', 'gamma_SP'] else 'mean' for c in out.columns}
-    )
+    out = out.groupby(level="iso3").sum()
 
     # adds dk and dw-like columns to macro
     out = pd.concat((macro, out), axis=1)

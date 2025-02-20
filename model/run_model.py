@@ -2,13 +2,13 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import argparse
-from lib_compute_resilience_and_risk import *
+from scenario.prepare_scenario import prepare_scenario
+from model.lib_compute_resilience_and_risk import *
 import os
 import warnings
 import pandas as pd
 import time
 import yaml
-from scenario.prepare_scenario import prepare_scenario
 
 warnings.filterwarnings("always", category=UserWarning)
 
@@ -87,7 +87,6 @@ def run_model(settings: dict):
         event_level=event_level,
         hazard_protection_=hazard_protection,
         is_local_welfare=True,
-        return_stats=True,
     )
 
     date_time_string = ''

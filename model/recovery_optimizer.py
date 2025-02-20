@@ -2,13 +2,10 @@ import argparse
 import multiprocessing
 from datetime import datetime
 from functools import partial
-
 import numpy as np
 import pandas as pd
 import tqdm
 from scipy import integrate, optimize
-
-import matplotlib.pyplot as plt
 
 
 def delta_capital_k_eff_of_t(t_, recovery_parameters_, t_tilde_parameters_=None):

@@ -1888,8 +1888,8 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
 def plot_supfigs_3_4(results_data_, outpath_=None):
     capital_shares = results_data_.copy()
     fig, axs = plt.subplots(ncols=3, nrows=3, figsize=(double_col_width * centimeter, 16 * centimeter), sharex=False, sharey='row')
-    capital_shares['owner_occ_share_of_value_added'] = capital_shares['real_estate_share_of_value_added'] * capital_shares['home_ownership_rate']
-    capital_shares[['k_pub_share', 'k_priv_share', 'k_household_share', 'real_estate_share_of_value_added', 'home_ownership_rate', 'self_employment', 'owner_occ_share_of_value_added']] *= 100
+    capital_shares[['k_priv_share', 'k_household_share', 'owner_occupied_share_of_value_added', 'self_employment']] *= 100
+    capital_shares['k_pub_share'] = 100 - capital_shares['k_priv_share'] - capital_shares['k_household_share']
     capital_shares['gdp_pc_pp'] /= 1e3
 
     for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_priv_share'), ('gdp_pc_pp', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
@@ -1914,42 +1914,18 @@ def plot_supfigs_3_4(results_data_, outpath_=None):
             ax.set_xlabel('self employment rate [%]')
         axs[1, 0].set_ylabel('share [%]')
 
-    # for ax, (x, y), name in zip(axs[2, :], [('home_ownership_rate', 'k_pub_share'), ('home_ownership_rate', 'k_priv_share'), ('home_ownership_rate', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
-    for ax, (x, y), name in zip(axs[2, :], [('owner_occ_share_of_value_added', 'k_pub_share'), ('owner_occ_share_of_value_added', 'k_priv_share'), ('owner_occ_share_of_value_added', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
-    # for ax, (x, y), name in zip(axs[2, :], [('real_estate_share_of_value_added', 'k_pub_share'), ('real_estate_share_of_value_added', 'k_priv_share'), ('real_estate_share_of_value_added', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
+    for ax, (x, y), name in zip(axs[2, :], [('owner_occupied_share_of_value_added', 'k_pub_share'), ('owner_occupied_share_of_value_added', 'k_priv_share'), ('owner_occupied_share_of_value_added', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
         x_ = capital_shares[x]
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
         for label in capital_shares.index:
             ax.text(x_.loc[label], capital_shares[y].loc[label], label, fontsize=6)
-            # ax.set_xlabel('Home ownership rate [%]')
             ax.set_xlabel('Owner-occupied housing share\nof value added [%]')
-            # ax.set_xlabel('Real-estate share of GDP [%]')
         axs[2, 0].set_ylabel('share [%]')
 
     plt.tight_layout()
     if outpath_ is not None:
         fig.savefig(os.path.join(outpath_, f"supfig_3.pdf"), dpi=300, bbox_inches='tight')
-    plt.show(block=False)
-
-    fig, axs = plt.subplots(figsize=(2 * single_col_width * centimeter, single_col_width * centimeter), ncols=2)
-    sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='self_employment', alpha=.5, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], palette=INCOME_GROUP_COLORS,
-                    style='Country income group', markers=INCOME_GROUP_MARKERS, s=10, ax=axs[0], legend=False)
-    axs[0].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
-    axs[0].set_xlabel('GDP per capita [$1,000 PPP]')
-    axs[0].set_ylabel('self employment rate [%]')
-
-    # sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='home_ownership_rate', alpha=.5, hue='Country income group',
-    sns.scatterplot(data=capital_shares, x='gdp_pc_pp', y='owner_occ_share_of_value_added', alpha=.5, hue='Country income group',
-                    hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], palette=INCOME_GROUP_COLORS,
-                    style='Country income group', markers=INCOME_GROUP_MARKERS, s=10, ax=axs[1])
-    axs[1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
-    axs[1].set_xlabel('GDP per capita [$1,000 PPP]')
-    # axs[1].set_ylabel('home ownership rate [%]')
-    axs[1].set_ylabel('Owner-occupied share of value added [%]')
-    plt.tight_layout()
-    if outpath_ is not None:
-        fig.savefig(os.path.join(outpath_, f"supfig_4.pdf"), dpi=300, bbox_inches='tight')
     plt.show(block=False)
 
 
@@ -2219,7 +2195,8 @@ def load_data(simulation_paths_, model_root_dir_):
     }
 
     for k in results_data_.keys():
-        results_data_[k] = results_data_[k].drop('THA')
+        if 'THA' in results_data_[k].index:
+            results_data_[k] = results_data_[k].drop('THA')
         results_data_[k][['resilience', 'risk', 'risk_to_assets']] *= 100
         results_data_[k] = results_data_[k].join(gini_index_, on='iso3')
         results_data_[k]['log_gdp_pc_pp'] = np.log(results_data_[k]['gdp_pc_pp'])
@@ -2252,17 +2229,17 @@ if __name__ == '__main__':
 
     simulation_paths = {
         'baseline': '0_baseline',
-        'reduce_total_exposure_0.05': '1_reduce_total_exposure/q1+q2+q3+q4+q5/0.95',
-        'reduce_poor_exposure_0.05': '1_reduce_total_exposure/q1/0.95',
-        'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/q1+q2+q3+q4+q5/0.95',
-        'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/q1/0.95',
-        'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
-        'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
-        'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
-        'pds40': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.4',
-        'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
-        'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
-        'reduce_gini_10': '11_scale_gini_index/0.9',
+        # 'reduce_total_exposure_0.05': '1_reduce_total_exposure/q1+q2+q3+q4+q5/0.95',
+        # 'reduce_poor_exposure_0.05': '1_reduce_total_exposure/q1/0.95',
+        # 'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/q1+q2+q3+q4+q5/0.95',
+        # 'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/q1/0.95',
+        # 'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
+        # 'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
+        # 'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
+        # 'pds40': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.4',
+        # 'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
+        # 'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
+        # 'reduce_gini_10': '11_scale_gini_index/0.9',
     }
     simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
@@ -2306,8 +2283,6 @@ if __name__ == '__main__':
         plot_fig_4(
             cat_info_data_=cat_info_data['baseline'],
             income_groups_=income_groups,
-            # map_bins=[0, .5, 1, 2, 4, 7],
-            # map_bins=[1, 2.5, 5, 10, 20, 30],
             map_bins=[.5, 1, 2, 4, 8, 16, 30],
             plot_rp=None,
             world_=gadm_world,

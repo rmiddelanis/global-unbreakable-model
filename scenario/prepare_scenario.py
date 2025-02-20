@@ -358,36 +358,30 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         capital_shares = pd.merge(real_estate_share_of_value_added, capital_shares, left_index=True, right_index=True, how='outer')
         capital_shares['real_est_k_to_va_shares_ratio'] = real_est_k_to_va_shares_ratio
 
-        capital_shares.to_csv(capital_shares_before_adjustment_path)
+        # fill na-values with the median of the respective country income group
+        if guess_missing_countries:
+            income_groups = load_income_groups(root_dir_)
+            merged = pd.merge(capital_shares, income_groups, left_index=True, right_index=True, how='outer')
+            capital_shares['real_estate_share_of_value_added'] = capital_shares['real_estate_share_of_value_added'].fillna(
+                merged.groupby('Country income group')['real_estate_share_of_value_added'].transform('median'))
+            capital_shares['home_ownership_rate'] = capital_shares['home_ownership_rate'].fillna(
+                merged.groupby('Country income group')['home_ownership_rate'].transform('median'))
 
-    # new_index = pd.MultiIndex.from_product([capital_shares.index, ['q1', 'q2', 'q3', 'q4', 'q5']],
-    #                                        names=['iso3', 'income_cat'])
-    # capital_shares = capital_shares.reindex(capital_shares.index.repeat(5)).reset_index(drop=True)
-    # capital_shares.index = new_index
+        capital_shares['k_real_est_share'] = capital_shares['real_estate_share_of_value_added'] * capital_shares['real_est_k_to_va_shares_ratio']
+        capital_shares['k_labor_share'] = 1 - capital_shares['k_pub_share'] - capital_shares['k_real_est_share'] * capital_shares['home_ownership_rate']
+        capital_shares['owner_occupied_share_of_value_added'] = capital_shares['home_ownership_rate'] * capital_shares['real_estate_share_of_value_added']
+
+        capital_shares[['k_labor_share', 'self_employment', 'owner_occupied_share_of_value_added', 'real_est_k_to_va_shares_ratio']].to_csv(capital_shares_before_adjustment_path)
 
     if scale_self_employment is not None:
         # capital_shares.loc[pd.IndexSlice[:, scale_self_employment['scope'].split('+')], 'self_employment'] *= scale_self_employment['parameter']
         capital_shares['self_employment'] *= scale_self_employment['parameter']
 
-    # fill na-values with the median of the respective country income group
-
-    if guess_missing_countries:
-        income_groups = load_income_groups(root_dir_)
-        merged = pd.merge(capital_shares, income_groups,
-                          left_index=True, right_index=True, how='outer')
-        capital_shares['real_estate_share_of_value_added'] = capital_shares['real_estate_share_of_value_added'].fillna(
-            merged.groupby('Country income group')['real_estate_share_of_value_added'].transform('median'))
-        capital_shares['home_ownership_rate'] = capital_shares['home_ownership_rate'].fillna(
-            merged.groupby('Country income group')['home_ownership_rate'].transform('median'))
-
-
-    capital_shares['k_real_est_share'] = capital_shares['real_estate_share_of_value_added'] * capital_shares['real_est_k_to_va_shares_ratio']
-    capital_shares['k_labor_share'] = 1 - capital_shares['k_pub_share'] - capital_shares['k_real_est_share'] * capital_shares['home_ownership_rate']
     capital_shares['k_self_share'] = capital_shares['k_labor_share'] * capital_shares['self_employment']
     capital_shares['k_priv_share'] = capital_shares['k_labor_share'] * (1 - capital_shares['self_employment'])
-    capital_shares['k_household_share'] = capital_shares['k_real_est_share'] * capital_shares['home_ownership_rate'] + capital_shares['k_self_share']
+    capital_shares['k_household_share'] = capital_shares['owner_occupied_share_of_value_added'] * capital_shares['real_est_k_to_va_shares_ratio'] + capital_shares['k_self_share']
 
-    return capital_shares.dropna(subset='k_household_share')
+    return capital_shares.dropna(subset='k_household_share')[['k_priv_share', 'k_household_share', 'owner_occupied_share_of_value_added', 'self_employment', 'real_est_k_to_va_shares_ratio']]
 
 
 def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population_data_=None,
@@ -899,12 +893,12 @@ def load_gem_data(
     return residential_share, gem_building_classes
 
 
-def gather_capital_data(root_dir_, force_recompute=True):
+def get_average_capital_productivity(root_dir_, force_recompute=True):
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
-    outpath = os.path.join(root_dir_, "data/processed/capital_data.csv")
+    outpath = os.path.join(root_dir_, "data/processed/avg_prod_k.csv")
     if not force_recompute and os.path.exists(outpath):
         print("Loading capital data from file...")
-        return pd.read_csv(outpath, index_col='iso3')
+        return pd.read_csv(outpath, index_col='iso3').squeeze()
 
     print("Recomputing capital data...")
     capital_data = pd.read_excel(os.path.join(root_dir_, "data/raw/PWT_macro_economic_data/pwt1001.xlsx"), sheet_name="Data")
@@ -921,9 +915,9 @@ def gather_capital_data(root_dir_, force_recompute=True):
     capital_data["avg_prod_k"] = capital_data.cgdpo / capital_data.cn
     capital_data = capital_data.dropna()
 
-    capital_data.to_csv(outpath)
+    capital_data.avg_prod_k.to_csv(outpath)
 
-    return capital_data
+    return capital_data.avg_prod_k
 
 
 def social_to_tx_and_gsp(cat_info):
@@ -1037,10 +1031,10 @@ def prepare_scenario(scenario_params):
         timestamp = time()
 
     # load average productivity of capital
-    avg_prod_k = gather_capital_data(
+    avg_prod_k = get_average_capital_productivity(
         root_dir_=scenario_root_dir,
         force_recompute=run_params['force_recompute']
-    ).avg_prod_k
+    )
     if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
