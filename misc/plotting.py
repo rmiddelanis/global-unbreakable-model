@@ -2260,8 +2260,6 @@ if __name__ == '__main__':
         'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
         'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
         'pds40': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.4',
-        # 'pds50': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.5',
-        # 'pds20_perfect': '8a_post_disaster_support_perfect/q1+q2+q3+q4+q5/0.2',
         'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
         'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
         'reduce_gini_10': '11_scale_gini_index/0.9',
