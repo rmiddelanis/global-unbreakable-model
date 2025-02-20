@@ -124,11 +124,9 @@ def get_wb_data(root_dir, include_remittances=True, use_additional_data=False, d
 
     macro_df_ = df_to_iso3(macro_df_.reset_index(), 'country', any_to_wb, verbose_=verbose)
     macro_df_ = macro_df_[~macro_df_.iso3.isna()].set_index('iso3').drop('country', axis=1)
-    macro_df_.dropna(how="all", inplace=True)
 
     cat_info_df_ = df_to_iso3(cat_info_df_.reset_index(), 'country', any_to_wb, verbose_=verbose)
     cat_info_df_ = cat_info_df_[~cat_info_df_.iso3.isna()].set_index(['iso3', 'income_cat']).drop('country', axis=1)
-    cat_info_df_.dropna(how="all", inplace=True)
 
     # legacy additions are not formatted to ISO3; therefore, they cannot be added after the df_to_iso3 function
     if use_additional_data:
@@ -136,8 +134,9 @@ def get_wb_data(root_dir, include_remittances=True, use_additional_data=False, d
                                          index_col=[0, 1]).squeeze()
         cat_info_df_.social.fillna(guessed_social, inplace=True)
 
-    complete_countries = np.intersect1d(macro_df_.dropna().index.get_level_values('iso3').unique(),
-                                        cat_info_df_.dropna().index.get_level_values('iso3').unique())
+    complete_macro = macro_df_.dropna().index.get_level_values('iso3').unique()
+    complete_cat_info = cat_info_df_.isna().any(axis=1).replace(True, np.nan).unstack('income_cat').dropna(how='any').index.unique()
+    complete_countries = np.intersect1d(complete_macro, complete_cat_info)
     if verbose:
         print(f"Full data for {len(complete_countries)} countries.")
     if drop_incomplete:
