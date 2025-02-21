@@ -1,1 +1,3 @@
-The data in file _findex_axfin.csv_ was created using the script _gather_findex_data.py_ 
+Sources for files in this folder:
+
+* **WLD_20{YY}_FINDEX_v0{v}_M.csv**: Can be downloaded from https://microdata.worldbank.org/index.php/catalog/global-findex 

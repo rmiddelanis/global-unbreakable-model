@@ -1,0 +1,1 @@
+This folder provides mappings of country names and iso codes.
