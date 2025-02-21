@@ -147,7 +147,7 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True
     return liquidity_and_axfin
 
 
-def calc_real_estate_share_of_value_added(root_dir, any_to_wb):
+def calc_real_estate_share_of_value_added(root_dir, any_to_wb, verbose=True):
     value_added = pd.read_csv(os.path.join(root_dir, "data/raw/UNdata/2025-02-13_value_added_by_industry.csv"))[['Country or Area', 'Item', 'Year', 'Series', 'SNA System', 'Fiscal Year Type', 'Value']]
     value_added.rename({'Country or Area': 'country'}, axis=1, inplace=True)
     # value_added = value_added[(value_added['SNA System'] == 2008) & (value_added['Fiscal Year Type'] == 'Western calendar year')].drop(['SNA System', 'Fiscal Year Type'], axis=1)
@@ -190,12 +190,12 @@ def calc_real_estate_share_of_value_added(root_dir, any_to_wb):
     real_est_value_added_share = real_est_value_added_share.loc[real_est_value_added_share.groupby('country').Year.idxmax()].drop('Year', axis=1)
 
     # replace country names with iso3 codes
-    real_est_value_added_share = df_to_iso3(real_est_value_added_share, 'country', any_to_wb, verbose_=True).set_index('iso3').drop('country', axis=1)
+    real_est_value_added_share = df_to_iso3(real_est_value_added_share, 'country', any_to_wb, verbose_=verbose).set_index('iso3').drop('country', axis=1)
 
     return real_est_value_added_share
 
 
-def load_home_ownership_rates(root_dir, any_to_wb):
+def load_home_ownership_rates(root_dir, any_to_wb, verbose):
     un_tenure = pd.read_csv(os.path.join(root_dir, "data/raw/UNdata/2025-02-18_household_tenure.csv"))
     un_tenure.rename(columns={'Country or Area': 'country'}, inplace=True)
     un_tenure = un_tenure[['country', 'Year', 'Area', 'Type of housing unit', 'Tenure', 'Value']].dropna()
@@ -216,7 +216,7 @@ def load_home_ownership_rates(root_dir, any_to_wb):
     un_hor = un_hor.loc[un_hor.groupby(['country', 'Year'])['Type_prio'].idxmax()].drop(['Type_prio', 'Type of housing unit'], axis=1)
     un_hor = un_hor.loc[un_hor.groupby('country').Year.idxmax()].drop('Year', axis=1)
 
-    un_hor = df_to_iso3(un_hor, 'country', any_to_wb, verbose_=False).dropna().set_index('iso3').Value.rename('home_ownership_rate')
+    un_hor = df_to_iso3(un_hor, 'country', any_to_wb, verbose_=verbose).dropna().set_index('iso3').Value.rename('home_ownership_rate')
 
     hor_oecd = pd.read_excel(os.path.join(root_dir, "data/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="OECD", header=0)
     hor_eurostat = pd.read_excel(os.path.join(root_dir, "data/raw/Home_ownership_rates/home_ownership_rates.xlsx"), sheet_name="Eurostat", header=0)
@@ -225,7 +225,7 @@ def load_home_ownership_rates(root_dir, any_to_wb):
     hor = None
     for df in [hor_oecd, hor_eurostat, hor_cahf]:
         df.columns.name = 'income_cat'
-        df = df_to_iso3(df, 'country', any_to_wb, verbose_=False).dropna()
+        df = df_to_iso3(df, 'country', any_to_wb, verbose_=verbose).dropna()
         df = df.set_index('iso3').drop('country', axis=1).stack().rename('home_ownership_rate')
         if hor is None:
             hor = df
@@ -238,10 +238,10 @@ def load_home_ownership_rates(root_dir, any_to_wb):
     return hor
 
 
-def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb):
+def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb, verbose):
     estat_capital_industry = pd.read_csv(os.path.join(root_dir, "data/raw/Eurostat/eurostat__nama_10_nfa_st__capital_stock.csv"))[['nace_r2', 'asset10', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
     estat_capital_industry.rename({'OBS_VALUE': 'capital_stock', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
-    estat_capital_industry = df_to_iso3(estat_capital_industry, 'country', any_to_wb, verbose_=False)
+    estat_capital_industry = df_to_iso3(estat_capital_industry, 'country', any_to_wb, verbose_=verbose)
     estat_capital_industry = estat_capital_industry.set_index(['iso3', 'year', 'nace_r2', 'asset10'])['capital_stock']
     estat_capital_industry *= 1e6
 
@@ -272,7 +272,7 @@ def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb):
 
     estat_value_added = pd.read_csv(os.path.join(root_dir, "data/raw/Eurostat/eurostat__nama_10_a64__value_added.csv"))[['nace_r2', 'geo', 'TIME_PERIOD', 'OBS_VALUE']]
     estat_value_added.rename({'OBS_VALUE': 'value_added', 'geo': 'country', 'TIME_PERIOD': 'year'}, axis=1, inplace=True)
-    estat_value_added = df_to_iso3(estat_value_added, 'country', any_to_wb, verbose_=False)
+    estat_value_added = df_to_iso3(estat_value_added, 'country', any_to_wb, verbose_=verbose)
     estat_value_added = estat_value_added.set_index(['iso3', 'year', 'nace_r2'])['value_added']
     estat_value_added *= 1e6
 
@@ -346,11 +346,11 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         self_employment = df_to_iso3(self_employment.reset_index(), 'country', any_to_wb_, verbose_=verbose).dropna(subset='iso3')
         self_employment = self_employment.set_index('iso3').drop('country', axis=1).squeeze()
 
-        home_ownership_rates = load_home_ownership_rates(root_dir_, any_to_wb_)
+        home_ownership_rates = load_home_ownership_rates(root_dir_, any_to_wb_, verbose)
         # home_ownership_rates = home_ownership_rates.unstack('income_cat').mean(axis=1).rename('home_ownership_rate').squeeze()
 
-        real_estate_share_of_value_added = calc_real_estate_share_of_value_added(root_dir_, any_to_wb_).squeeze()
-        real_est_k_to_va_shares_ratio = estimate_real_est_k_to_va_shares_ratio(root_dir_, any_to_wb_)
+        real_estate_share_of_value_added = calc_real_estate_share_of_value_added(root_dir_, any_to_wb_, verbose).squeeze()
+        real_est_k_to_va_shares_ratio = estimate_real_est_k_to_va_shares_ratio(root_dir_, any_to_wb_, verbose)
 
         # capital_shares = pd.merge(capital_share_of_gdp, k_pub_share, left_index=True, right_index=True, how='inner')
         capital_shares = pd.merge(self_employment, k_pub_share, left_index=True, right_index=True, how='outer')
