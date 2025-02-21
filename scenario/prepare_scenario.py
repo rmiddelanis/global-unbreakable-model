@@ -606,7 +606,7 @@ def process_vulnerability_data(
     return vulnerability_
 
 
-def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None, cat_ddo_filepath="CatDDO/catddo.xlsx",
+def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None, cat_ddo_filepath="CatDDO/catddo.csv",
                               verbose=True, force_recompute=True):
     outpath = os.path.join(root_dir_, "data/processed/borrowing_ability.csv")
     if not force_recompute and os.path.exists(outpath):
@@ -618,9 +618,10 @@ def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None,
     borrowing_ability_ = credit_ratings.rename('borrowing_ability')
     if finance_preparedness_ is not None:
         borrowing_ability_ = pd.concat((borrowing_ability_, finance_preparedness_), axis=1).mean(axis=1).rename('borrowing_ability')
-    catddo_countries = pd.concat(pd.read_excel(os.path.join(root_dir_, "data/raw/", cat_ddo_filepath), sheet_name=[0, 1, 2], header=0), axis=0)
-    catddo_countries = df_to_iso3(catddo_countries, 'Country', verbose_=verbose).iso3.unique()
-    catddo_countries = pd.Series(index=pd.Index(catddo_countries, name='iso3'), data=1, name='contingent_countries')
+    catddo_countries = pd.read_csv(os.path.join(root_dir_, "data/raw/", cat_ddo_filepath), index_col=0, header=None)
+    catddo_countries['contingent_countries'] = 1
+    catddo_countries = catddo_countries.squeeze()
+    catddo_countries.index.name = 'iso3'
     borrowing_ability_ = pd.concat((borrowing_ability_, catddo_countries), axis=1)
     borrowing_ability_ = borrowing_ability_.contingent_countries.fillna(borrowing_ability_.borrowing_ability).rename('borrowing_ability')
     borrowing_ability_.to_csv(outpath)
