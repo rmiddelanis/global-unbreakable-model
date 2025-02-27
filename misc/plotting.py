@@ -2,8 +2,8 @@ import sys
 import os
 from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from scenario.data.get_wb_data import get_wb_mrv
 import argparse
-import itertools
 import os
 import string
 import matplotlib.pyplot as plt
@@ -17,11 +17,8 @@ import statsmodels.api as sm
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from sklearn.metrics import r2_score
-from numpy.polynomial.polynomial import polyfit, polyval
 import cartopy.crs as ccrs
-from misc.helpers import average_over_rp, get_country_name_dicts
-from scenario.prepare_scenario import load_income_groups
+from misc.helpers import average_over_rp, get_country_name_dicts, load_income_groups, df_to_iso3
 from model.recovery_optimizer import baseline_consumption_c_h, delta_c_h_of_t, delta_k_h_eff_of_t
 import seaborn as sns
 
@@ -111,7 +108,8 @@ def compute_average_recovery_duration(df, aggregation_level, agg_rp=None):
 
 
 def load_data(simulation_paths_, model_root_dir_):
-    gini_index_ = pd.read_csv(os.path.join(model_root_dir_, "scenario/data/raw/WB_socio_economic_data/gini_index.csv"), index_col=0)
+    gini_index_ = df_to_iso3(get_wb_mrv('SI.POV.GINI', 'gini_index').reset_index(), 'country')
+    gini_index_ = gini_index_.set_index('iso3').drop('country', axis=1).squeeze()
 
     income_groups_ = load_income_groups(os.path.join(model_root_dir_, 'scenario'))
 
@@ -158,7 +156,29 @@ def load_data(simulation_paths_, model_root_dir_):
     }
     any_to_wb_, iso3_to_wb_, iso2_iso3_ = get_country_name_dicts(os.path.join(model_root_dir_, 'scenario'))
 
-    return income_groups_, gini_index_, cat_info_data_, macro_data_, results_data_, hazard_protection_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_
+    # financial preparedness and preparedness to scale up the support are not used in insurance / PDS simulations
+    data_coverage_ = pd.read_csv(os.path.join(simulation_paths_['baseline'], 'data_coverage.csv'), index_col=0)
+    data_coverage_.drop(['finance_pre', 'prepare_scaleup', 'borrowing_ability'], axis=1, inplace=True)
+    data_coverage_.rename({
+            'gdp_pc_pp': 'per capita GDP',
+            'pop': 'Population',
+            'income_share': 'Income share held by each income quintile',
+            'transfers': 'Fraction of income from social protection and transfers',
+            'findex': 'Liquidity and financial inclusion',
+            'ew': 'Availability of early warning systems',
+            'avg_prod_k': 'Average productivity of capital',
+            'k_pub_share': 'Public capital share',
+            'self_employment': 'Self-employment rate',
+            'real_estate_share_of_value_added': 'Real estate share of value added',
+            'home_ownership_rate': 'Home ownership rate',
+            'hazard_loss': 'Asset losses',
+            'gem_building_classes': 'Building inventory',
+            'gmd_vulnerability_rel': 'Dwelling materials microdata',
+            'exposure_bias': 'Number of exposed people by hazard type and poverty line',
+            'flopros': 'Flood protection levels',
+        }, axis=1, inplace=True)
+
+    return income_groups_, gini_index_, cat_info_data_, macro_data_, results_data_, hazard_protection_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_, data_coverage_
 
 
 def print_stats(results_data_):
@@ -180,10 +200,18 @@ def print_stats(results_data_):
     print(results_data_.groupby('Country income group').resilience.agg(['min', 'max', 'idxmin', 'idxmax']))
 
 
-def print_results_table(results_data_):
+def print_results_table(results_data_, data_coverage_=None):
+    if data_coverage_ is not None:
+        superscript_columns = data_coverage.columns[(data_coverage != 'available').any(axis=0)]
+        superscript_letters = np.array([chr(97 + i) for i in range(len(superscript_columns))])
+        print(f"Superscripts:\n" , list(zip(superscript_letters, superscript_columns)))
     for idx, row in results_data_.iterrows():
-        print(
-            f'{idx}  & {row["Country income group"]} & {row["gdp_pc_pp"]:.0f} & {row["risk_to_assets"]:.2f} & {row["risk"]:.2f}  & {row["resilience"]:.2f}\\\\')
+        superscripts = ''
+        if data_coverage_ is not None:
+            superscripts = '\\textsuperscript{' + ','.join(superscript_letters[data_coverage_.loc[idx, superscript_columns] != 'available']) + '}'
+            if superscripts == '\\textsuperscript{}':
+                superscripts = ''
+        print(f'{idx}{superscripts} & {row["Country income group"]} & {row["gdp_pc_pp"]:.0f} & {row["risk_to_assets"]:.2f} & {row["risk"]:.2f}  & {row["resilience"]:.2f}\\\\')
 
 
 def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_,
@@ -317,6 +345,39 @@ def add_regression(ax_, data_, x_var_, y_var_, p_val_pos='above left'):
         raise ValueError('p_val_pos should be "above left", "above right", "lower left", or "upper left".')
     ax_.annotate(f'R2={r2:.2f}{significance}', xy=xy, xycoords='axes fraction',
                  ha=ha, va=va, fontsize=6)
+
+
+def plot_supfig_10(results_data_, data_coverage_, world_, show=True, outpath_=None, numbering_=True):
+    map_vars = data_coverage.columns[~(data_coverage == 'available').all(axis=0)]
+    num_maps = len(map_vars)
+    fig = plt.figure(figsize=(double_col_width * centimeter, 0.25 * np.ceil(num_maps / 2) * double_col_width * centimeter))
+    proj = ccrs.Robinson(central_longitude=0, globe=None)
+    axs = [fig.add_subplot(int(np.ceil(num_maps / 2)), 2, i + 1, projection=proj) for i in range(num_maps)]
+    for var, ax in zip(map_vars, axs):
+        ax.set_extent([-180, 180, -60, 90])
+        ax.set_rasterized(True)
+
+        imputed_countries = data_coverage_[data_coverage_[var] == 'imputed'][var].index.values
+        available_countries = data_coverage_[data_coverage_[var] == 'available'][var].index.values
+        missing_countries = data_coverage_[data_coverage_[var].isna()][var].index.values
+
+        world_.drop(results_data_.index).boundary.plot(ax=ax, fc='lightgrey', zorder=0, lw=0)
+
+        for countries, c in zip([imputed_countries, available_countries, missing_countries], ['purple', 'green', 'dimgrey']):
+            if len(countries) > 0:
+                world_.loc[countries].boundary.plot(ax=ax, fc=c, zorder=5, lw=0)
+
+        ax.set_title(var)
+
+    plt.tight_layout(h_pad=2, w_pad=1.08)
+    if numbering_:
+        for i, ax in enumerate(axs):
+            ax.text(i%2 * .5, 1, f'{chr(97 + i)}', ha='left', va='top', fontsize=8, fontweight='bold',
+                    transform=blended_transform_factory(fig.transFigure, ax.transAxes))
+    if show:
+        plt.show(block=False)
+    if outpath_:
+        plt.savefig(outpath_, dpi=300, bbox_inches='tight')
 
 
 def plot_supfig_9(cat_info_data_, outfile=None, show=True, numbering=True):
@@ -1058,10 +1119,10 @@ def plot_fig_4(cat_info_data_, income_groups_, map_bins, world_, plot_rp, outfil
         map_bins = np.append(map_bins, np.ceil(duration_ctry.t_reco_avg.max()))
     norm = BoundaryNorm(map_bins, truncated_cmap.N)
 
-    duration_ctry = gpd.GeoDataFrame(pd.merge(duration_ctry, world_, left_index=True, right_on='iso3', how='inner'))
+    duration_ctry = gpd.GeoDataFrame(pd.merge(duration_ctry, world_, left_index=True, right_index=True, how='inner'))
     duration_ctry.plot(column='t_reco_avg', ax=axs[0], cax=axs[1], zorder=5, cmap=truncated_cmap, norm=norm, lw=0, legend=True, legend_kwds={'orientation': 'horizontal', 'shrink': 0.6, 'aspect': 30, 'fraction': .1, 'pad': 0})
 
-    world_[~world_.iso3.isin(duration_ctry.iso3)].boundary.plot(ax=axs[0], fc='lightgrey', lw=0, zorder=0, ec='k')
+    world_.drop(duration_ctry.index).boundary.plot(ax=axs[0], fc='lightgrey', lw=0, zorder=0, ec='k')
     axs[0].set_extent([-150, 180, -60, 85])
     axs[0].axis('off')
 
@@ -1229,7 +1290,7 @@ def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outfile=None, 
         plt.close()
 
 
-def plot_fig_2(data_, world_, exclude_countries=None, bins_list=None, cmap='viridis', outfile=None,
+def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='viridis', outfile=None,
                show=False, numbering=True, annotate=None, run_ols=False, log_xaxis=False):
     """
     Plots a map with the given data and variables.
@@ -1252,7 +1313,7 @@ def plot_fig_2(data_, world_, exclude_countries=None, bins_list=None, cmap='viri
     variables = ['risk_to_assets', 'risk', 'resilience']
 
     # Merge data with world map
-    data_ = gpd.GeoDataFrame(pd.merge(data_, world_, on='iso3', how='inner'))
+    data_ = gpd.GeoDataFrame(pd.merge(data_, world, on='iso3', how='inner'))
     if len(data_) != len(data_):
         print(f'{len(data_) - len(data_)} countries were not found in the world map. They will be excluded from the plot.')
     data_.replace([np.inf, -np.inf], np.nan, inplace=True)
@@ -1263,7 +1324,7 @@ def plot_fig_2(data_, world_, exclude_countries=None, bins_list=None, cmap='viri
     elif variables is None:
         if isinstance(data_, pd.Series):
             data_ = data_.to_frame()
-        variables = list(set(data_.columns) - set(world_.columns) - {'iso3', 'country'})
+        variables = list(set(data_.columns) - set(world.columns) - {'iso3', 'country'})
     if bins_list is None:
         bins_list = {v: None for v in variables}
     if isinstance(cmap, str):
@@ -1304,7 +1365,7 @@ def plot_fig_2(data_, world_, exclude_countries=None, bins_list=None, cmap='viri
     # Plot data
     scatter_x_var = 'gdp_pc_pp' if not log_xaxis else 'log_gdp_pc_pp'
     for i, ((m_ax, s_ax), variable) in enumerate(zip(plt_axs, variables)):
-        world_[~world_.iso3.isin(data_.iso3)].boundary.plot(ax=m_ax, fc='lightgrey', lw=0, zorder=0, ec='k')
+        world.drop(data_.index).boundary.plot(ax=m_ax, fc='lightgrey', lw=0, zorder=0, ec='k')
         m_ax.set_extent([-150, 180, -60, 85])
 
         # Create a truncated version of the colormap that starts at 20% and goes up to 100%
@@ -1339,8 +1400,7 @@ def plot_fig_2(data_, world_, exclude_countries=None, bins_list=None, cmap='viri
                 legend_handle.set_alpha(1)
 
         if annotate:
-            for idx, row in data_[data_.iso3.isin(annotate)].iterrows():
-                txt = row.iso3
+            for txt, row in data_.loc[annotate].iterrows():
                 s_ax.annotate(txt, (row.loc[scatter_x_var], row.loc[variable]), fontsize=6, ha='center', va='top')
 
         # Histogram for the distribution of 'Country income group'
@@ -1670,18 +1730,19 @@ if __name__ == '__main__':
         'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
         'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
         'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
-        'pds40': '8_post_disaster_support_imperfect/q1+q2+q3+q4+q5/0.4',
+        'pds40': '8_post_disaster_support/q1+q2+q3+q4+q5/0.4',
         'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
         'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
         'reduce_gini_10': '11_scale_gini_index/0.9',
     }
     simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
-    income_groups, gini_index, cat_info_data, macro_data, results_data, hazard_protection, name_dict, any_to_wb, iso3_to_wb, iso2_iso3 = load_data(simulation_paths, model_root_dir)
+    income_groups, gini_index, cat_info_data, macro_data, results_data, hazard_protection, name_dict, any_to_wb, iso3_to_wb, iso2_iso3, data_coverage = load_data(simulation_paths, model_root_dir)
 
     gadm_world = gpd.read_file("/Users/robin/data/GADM/gadm_410-levels.gpkg", layer='ADM_0').set_crs(4326).to_crs('World_Robinson')
     gadm_world = gadm_world[~gadm_world.COUNTRY.isin(['Antarctica', 'Caspian Sea'])]
     gadm_world.rename(columns={'GID_0': 'iso3'}, inplace=True)
+    gadm_world.set_index('iso3', inplace=True)
 
     if args.plot:
         plot_fig_1(
@@ -1695,7 +1756,7 @@ if __name__ == '__main__':
 
         plot_fig_2(
             data_=results_data['baseline'],
-            world_=gadm_world,
+            world=gadm_world,
             bins_list={'resilience': [10, 20, 30, 40, 50, 60, 70, 80], 'risk': [0, .25, .5, 1, 2, 6],
                        'risk_to_assets': [0, .125, .25, .5, 1, 3]},
             cmap={'resilience': 'Reds_r', 'risk': 'Reds', 'risk_to_assets': 'Reds'},
@@ -1788,6 +1849,19 @@ if __name__ == '__main__':
             show=True,
         )
 
-    print_stats(results_data['baseline'])
+        plot_supfig_10(
+            results_data_=results_data['baseline'],
+            world_=gadm_world,
+            data_coverage_=data_coverage,
+            outpath_=f"{outpath}/supfig_10.pdf",
+            show=True,
+        )
 
-    print_results_table(results_data['baseline'])
+    print_stats(
+        results_data_=results_data['baseline'],
+    )
+
+    print_results_table(
+        results_data_=results_data['baseline'],
+        data_coverage_=data_coverage,
+    )

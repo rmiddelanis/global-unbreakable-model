@@ -2,32 +2,22 @@ import argparse
 import os
 import numpy as np
 import yaml
+from geopandas.datasets import available
 from scipy.optimize import curve_fit
 from scenario.data.gather_findex_data import get_liquidity_from_findex, gather_axfin_data
 from scenario.data.gather_gem_data import gather_gem_data
 from scenario.data.gather_gir_data import load_gir_hazard_loss_rel
 from scenario.data.get_wb_data import get_wb_data, get_wb_mrv
 import pandas as pd
-from misc.helpers import get_country_name_dicts, df_to_iso3
+from misc.helpers import get_country_name_dicts, df_to_iso3, load_income_groups, update_data_coverage
 from time import time
-
-
-def load_income_groups(root_dir_):
-    income_groups_file = "WB_country_classification/country_classification.xlsx"
-    income_groups = pd.read_excel(os.path.join(root_dir_, "data/raw/", income_groups_file), header=0)[["Code", "Region", "Income group"]]
-    income_groups = income_groups.dropna().rename({'Code': 'iso3'}, axis=1)
-    income_groups = income_groups.set_index('iso3').squeeze()
-    income_groups.loc['VEN'] = ['Latin America & Caribbean', 'Upper middle income']
-    income_groups.rename({'Income group': 'Country income group'}, axis=1, inplace=True)
-    income_groups.replace({'Low income': 'LICs', 'Lower middle income': 'LMICs', 'Upper middle income': 'UMICs', 'High income': 'HICs'}, inplace=True)
-    return income_groups
 
 
 def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_,
                              scale_non_diversified_income_=None, min_diversified_share_=None, scale_income_=None,
                              scale_gini_index_=None):
     print("Computing diversified income share and tax...")
-    cat_info_['diversified_share'] = cat_info_.social + cat_info_.axfin * axfin_impact_
+    cat_info_['diversified_share'] = cat_info_.transfers + cat_info_.axfin * axfin_impact_
     if scale_non_diversified_income_ is not None:
         scope = scale_non_diversified_income_['scope'].split('+')
         parameter = scale_non_diversified_income_['parameter']
@@ -78,6 +68,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
             prot_data = pd.read_csv(os.path.join(root_dir_, "data/processed/", flopros_protection_file), index_col=0)
             prot_data = prot_data.drop('country', axis=1)
             prot_data.rename({'MerL_Riv': 'Flood', 'MerL_Co': 'Storm surge'}, axis=1, inplace=True)
+            update_data_coverage(root_dir_, 'flopros', prot_data.index, None)
         elif protection_data == 'country_income':  # assumed a function of the country's income group
             prot_assumptions = pd.read_csv(os.path.join(root_dir_, "data/raw/", protection_level_assumptions_file),
                                                index_col="Income group").squeeze()
@@ -140,6 +131,8 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True
         axfin_ = axfin_.iloc[axfin_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()].axfin.droplevel('year')
 
         liquidity_and_axfin = pd.merge(liquidity_, axfin_, left_index=True, right_index=True, how='inner')
+
+        update_data_coverage(root_dir_, 'findex', liquidity_and_axfin.index.get_level_values('iso3').unique(), None)
 
         liquidity_and_axfin.to_csv(outpath)
     if scale_liquidity_ is not None:
@@ -358,10 +351,22 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         capital_shares = pd.merge(real_estate_share_of_value_added, capital_shares, left_index=True, right_index=True, how='outer')
         capital_shares['real_est_k_to_va_shares_ratio'] = real_est_k_to_va_shares_ratio
 
+        for v in ['k_pub_share', 'real_estate_share_of_value_added', 'home_ownership_rate', 'self_employment']:
+            available_countries = capital_shares[capital_shares[v].notna()].index.get_level_values('iso3').unique()
+            update_data_coverage(root_dir_, v, available_countries, None)
+
         # fill na-values with the median of the respective country income group
         if guess_missing_countries:
             income_groups = load_income_groups(root_dir_)
             merged = pd.merge(capital_shares, income_groups, left_index=True, right_index=True, how='outer')
+
+            # keep track of imputed data
+            for v in ['real_estate_share_of_value_added', 'home_ownership_rate']:
+                available_countries = merged[merged[v].notna()].index.get_level_values('iso3').unique()
+                imputed_countries = merged[merged[v].isna()].index.get_level_values('iso3').unique()
+                update_data_coverage(root_dir_, v, available_countries, imputed_countries)
+
+            # fill missing values with the median of the respective country income group
             capital_shares['real_estate_share_of_value_added'] = capital_shares['real_estate_share_of_value_added'].fillna(
                 merged.groupby('Country income group')['real_estate_share_of_value_added'].transform('median'))
             capital_shares['home_ownership_rate'] = capital_shares['home_ownership_rate'].fillna(
@@ -384,18 +389,25 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
     return capital_shares.dropna(subset='k_household_share')[['k_priv_share', 'k_household_share', 'owner_occupied_share_of_value_added', 'self_employment', 'real_est_k_to_va_shares_ratio']]
 
 
-def apply_poverty_exposure_bias(root_dir_, exposure_fa_, use_avg_pe_, population_data_=None,
+def apply_poverty_exposure_bias(root_dir_, exposure_fa_, guess_missing_countries, population_data_=None,
                                 peb_data_path="exposure_bias_per_quintile.csv"):
     bias = pd.read_csv(os.path.join(root_dir_, "data/processed/", peb_data_path), index_col=[0, 1, 2]).squeeze()
+    eb_hazards = bias.index.get_level_values('hazard').unique()
     missing_index = pd.MultiIndex.from_tuples(
         np.setdiff1d(exposure_fa_.index.droplevel('rp').unique(), bias.index.unique()), names=bias.index.names)
     bias = pd.concat((bias, pd.Series(index=missing_index, data=np.nan)), axis=0).rename(bias.name).sort_index()
     bias = bias.loc[np.intersect1d(bias.index, exposure_fa_.index.droplevel('rp').unique())]
 
-    # if use_avg_pe, use averaged pe from global data for countries that don't have PE. Otherwise use 0.
-    if use_avg_pe_:
+    # if guess_missing_countries, use average EB from global data for countries that don't have EB. Otherwise use 1.
+    if guess_missing_countries:
         if population_data_ is not None:
             bias_pop = pd.merge(bias.dropna(), population_data_, left_index=True, right_index=True, how='left')
+
+            # keep track of imputed data
+            imputed_countries = missing_index.drop(np.setdiff1d(missing_index.get_level_values('hazard').unique(), eb_hazards), level='hazard').get_level_values('iso3').unique()
+            available_countries = np.setdiff1d(exposure_fa_.index.get_level_values('iso3').unique(), imputed_countries)
+            update_data_coverage(root_dir_, 'exposure_bias', available_countries, imputed_countries)
+
             bias_wavg = (bias_pop.product(axis=1).groupby(['hazard', 'income_cat']).sum()
                          / bias_pop['pop'].groupby(['hazard', 'income_cat']).sum()).rename('exposure_bias')
             bias = pd.merge(bias, bias_wavg, left_index=True, right_index=True, how='left')
@@ -427,6 +439,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
             climate_scenario="Existing climate",
             verbose=verbose,
         )
+        update_data_coverage(root_dir_, 'hazard_loss', hazard_loss_rel.index.get_level_values('iso3').unique(), None)
 
         # load GEM data
         _, gem_building_classes = load_gem_data(
@@ -434,6 +447,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
             force_recompute=True,
             verbose=verbose,
         )
+        update_data_coverage(root_dir_, 'gem_building_classes', gem_building_classes.index.get_level_values('iso3').unique(), None)
 
         # load building vulnerability classification and compute vulnerability per income class
         vulnerability_unadjusted_ = process_vulnerability_data(
@@ -484,7 +498,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
         hazard_ratios['fa'] = apply_poverty_exposure_bias(
             root_dir_=root_dir_,
             exposure_fa_=hazard_ratios['fa'],
-            use_avg_pe_=True,
+            guess_missing_countries=True,
             population_data_=population_data
         ).clip(lower=0, upper=fa_threshold_)
 
@@ -565,9 +579,16 @@ def process_vulnerability_data(
         )
         vuln_distr = vuln_distr.set_index('iso3')[['q1', 'q2', 'q3', 'q4', 'q5']]
 
+        available_countries = vuln_distr.index
+        update_data_coverage(root_dir_, 'gmd_vulnerability_rel', available_countries, None)
+
         # fill missing countries in the GMD data with average
         if fill_missing_gmd_with_country_average:
             missing_index = np.setdiff1d(vulnerability_.index.get_level_values('iso3').unique(), vuln_distr.index)
+
+            imputed_countries = missing_index
+            update_data_coverage(root_dir_, 'gmd_vulnerability_rel', available_countries, imputed_countries)
+
             vuln_distr = pd.concat((vuln_distr, pd.DataFrame(index=pd.Index(missing_index, name='iso3'),
                                                              columns=vuln_distr.columns, data=np.nan)), axis=0)
             vuln_distr.fillna(vuln_distr.mean(axis=0), inplace=True)
@@ -625,6 +646,8 @@ def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None,
     borrowing_ability_ = pd.concat((borrowing_ability_, catddo_countries), axis=1)
     borrowing_ability_ = borrowing_ability_.contingent_countries.fillna(borrowing_ability_.borrowing_ability).rename('borrowing_ability')
     borrowing_ability_.to_csv(outpath)
+
+    update_data_coverage(root_dir_, 'borrowing_ability', borrowing_ability_.index, None)
     return borrowing_ability_
 
 
@@ -836,14 +859,26 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
             (hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1
         ).mean(axis=1)
         disaster_preparedness_ = pd.merge(disaster_preparedness_, hfa_data.finance_pre, left_index=True, right_index=True, how='outer')
+
+    for v in ['ew', 'prepare_scaleup', 'finance_pre']:
+        update_data_coverage(root_dir_, v, disaster_preparedness_.dropna(subset=v).index, None)
+
     if guess_missing_countries:
         income_groups = load_income_groups(root_dir_)
         if verbose:
             print("Guessing missing countries' disaster preparedness data based on income group and region averages.")
         merged = pd.merge(disaster_preparedness_, income_groups, left_index=True, right_index=True, how='outer')
+        merged.dropna(subset=['Region', 'Country income group'], inplace=True)
+
+        # keep track of imputed data
+        for v in ['finance_pre', 'ew', 'prepare_scaleup']:
+            available_countries = merged[~merged[v].isna()].index.get_level_values('iso3').unique()
+            imputed_countries = merged[merged[v].isna()].index.get_level_values('iso3').unique()
+            update_data_coverage(root_dir_, v, available_countries, imputed_countries)
+
         fill_values = merged.groupby(['Region', 'Country income group']).mean()
         fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Country income group').mean())
-        merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Country income group'])] if not x[['Region', 'Country income group']].isna().any() else x, axis=1))
+        merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Country income group'])], axis=1))
         disaster_preparedness_ = merged[disaster_preparedness_.columns]
     if ew_year is not None and ew_decade is None:
         forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "data/raw/", forecast_accuracy_file_yearly), index_col=[0, 1]).squeeze()
@@ -918,6 +953,8 @@ def get_average_capital_productivity(root_dir_, force_recompute=True):
 
     capital_data.avg_prod_k.to_csv(outpath)
 
+    update_data_coverage(root_dir_, 'avg_prod_k', capital_data.dropna(subset='avg_prod_k').index, None)
+
     return capital_data.avg_prod_k
 
 
@@ -978,7 +1015,7 @@ def prepare_scenario(scenario_params):
     wb_data_macro, wb_data_cat_info = get_wb_data(
         root_dir=scenario_root_dir,
         include_remittances=True,
-        use_additional_data=True,
+        impute_missing_data=True,
         drop_incomplete=True,
         force_recompute=run_params['force_recompute'],
         verbose=run_params['verbose']
@@ -1115,6 +1152,12 @@ def prepare_scenario(scenario_params):
 
     # retain common (and selected) countries only
     countries = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index and c in hazard_protection.index]
+
+    # keep track of imputed data
+    data_coverage = pd.read_csv(os.path.join(scenario_root_dir, "data/processed/data_coverage.csv"), index_col='iso3')
+    data_coverage = data_coverage.loc[np.intersect1d(countries, data_coverage.index)]
+    data_coverage.to_csv(os.path.join(scenario_root_dir, "data/processed/data_coverage.csv"))
+
     if run_params['countries'] != 'all':
         if len(np.intersect1d(countries, run_params['countries'].split('+'))) == 0:
             print("None of the selected countries found in data. Keeping all countries.")
@@ -1138,6 +1181,10 @@ def prepare_scenario(scenario_params):
     if run_params['outpath'] is not None:
         if not os.path.exists(run_params['outpath']):
             os.makedirs(run_params['outpath'])
+
+        # save overview of imputed data sets
+        data_coverage.to_csv(os.path.join(run_params['outpath'], "scenario__imputed_data.csv"))
+
         # save protection by country and hazard
         hazard_protection.to_csv(
             os.path.join(run_params['outpath'], "scenario__hazard_protection.csv"),

@@ -181,3 +181,50 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
     if df.iso3.isna().any() and verbose_:
         print(f"Warning: ISO3 could not be found for {len(df[df.iso3.isna()].country.unique())} countries.")
     return df
+
+
+def load_income_groups(root_dir_):
+    income_groups_file = "WB_country_classification/country_classification.xlsx"
+    income_groups = pd.read_excel(os.path.join(root_dir_, "data/raw/", income_groups_file), header=0)[["Code", "Region", "Income group"]]
+    income_groups = income_groups.dropna().rename({'Code': 'iso3'}, axis=1)
+    income_groups = income_groups.set_index('iso3').squeeze()
+    income_groups.loc['VEN'] = ['Latin America & Caribbean', 'Upper middle income']
+    income_groups.rename({'Income group': 'Country income group'}, axis=1, inplace=True)
+    income_groups.replace({
+        'Low income': 'LICs',
+        'Lower middle income': 'LMICs',
+        'Upper middle income': 'UMICs',
+        'High income': 'HICs'
+    }, inplace=True)
+    income_groups.replace({
+        'South Asia': 'SAR',
+        'Europe & Central Asia': 'ECA',
+        'Middle East & North Africa': 'MNA',
+        'Sub-Saharan Africa': 'SSA',
+        'Latin America & Caribbean': 'LAC',
+        'East Asia & Pacific': 'EAP',
+        'North America': 'NAM'
+    }, inplace=True)
+    return income_groups
+
+
+def update_data_coverage(root_dir_, variable, available_countries, imputed_countries=None):
+    data_availability_path = os.path.join(root_dir_, "data/processed/data_coverage.csv")
+    available_countries = list(available_countries)
+    if imputed_countries is None:
+        imputed_countries = []
+    else:
+        imputed_countries = list(imputed_countries)
+    if os.path.exists(data_availability_path):
+        data_coverage = pd.read_csv(data_availability_path, index_col='iso3')
+    else:
+        data_coverage = pd.DataFrame()
+        data_coverage.index.name = 'iso3'
+    if variable in data_coverage.columns:
+        data_coverage.drop(variable, axis=1, inplace=True)
+    v_coverage = pd.Series(index=available_countries + imputed_countries, dtype=str)
+    v_coverage.index.name = 'iso3'
+    v_coverage.loc[available_countries] = 'available'
+    v_coverage.loc[imputed_countries] = 'imputed'
+    data_coverage = pd.concat([data_coverage, v_coverage.rename(variable)], axis=1)
+    data_coverage.to_csv(data_availability_path)
