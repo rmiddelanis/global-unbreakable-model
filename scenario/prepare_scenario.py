@@ -1182,6 +1182,8 @@ def prepare_scenario(scenario_params):
         if not os.path.exists(run_params['outpath']):
             os.makedirs(run_params['outpath'])
 
+        data_coverage.to_csv(os.path.join(run_params['outpath'], "data_coverage.csv"))
+
         # save overview of imputed data sets
         data_coverage.to_csv(os.path.join(run_params['outpath'], "scenario__imputed_data.csv"))
 

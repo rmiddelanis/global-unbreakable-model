@@ -139,8 +139,8 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, d
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
     # World Development Indicators
-    gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp
-    pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population
+    gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
+    pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
 
     # create output data frames
     # macro_df = pd.concat([gdp_pc_pp, pop, urbanization_rate], axis=1).reset_index()
@@ -152,7 +152,7 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, d
                                columns=['income_share', 'transfers'])
     cat_info_df.index.names = ['country', 'income_cat']
 
-    # income shares
+    # income shares (source: Poverty and Inequality Platform)
     income_shares = download_cat_info(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
                                       id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
                                       most_recent_value=True, upper_bound=100, lower_bound=0) / 100

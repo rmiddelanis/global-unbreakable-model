@@ -145,7 +145,8 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, drop_re
     # findex shares are combined with the GNI pc data to obtain the average liquidity per quintile
 
     # load GNI data
-    gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI')
+    # gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI') # current international dollars
+    gni = get_wb_series('NY.GNP.PCAP.PP.KD').rename('GNI') # constant 2021 itl. dollars
     gni = gni.reset_index()
     gni.year = gni.year.astype(int)
     gni.country = gni.country.apply(lambda ctry: any_to_wb_.loc[ctry] if ctry in any_to_wb_ else ctry)
