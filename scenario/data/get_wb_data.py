@@ -126,7 +126,7 @@ def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value
     return data
 
 
-def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, drop_incomplete=True,
+def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False, drop_incomplete=True,
                 force_recompute=True, verbose=True, save=True):
     macro_path = os.path.join(root_dir, "data/processed/wb_data_macro.csv")
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
@@ -139,7 +139,17 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, d
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
     # World Development Indicators
-    gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
+    if ppp_reference_year == 2021:
+        gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
+    elif ppp_reference_year == 2017:
+        gdp_pc_pp = pd.read_excel("./data/raw/WB_socio_economic_data/WB-WDI.xlsx", sheet_name='Data')
+        gdp_pc_pp = gdp_pc_pp[gdp_pc_pp['Indicator ID'] == 'WB.WDI.NY.GDP.PCAP.PP.KD']
+        gdp_pc_pp = gdp_pc_pp.rename({'Economy Name': 'country'}, axis=1).set_index('country').iloc[:, 8:]
+        gdp_pc_pp.columns.name = 'year'
+        gdp_pc_pp = gdp_pc_pp.stack()
+        gdp_pc_pp = get_most_recent_value(gdp_pc_pp).rename('gdp_pc_pp')
+    else:
+        raise ValueError("PPP reference year not supported")
     pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
 
     # create output data frames

@@ -15,6 +15,7 @@ scenario_params:
     verbose: False
     countries: 'all'
     hazards: 'all'
+    ppp_reference_year: 2021
   macro_params:
     income_elasticity_eta: 1.5
     discount_rate_rho: .06

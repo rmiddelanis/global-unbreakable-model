@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from misc.helpers import get_country_name_dicts, df_to_iso3
-from scenario.data.get_wb_data import get_wb_series
+from scenario.data.get_wb_data import get_wb_series, get_most_recent_value
 
 
 def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_: str, varname_: str, verbose: bool=False):
@@ -106,7 +106,7 @@ def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, verbose=True):
     return axfin_data
 
 
-def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, drop_refused=True, verbose=True):
+def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, ppp_reference_year, drop_refused=True, verbose=True):
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}
 
     # Gather the data from the FINDEX datasets
@@ -145,8 +145,17 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, drop_re
     # findex shares are combined with the GNI pc data to obtain the average liquidity per quintile
 
     # load GNI data
-    # gni = get_wb_series('NY.GNP.PCAP.PP.CD').rename('GNI') # current international dollars
-    gni = get_wb_series('NY.GNP.PCAP.PP.KD').rename('GNI') # constant 2021 itl. dollars
+    if ppp_reference_year == 2021:
+        gni = get_wb_series('NY.GNP.PCAP.PP.KD').rename('GNI') # constant 2021 itl. dollars
+    elif ppp_reference_year == 2017:
+        gni = pd.read_excel("./data/raw/WB_socio_economic_data/WB-WDI.xlsx", sheet_name='Data')
+        gni = gni[gni['Indicator ID'] == 'WB.WDI.NY.GNP.PCAP.PP.KD']
+        gni = gni.rename({'Economy Name': 'country'}, axis=1).set_index('country').iloc[:, 8:]
+        gni.columns.name = 'year'
+        gni = gni.stack()
+        gni = get_most_recent_value(gni).rename('GNI')
+    else:
+        raise ValueError("PPP reference year not supported")
     gni = gni.reset_index()
     gni.year = gni.year.astype(int)
     gni.country = gni.country.apply(lambda ctry: any_to_wb_.loc[ctry] if ctry in any_to_wb_ else ctry)

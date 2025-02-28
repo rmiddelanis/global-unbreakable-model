@@ -108,7 +108,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     return prot
 
 
-def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True, verbose_=True, scale_liquidity_=None):
+def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, ppp_reference_year, force_recompute_=True, verbose_=True, scale_liquidity_=None):
     outpath = os.path.join(root_dir_, 'data', 'processed', 'findex_liquidity_and_axfin.csv')
     if not force_recompute_ and os.path.exists(outpath):
         print("Loading liquidity and axfin data from file...")
@@ -122,7 +122,7 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, force_recompute_=True
             2014: os.path.join(root_dir_, "data/raw/", 'FINDEX', 'WLD_2014_FINDEX_v01_M.csv'),
             2011: os.path.join(root_dir_, "data/raw/", 'FINDEX', 'WLD_2011_FINDEX_v02_M.csv'),
         }
-        liquidity_ = get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths, verbose=verbose_)
+        liquidity_ = get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths, ppp_reference_year, verbose=verbose_)
         liquidity_ = liquidity_[['liquidity_share', 'liquidity']].prod(axis=1).rename('liquidity')
         liquidity_ = liquidity_.iloc[liquidity_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
         liquidity_ = liquidity_.droplevel('year')
@@ -1014,6 +1014,7 @@ def prepare_scenario(scenario_params):
     # read WB data
     wb_data_macro, wb_data_cat_info = get_wb_data(
         root_dir=scenario_root_dir,
+        ppp_reference_year=run_params['ppp_reference_year'],
         include_remittances=True,
         impute_missing_data=True,
         drop_incomplete=True,
@@ -1030,6 +1031,7 @@ def prepare_scenario(scenario_params):
     liquidity_and_axfin = load_findex_liquidity_and_axfin(
         root_dir_=scenario_root_dir,
         any_to_wb_=any_to_wb,
+        ppp_reference_year=run_params['ppp_reference_year'],
         force_recompute_=run_params['force_recompute'],
         verbose_=run_params['verbose'],
         scale_liquidity_=policy_params.pop('scale_liquidity', None),
