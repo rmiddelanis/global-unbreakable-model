@@ -1000,8 +1000,8 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=None, outfile=None, show=T
         'reduce_gini_10': '6: Equally redistribute 10%\n    of all income',
         'reduce_self_employment_0.1': '7: Reduce self-employment\n    rate by 10%',
         'reduce_non_diversified_income_0.1': '8: Reduce non-diversified\n    income by 10%',
-        'pds40': '9: Imperfect PDS aiming at\n    40% of asset losses of the poor',
-        'insurance20': '10: National insurance program\n      covering 20% of all asset losses',
+        'pds40': '9: PDS equal to 40% of\n    asset losses of the poor',
+        'insurance20': '10: National insurance covering\n      20% of all asset losses',
     }
     ref_data = results_data_['baseline'].copy()
     # ref_data['t_reco_95_avg'] = cat_info_data_['baseline'].loc[pd.IndexSlice[:, :, plot_rp, :, 'a', :], ['t_reco_95', 'n']].groupby('iso3').apply(lambda x: np.average(x['t_reco_95'], weights=x['n']))
