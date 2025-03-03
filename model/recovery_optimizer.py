@@ -53,7 +53,6 @@ def delta_i_h_sp_of_t(t_, recovery_params_=None, productivity_pi_=None, social_p
     if delta_tax_sp_ != 0:
         if (recovery_params_ is None or productivity_pi_ is None or social_protection_share_gamma_h_ is None or
                 delta_tax_sp_ is None) and verbose:
-            print(recovery_params_, productivity_pi_, social_protection_share_gamma_h_, delta_tax_sp_)
             raise ValueError("To include tax, recovery parameters, productivity and social protection share must "
                              "be provided to compute social protection income loss.")
         delta_capital_k_eff_national = delta_capital_k_eff_of_t(t_, recovery_params_)

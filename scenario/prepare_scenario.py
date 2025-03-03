@@ -967,7 +967,7 @@ def social_to_tx_and_gsp(cat_info):
               / cat_info[["c", "n"]].prod(axis=1, skipna=False).groupby(level="iso3").sum())
     tx_tax.name = 'tau_tax'
 
-    # income from social protection PER PERSON as fraction of PER CAPITA social protection
+    # income from social protection PER PERSON as fraction of total PER CAPITA social protection
     # paper equation 5: \gamma_i = t_i / (\Sigma_i \mu \tau k_i)
     gsp = (cat_info[["diversified_share", "c"]].prod(axis=1, skipna=False)
            / cat_info[["diversified_share", "c", "n"]].prod(axis=1, skipna=False).groupby(level="iso3").sum())

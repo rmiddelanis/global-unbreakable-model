@@ -70,7 +70,6 @@ def run_model(settings: dict):
         macro_event=macro_event,
         event_level_=event_level,
         capital_t=20,
-        delta_c_h_max=np.nan,
         num_cores=num_cores,
     )
 

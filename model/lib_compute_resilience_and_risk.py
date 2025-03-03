@@ -107,7 +107,7 @@ def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending
     return macro_event_, cat_info_event_iah_
 
 
-def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_max=np.nan, num_cores=None):
+def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, num_cores=None):
     opt_data = pd.merge(
         macro_event.rename(columns={'avg_prod_k': 'productivity_pi', 'rho': 'discount_rate_rho',
                                     'tau_tax': 'delta_tax_sp', 'income_elasticity_eta': 'eta',
@@ -118,7 +118,6 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_m
     )[['productivity_pi', 'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff', 'savings_s_h',
        'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'diversified_share']]
     opt_data['capital_t'] = capital_t
-    opt_data['delta_c_h_max'] = delta_c_h_max
     # opt_data = opt_data.xs('a', level='affected_cat', drop_level=False).round(10)
     opt_data = opt_data[opt_data.delta_k_h_eff > 0].round(10)
     recovery_rates_lambda = optimize_data(
@@ -131,12 +130,12 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, delta_c_h_m
     return pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
 
 
-def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_level_, capital_t=50, delta_c_h_max=np.nan,
+def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_level_, capital_t=50,
                                      num_cores=None):
     recovery_parameters = cat_info_event_iah.xs('a', level='affected_cat')[['n', 'dk', 'lambda_h']]
-    recovery_parameters['dk_abs'] = recovery_parameters['dk'] * recovery_parameters['n']
+    recovery_parameters['dk_pc'] = recovery_parameters['dk'] * recovery_parameters['n']
     recovery_parameters.drop(['n', 'dk'], axis=1, inplace=True)
-    recovery_parameters['recovery_params'] = recovery_parameters[['dk_abs', 'lambda_h']].apply(tuple, axis=1)
+    recovery_parameters['recovery_params'] = recovery_parameters[['dk_pc', 'lambda_h']].apply(tuple, axis=1)
     recovery_parameters = recovery_parameters.groupby(level=event_level_).agg(list).recovery_params
     recompute_data = pd.merge(cat_info_event_iah, macro_event, left_index=True, right_index=True, how='left')
     recompute_data = recompute_data.rename(columns={'avg_prod_k': 'productivity_pi', 'rho': 'discount_rate_rho',
@@ -145,7 +144,7 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
                                                     'dk': 'delta_k_h_eff', 'liquidity': 'savings_s_h',
                                                     'help_received': 'delta_i_h_pds'})
     recompute_data['capital_t'] = capital_t
-    recompute_data['social_protection_share_gamma_h'] = recompute_data['gamma_SP'] * recompute_data['n']
+    recompute_data['social_protection_share_gamma_h'] = recompute_data['gamma_SP']  # * recompute_data['n']
 
     recompute_data = recompute_data[['capital_t', 'social_protection_share_gamma_h', 'productivity_pi',
                                      'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff',
@@ -179,13 +178,12 @@ def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):#, long_t
     return cat_info_event_iah, macro_event
 
 
-def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, delta_c_h_max=np.nan, num_cores=None):
+def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, num_cores=None):
     # compute the optimal recovery rates
     cat_info_event_iah_ = optimize_recovery(
         macro_event=macro_event,
         cat_info_event_iah=cat_info_event_iah,
         capital_t=capital_t,
-        delta_c_h_max=delta_c_h_max,
         num_cores=num_cores,
     )
     if cat_info_event_iah_.xs('a', level='affected_cat').lambda_h.isna().any():
@@ -195,7 +193,7 @@ def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, delt
 
     # compute the welfare losses from destroyed assets, decreased transfers, and reconstruction
     cat_info_event_iah_ = compute_dw_reco_and_used_savings(cat_info_event_iah_, macro_event, event_level_, capital_t,
-                                                           delta_c_h_max, num_cores)
+                                                           num_cores)
 
     # compute the long-term welfare losses from public asset reconstruction costs, PDS costs, and used savings
     cat_info_event_iah_, macro_event_ = compute_dw_long_term(cat_info_event_iah_, macro_event, event_level_)#, long_term_horizon_)
