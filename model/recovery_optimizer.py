@@ -161,7 +161,7 @@ def cum_delta_c_h_reco_of_t(t_, delta_k_h_eff_, lambda_h_, sigma_h_):
 
 
 def calc_t_hat(lambda_h_=None, consumption_floor_xi_=None, productivity_pi_=None, delta_tax_sp_=None,
-               delta_k_h_eff_=None, savings_s_h_=None, delta_i_h_pds_=None, delta_c_h_max_=None,
+               delta_k_h_eff_=None, savings_s_h_=None, delta_i_h_pds_=None,
                recovery_params_=None, social_protection_share_gamma_h_=None, sigma_h_=None):
     """
     Compute the time at which the consumption floor is reached
@@ -184,14 +184,14 @@ def calc_t_hat(lambda_h_=None, consumption_floor_xi_=None, productivity_pi_=None
             cum_d_c_of_t__ = cum_d_c(t__)
             delta_c_h_floor = delta_c_h_of_t(
                 t__, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, sigma_h_, 0, 0,
-                delta_c_h_max_, recovery_params_, social_protection_share_gamma_h_
+                recovery_params_, social_protection_share_gamma_h_
             )
             return cum_d_c_of_t__ - delta_c_h_floor * t__ - (savings_s_h_ + delta_i_h_pds_)
         return optimize.root_scalar(search_func, method='brentq', bracket=[0, 100]).root
 
 
 def delta_c_h_savings_pds_of_t(t_, lambda_h_, sigma_h_, productivity_pi_, consumption_floor_xi_, t_hat_, delta_k_h_eff_,
-                               savings_s_h_, delta_i_h_pds_, delta_i_h, delta_c_h_reco, delta_c_h_max_, delta_tax_sp_,
+                               savings_s_h_, delta_i_h_pds_, delta_i_h, delta_c_h_reco, delta_tax_sp_,
                                recovery_params_, social_protection_share_gamma_h_, consumption_offset_):
     """
     Compute the dynamic consumption gain from savings and PDS
@@ -221,7 +221,7 @@ def delta_c_h_savings_pds_of_t(t_, lambda_h_, sigma_h_, productivity_pi_, consum
             # consumption losses cannot be fully offset with savings
             if consumption_offset_ is None:
                 consumption_offset_ = delta_c_h_of_t(t_hat_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_,
-                                                     lambda_h_, sigma_h_, 0, 0, delta_c_h_max_,
+                                                     lambda_h_, sigma_h_, 0, 0,
                                                      recovery_params_, social_protection_share_gamma_h_,
                                                      consumption_floor_xi_, t_hat_,
                                                      return_elements=False)
@@ -239,7 +239,7 @@ def delta_c_h_savings_pds_of_t(t_, lambda_h_, sigma_h_, productivity_pi_, consum
 
 
 def delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, sigma_h_,
-                   savings_s_h_, delta_i_h_pds_, delta_c_h_max_, recovery_params_, social_protection_share_gamma_h_,
+                   savings_s_h_, delta_i_h_pds_, recovery_params_, social_protection_share_gamma_h_,
                    consumption_floor_xi_=None, t_hat=None,
                    consumption_offset=None, return_elements=False):
     """
@@ -259,7 +259,6 @@ def delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
             productivity_pi_=productivity_pi_,
             savings_s_h_=savings_s_h_,
             delta_i_h_pds_=delta_i_h_pds_,
-            delta_c_h_max_=delta_c_h_max_,
             delta_tax_sp_=delta_tax_sp_,
             recovery_params_=recovery_params_,
             social_protection_share_gamma_h_=social_protection_share_gamma_h_,
@@ -288,7 +287,7 @@ def delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
                                                        consumption_floor_xi_=consumption_floor_xi_, t_hat_=t_hat,
                                                        delta_k_h_eff_=delta_k_h_eff_, savings_s_h_=savings_s_h_,
                                                        delta_i_h_pds_=delta_i_h_pds_, delta_i_h=delta_i_h,
-                                                       delta_c_h_reco=delta_c_h_reco, delta_c_h_max_=delta_c_h_max_,
+                                                       delta_c_h_reco=delta_c_h_reco,
                                                        delta_tax_sp_=delta_tax_sp_, recovery_params_=recovery_params_,
                                                        social_protection_share_gamma_h_=social_protection_share_gamma_h_,
                                                        consumption_offset_=consumption_offset)
@@ -305,7 +304,7 @@ def baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversif
 
 
 def consumption_c_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_,
-                       delta_i_h_pds_, k_h_eff_, delta_c_h_max_, recovery_params_, social_protection_share_gamma_h_,
+                       delta_i_h_pds_, k_h_eff_, recovery_params_, social_protection_share_gamma_h_,
                        diversified_share_, consumption_floor_xi_=None, t_hat=None, consumption_offset=None, include_tax=False):
     """
     Compute the dynamic consumption level
@@ -319,7 +318,6 @@ def consumption_c_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lamb
         sigma_h_=sigma_h_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
-        delta_c_h_max_=delta_c_h_max_,
         recovery_params_=recovery_params_ if include_tax else [(0, 0)],
         social_protection_share_gamma_h_=social_protection_share_gamma_h_ if include_tax else 0,
         consumption_floor_xi_=consumption_floor_xi_,
@@ -345,7 +343,7 @@ def welfare_of_c(c_, eta_):
 
 
 def welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
-                   sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, delta_c_h_max_,
+                   sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_,
                    recovery_params_, social_protection_share_gamma_h_, diversified_share_,
                    consumption_floor_xi_=None, t_hat=None,
                    consumption_offset=None, discount=True, include_tax=False):
@@ -362,7 +360,6 @@ def welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delt
         k_h_eff_=k_h_eff_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
-        delta_c_h_max_=delta_c_h_max_,
         recovery_params_=recovery_params_,
         social_protection_share_gamma_h_=social_protection_share_gamma_h_,
         diversified_share_=diversified_share_,
@@ -380,7 +377,7 @@ def welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delt
 
 def aggregate_welfare_w_of_c_of_capital_t(capital_t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_,
                                           delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_,
-                                          eta_, k_h_eff_, delta_c_h_max_, recovery_params_,
+                                          eta_, k_h_eff_, recovery_params_,
                                           social_protection_share_gamma_h_, diversified_share_,
                                           consumption_floor_xi_=None, t_hat=None, consumption_offset=None,
                                           include_tax=False):
@@ -388,14 +385,14 @@ def aggregate_welfare_w_of_c_of_capital_t(capital_t_, discount_rate_rho_, produc
     Compute the time-aggregate welfare function
     """
     args = (discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
-            sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, delta_c_h_max_, recovery_params_,
+            sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, recovery_params_,
             social_protection_share_gamma_h_, diversified_share_, consumption_floor_xi_, t_hat, consumption_offset, True, include_tax)
     w_agg = integrate.quad(welfare_w_of_t, 0, capital_t_, args=args, limit=50)[0]
     return w_agg
 
 
 def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_,
-                       lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, delta_c_h_max_,
+                       lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_,
                        diversified_share_, recovery_params_, social_protection_share_gamma_h_):
     consumption_floor_xi_, t_hat = solve_consumption_floor_xi(
         lambda_h_=lambda_h_,
@@ -404,7 +401,6 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         productivity_pi_=productivity_pi_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
-        delta_c_h_max_=delta_c_h_max_,
         delta_tax_sp_=delta_tax_sp_,
         recovery_params_=recovery_params_,
         social_protection_share_gamma_h_=social_protection_share_gamma_h_,
@@ -412,7 +408,7 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
 
     if t_hat < np.inf:
         consumption_offset = delta_c_h_of_t(t_hat, productivity_pi_, delta_tax_sp_, delta_k_h_eff_,
-                                             lambda_h_, sigma_h_, 0, 0, delta_c_h_max_,
+                                             lambda_h_, sigma_h_, 0, 0,
                                              recovery_params_, social_protection_share_gamma_h_, consumption_floor_xi_,
                                              t_hat, return_elements=False)
     else:
@@ -429,7 +425,6 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
             sigma_h_=sigma_h_,
             savings_s_h_=savings_s_h_,
             delta_i_h_pds_=delta_i_h_pds_,
-            delta_c_h_max_=delta_c_h_max_,
             recovery_params_=recovery_params_,
             social_protection_share_gamma_h_=social_protection_share_gamma_h_,
             return_elements=True,
@@ -451,7 +446,6 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         delta_i_h_pds_=delta_i_h_pds_,
         eta_=eta_,
         k_h_eff_=k_h_eff_,
-        delta_c_h_max_=delta_c_h_max_,
         recovery_params_=[(0, 0)],
         social_protection_share_gamma_h_=social_protection_share_gamma_h_,
         diversified_share_=diversified_share_,
@@ -472,7 +466,6 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         delta_i_h_pds_=delta_i_h_pds_,
         eta_=eta_,
         k_h_eff_=k_h_eff_,
-        delta_c_h_max_=delta_c_h_max_,
         recovery_params_=recovery_params_,
         social_protection_share_gamma_h_=social_protection_share_gamma_h_,
         diversified_share_=diversified_share_,
@@ -503,7 +496,6 @@ def recompute_with_tax_wrapper(recompute_args):
             delta_i_h_pds_=row['delta_i_h_pds'],
             eta_=row['eta'],
             k_h_eff_=row['k_h_eff'],
-            delta_c_h_max_=row['delta_c_h_max'],
             diversified_share_=row['diversified_share'],
             recovery_params_=row['recovery_params'],
             social_protection_share_gamma_h_=row['social_protection_share_gamma_h'],
@@ -524,52 +516,6 @@ def recompute_data_with_tax(df_in, num_cores=None):
     return res
 
 
-def compute_delta_welfare_dw_reco(capital_t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_,
-                                  lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, delta_c_h_max_,
-                                  diversified_share_, recovery_params_, social_protection_share_gamma_h_):
-    """
-    Recompute the final change in welfare, including tax, social protection, and transfers.
-    """
-    w_baseline = aggregate_welfare_w_of_c_of_capital_t(
-        capital_t_=capital_t_,
-        discount_rate_rho_=discount_rate_rho_,
-        productivity_pi_=productivity_pi_,
-        delta_tax_sp_=delta_tax_sp_,
-        delta_k_h_eff_=0,
-        lambda_h_=lambda_h_,
-        sigma_h_=sigma_h_,
-        savings_s_h_=savings_s_h_,
-        delta_i_h_pds_=delta_i_h_pds_,
-        eta_=eta_,
-        k_h_eff_=k_h_eff_,
-        delta_c_h_max_=delta_c_h_max_,
-        recovery_params_=[(0, 0)],
-        social_protection_share_gamma_h_=None,
-        diversified_share_=diversified_share_,
-        include_tax=True
-    )
-    w_disaster = aggregate_welfare_w_of_c_of_capital_t(
-        capital_t_=capital_t_,
-        discount_rate_rho_=discount_rate_rho_,
-        productivity_pi_=productivity_pi_,
-        delta_tax_sp_=delta_tax_sp_,
-        delta_k_h_eff_=delta_k_h_eff_,
-        lambda_h_=lambda_h_,
-        sigma_h_=sigma_h_,
-        savings_s_h_=savings_s_h_,
-        delta_i_h_pds_=delta_i_h_pds_,
-        eta_=eta_,
-        k_h_eff_=k_h_eff_,
-        delta_c_h_max_=delta_c_h_max_,
-        recovery_params_=recovery_params_,
-        social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-        diversified_share_=diversified_share_,
-        include_tax=True
-    )
-
-    return w_baseline - w_disaster
-
-
 def calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_):
     """
     Compute the alpha parameter
@@ -578,7 +524,7 @@ def calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_):
 
 
 def solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                               delta_i_h_pds_, delta_c_h_max_, delta_tax_sp_, recovery_params_,
+                               delta_i_h_pds_, delta_tax_sp_, recovery_params_,
                                social_protection_share_gamma_h_):
     """
     Solve for the consumption floor xi
@@ -620,7 +566,6 @@ def solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity
                 delta_k_h_eff_=delta_k_h_eff_,
                 savings_s_h_=savings_s_h_,
                 delta_i_h_pds_=delta_i_h_pds_,
-                delta_c_h_max_=delta_c_h_max_,
                 recovery_params_=recovery_params_,
                 social_protection_share_gamma_h_=social_protection_share_gamma_h_,
                 sigma_h_=sigma_h_,
@@ -639,7 +584,7 @@ def calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_,
 
 
 def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_):
+                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_):
     """
     Objective function to be minimized
     """
@@ -659,7 +604,6 @@ def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity
         k_h_eff_=k_h_eff_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
-        delta_c_h_max_=delta_c_h_max_,
         recovery_params_=[(0, 0)],  # for optimization, no recovery parameters are needed
         social_protection_share_gamma_h_=0,  # for optimization, no social protection share is needed
         diversified_share_=diversified_share_,
@@ -674,7 +618,7 @@ def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity
 
 
 def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                                        delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_,
+                                        delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_,
                                         delta_tax_sp_, diversified_share_, min_lambda_, max_lambda_):
     """
     Compute the bounds for the lambda parameter
@@ -690,7 +634,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
             print(f"Optimization not possible for capital_t={capital_t_}, sigma_h={sigma_h_}, "
                   f"delta_k_h_eff={delta_k_h_eff_}, productivity_pi={productivity_pi_}, savings_s_h={savings_s_h_}, "
                   f"delta_i_h_pds={delta_i_h_pds_}, eta={eta_}, discount_rate_rho={discount_rate_rho_}, "
-                  f"k_h_eff={k_h_eff_}, delta_c_h_max={delta_c_h_max_}, delta_tax_sp={delta_tax_sp_}, "
+                  f"k_h_eff={k_h_eff_}, delta_tax_sp={delta_tax_sp_}, "
                   f"diversified_share={diversified_share_}. No lambda exists that maintains positive consumption.")
             return np.nan, np.nan, np.nan
         # max_lambda_ = min(max_lambda_, productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1))
@@ -699,7 +643,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
         def lambda_func(lambda_h_):
             alpha_ = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
             xi_, _ = solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_,
-                                                      savings_s_h_, delta_i_h_pds_, delta_c_h_max_, 0, None, 0)
+                                                      savings_s_h_, delta_i_h_pds_, 0, None, 0)
             return alpha_ * xi_ - (c_baseline - 1e-5)  # alpha * xi must be smaller than the baseline consumption
 
         if np.sign(lambda_func(min_lambda_)) != np.sign(lambda_func(max_lambda_)):
@@ -713,7 +657,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
             print(f"Optimization not possible for capital_t={capital_t_}, sigma_h={sigma_h_}, "
                   f"delta_k_h_eff={delta_k_h_eff_}, productivity_pi={productivity_pi_}, savings_s_h={savings_s_h_}, "
                   f"delta_i_h_pds={delta_i_h_pds_}, eta={eta_}, discount_rate_rho={discount_rate_rho_}, "
-                  f"k_h_eff={k_h_eff_}, delta_c_h_max={delta_c_h_max_}, delta_tax_sp={delta_tax_sp_}, "
+                  f"k_h_eff={k_h_eff_}, delta_tax_sp={delta_tax_sp_}, "
                   f"diversified_share={diversified_share_}. No lambda exists that maintains positive consumption.")
             return np.nan, np.nan, np.nan
 
@@ -730,7 +674,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
     best_candicate_objective = None
     for ic in init_candidates:
         objective = objective_func(ic, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_,
+                                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_tax_sp_,
                                    diversified_share_)
         if best_lambda_init is None or objective < best_candicate_objective:
             best_lambda_init = ic
@@ -740,7 +684,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
 
 
 def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_,
-                    discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_,
+                    discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_,
                     tolerance=1e-10, min_lambda=0.05, max_lambda=100):
     """
     Optimize the lambda parameter
@@ -748,7 +692,7 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
 
     min_lambda, max_lambda, lambda_h_init = calc_lambda_bounds_for_optimization(
         capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_, discount_rate_rho_,
-        k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_, min_lambda, max_lambda
+        k_h_eff_, delta_tax_sp_, diversified_share_, min_lambda, max_lambda
     )
 
     if np.isnan(min_lambda) or np.isnan(max_lambda) or np.isnan(lambda_h_init):
@@ -759,7 +703,7 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
         x0=np.array(lambda_h_init),
         bounds=[(min_lambda, max_lambda)],
         args=(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_,
-              discount_rate_rho_, k_h_eff_, delta_c_h_max_, delta_tax_sp_, diversified_share_),
+              discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_),
         method='Nelder-Mead',
         tol=tolerance,
     )
@@ -780,7 +724,6 @@ def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
             eta_=row['eta'],
             discount_rate_rho_=row['discount_rate_rho'],
             k_h_eff_=row['k_h_eff'],
-            delta_c_h_max_=row['delta_c_h_max'],
             tolerance=row['tolerance'],
             delta_tax_sp_=row['delta_tax_sp'],
             diversified_share_=row['diversified_share'],

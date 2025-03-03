@@ -145,10 +145,9 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
                                                     'dk': 'delta_k_h_eff', 'liquidity': 'savings_s_h',
                                                     'help_received': 'delta_i_h_pds'})
     recompute_data['capital_t'] = capital_t
-    recompute_data['delta_c_h_max'] = delta_c_h_max
     recompute_data['social_protection_share_gamma_h'] = recompute_data['gamma_SP'] * recompute_data['n']
 
-    recompute_data = recompute_data[['capital_t', 'delta_c_h_max', 'social_protection_share_gamma_h', 'productivity_pi',
+    recompute_data = recompute_data[['capital_t', 'social_protection_share_gamma_h', 'productivity_pi',
                                      'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff',
                                      'savings_s_h', 'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'lambda_h',
                                      'diversified_share']]

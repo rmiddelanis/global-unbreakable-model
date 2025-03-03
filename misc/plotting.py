@@ -238,7 +238,7 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
         t_ = np.array(sorted(list(t_) + [t_hat_ + t_tilde_]))
     c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
     di_h_lab, di_h_sp, dc_reco, dc_savings_pds = delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
-                                                                sigma_h_, savings_s_h_, delta_i_h_pds_, delta_c_h_max_,
+                                                                sigma_h_, savings_s_h_, delta_i_h_pds_,
                                                                 recovery_params_, social_protection_share_gamma_h_,
                                                                 consumption_floor_xi_, t_hat_, consumption_offset_,
                                                                 True)
@@ -693,7 +693,6 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
             sigma_h_=q_data.k_household_share,
             savings_s_h_=q_data.liquidity,
             delta_i_h_pds_=0,
-            delta_c_h_max_=np.nan,
             recovery_params_=q_data.recovery_params,
             social_protection_share_gamma_h_=q_data.gamma_SP,
             consumption_floor_xi_=None,
