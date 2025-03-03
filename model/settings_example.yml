@@ -15,7 +15,7 @@ scenario_params:
     outpath: './output/'
     force_recompute: False
     verbose: False
-    countries: ['USA', 'DEU']
+    countries: 'all'
     hazards: 'all'
     ppp_reference_year: 2021
   macro_params:
