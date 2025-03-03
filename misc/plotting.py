@@ -240,8 +240,7 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
     di_h_lab, di_h_sp, dc_reco, dc_savings_pds = delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
                                                                 sigma_h_, savings_s_h_, delta_i_h_pds_, delta_c_h_max_,
                                                                 recovery_params_, social_protection_share_gamma_h_,
-                                                                consumption_floor_xi_, t_hat_, t_tilde_,
-                                                                delta_tilde_k_h_eff_, consumption_offset_,
+                                                                consumption_floor_xi_, t_hat_, consumption_offset_,
                                                                 True)
     di_h = di_h_lab + di_h_sp
     if show_sp_losses:
@@ -257,7 +256,7 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
     axs[0].plot([0, 0], [c_baseline, (c_baseline - di_h - dc_reco + dc_savings_pds)[0]], color=linecolor, label='__none__')
     axs[0].plot(t_, c_baseline - di_h - dc_reco + dc_savings_pds, color=linecolor, label='Consumption')
 
-    dk_eff = delta_k_h_eff_of_t(t_, 0, delta_k_h_eff_, lambda_h_, sigma_h_, delta_c_h_max_, productivity_pi_)
+    dk_eff = delta_k_h_eff_of_t(t_, delta_k_h_eff_, lambda_h_)
 
     if plot_capital:
         axs[1].plot([-0.03 * (max(t_) - min(t_)), 0], [0, 0], color=linecolor, label='__none__')
@@ -699,8 +698,6 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
             social_protection_share_gamma_h_=q_data.gamma_SP,
             consumption_floor_xi_=None,
             t_hat=None,
-            t_tilde=None,
-            delta_tilde_k_h_eff=None,
             consumption_offset=None,
             return_elements=True
         )

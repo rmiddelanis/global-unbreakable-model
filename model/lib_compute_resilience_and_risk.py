@@ -207,7 +207,7 @@ def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, delt
 
 
 def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_protection_,
-                   is_local_welfare=True, return_stats=True):
+                   is_local_welfare=True):
     # generate output df
     out = pd.DataFrame(index=macro_event.index)
 

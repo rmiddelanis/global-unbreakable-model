@@ -5,7 +5,7 @@ model_params:
     verbose: False
   pds_params:
     pds_variant: 'no'
-    pds_targeting: 'perfect'
+    pds_targeting: 'data'
     pds_borrowing_ability: 'unlimited'
     pds_lending_rate: 0.05
     pds_scope: ['q1', 'q2', 'q3', 'q4', 'q5']
@@ -15,7 +15,7 @@ scenario_params:
     outpath: './output/'
     force_recompute: False
     verbose: False
-    countries: 'all'
+    countries: ['USA', 'DEU']
     hazards: 'all'
     ppp_reference_year: 2021
   macro_params:
