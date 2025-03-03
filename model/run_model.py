@@ -28,7 +28,6 @@ def run_model(settings: dict):
     # Options and parameters
     event_level = ["iso3", "hazard", "rp"]  # levels of index at which one event happens
     affected_cats = pd.Index(["a", "na"], name="affected_cat")  # categories for social protection
-    helped_cats = pd.Index(["helped", "not_helped"], name="helped_cat")
     poor_cat = 'q1'
 
     # Generate scenario data
@@ -53,19 +52,17 @@ def run_model(settings: dict):
     )
 
     # calculate the post-disaster response
-    # adds 'error_incl', 'error_excl', 'max_aid', 'need', 'aid', 'unif_aid' to macro_event
-    # adds 'help_received', 'help_fee', 'help_needed' to cat_info_event_ia(h)
-    macro_event, cat_info_event_iah = calculate_response(
+    macro_event, cat_info_event_iah = compute_response(
         macro_event=macro_event,
         cat_info_event_ia=cat_info_event_ia,
         event_level=event_level,
-        poor_cat=poor_cat,
-        helped_cats=helped_cats,
-        pds_targeting=pds_params['pds_targeting'],
-        pds_variant=pds_params['pds_variant'],
-        pds_borrowing_ability=pds_params['pds_borrowing_ability'],
+        scope=pds_params['pds_scope'],
+        targeting=pds_params['pds_targeting'],
+        lending_rate=pds_params['pds_lending_rate'],
+        variant=pds_params['pds_variant'],
+        borrowing_ability=pds_params['pds_borrowing_ability'],
         loss_measure="dk_reco",
-        pds_shareable=pds_params['pds_shareable'],
+        covered_loss_share=pds_params['covered_loss_share'],
     )
 
     cat_info_event_iah, macro_event = compute_dw(

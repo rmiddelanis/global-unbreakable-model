@@ -19,12 +19,12 @@ def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles
     print("Computing diversified income share and tax...")
     cat_info_['diversified_share'] = cat_info_.transfers + cat_info_.axfin * axfin_impact_
     if scale_non_diversified_income_ is not None:
-        scope = scale_non_diversified_income_['scope'].split('+')
+        scope = scale_non_diversified_income_['scope']
         parameter = scale_non_diversified_income_['parameter']
         cat_info_.loc[pd.IndexSlice[:, scope], 'diversified_share'] = 1 - (1 - cat_info_['diversified_share']) * parameter
     cat_info_['diversified_share'] = cat_info_['diversified_share'].clip(upper=1, lower=0)
     if min_diversified_share_ is not None:
-        scope = min_diversified_share_['scope'].split('+')
+        scope = min_diversified_share_['scope']
         parameter = min_diversified_share_['parameter']
         cat_info_.loc[pd.IndexSlice[:, scope], 'diversified_share'] = cat_info_['diversified_share'].clip(lower=parameter)
 
@@ -36,7 +36,7 @@ def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles
     cat_info_['c'] = cat_info_.income_share / cat_info_.n * wb_data_macro_.gdp_pc_pp
 
     if scale_income_ is not None:
-        scope = scale_income_['scope'].split('+')
+        scope = scale_income_['scope']
         parameter = scale_income_['parameter']
         cat_info_.loc[pd.IndexSlice[:, scope], 'c'] *= parameter
         wb_data_macro_.gdp_pc_pp = cat_info_.groupby('iso3').c.mean()
@@ -136,7 +136,7 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, ppp_reference_year, f
 
         liquidity_and_axfin.to_csv(outpath)
     if scale_liquidity_ is not None:
-        liquidity_and_axfin.loc[pd.IndexSlice[:, scale_liquidity_['scope'].split('+')], 'liquidity'] *= scale_liquidity_['parameter']
+        liquidity_and_axfin.loc[pd.IndexSlice[:, scale_liquidity_['scope']], 'liquidity'] *= scale_liquidity_['parameter']
     return liquidity_and_axfin
 
 
@@ -379,7 +379,7 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         capital_shares[['k_labor_share', 'self_employment', 'owner_occupied_share_of_value_added', 'real_est_k_to_va_shares_ratio']].to_csv(capital_shares_before_adjustment_path)
 
     if scale_self_employment is not None:
-        # capital_shares.loc[pd.IndexSlice[:, scale_self_employment['scope'].split('+')], 'self_employment'] *= scale_self_employment['parameter']
+        # capital_shares.loc[pd.IndexSlice[:, scale_self_employment['scope']], 'self_employment'] *= scale_self_employment['parameter']
         capital_shares['self_employment'] *= scale_self_employment['parameter']
 
     capital_shares['k_self_share'] = capital_shares['k_labor_share'] * capital_shares['self_employment']
@@ -504,7 +504,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
 
     for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
         if policy_dict is not None:
-            scope = policy_dict['scope'].split('+')
+            scope = policy_dict['scope']
             parameter = policy_dict['parameter']
             scale_total = policy_dict['scale_total']
             if not scale_total:
@@ -999,7 +999,6 @@ def prepare_scenario(scenario_params):
 
     macro_params['income_elasticity_eta'] = macro_params.get('income_elasticity_eta', 1.5)
     macro_params['discount_rate_rho'] = macro_params.get('discount_rate_rho', .06)
-    macro_params['max_increased_spending'] = macro_params.get('max_increased_spending', .05)
     macro_params['axfin_impact'] = macro_params.get('axfin_impact', .1)
     macro_params['reconstruction_capital'] = macro_params.get('reconstruction_capital', 'self_hous')
     macro_params['ew_year'] = macro_params.get('ew_year', 2018)
@@ -1143,7 +1142,6 @@ def prepare_scenario(scenario_params):
     macro = macro.join(tau_tax, how='left')
     macro = macro.join(capital_shares, how='left')
     macro['rho'] = macro_params['discount_rate_rho']
-    macro['max_increased_spending'] = macro_params['max_increased_spending']
     macro['income_elasticity_eta'] = macro_params['income_elasticity_eta']
 
     # clean and harmonize data frames
@@ -1161,11 +1159,11 @@ def prepare_scenario(scenario_params):
     data_coverage.to_csv(os.path.join(scenario_root_dir, "data/processed/data_coverage.csv"))
 
     if run_params['countries'] != 'all':
-        if len(np.intersect1d(countries, run_params['countries'].split('+'))) == 0:
+        if len(np.intersect1d(countries, run_params['countries'])) == 0:
             print("None of the selected countries found in data. Keeping all countries.")
         else:
-            countries = np.intersect1d(countries, run_params['countries'].split('+'))
-            if len(countries) < len(run_params['countries'].split('+')):
+            countries = np.intersect1d(countries, run_params['countries'])
+            if len(countries) < len(run_params['countries']):
                 print("Not all selected countries found in data.")
     macro = macro.loc[countries]
     cat_info = cat_info.loc[countries]
@@ -1174,7 +1172,7 @@ def prepare_scenario(scenario_params):
 
     # retain selected hazards only
     if run_params['hazards'] != 'all':
-        hazards = run_params['hazards'].split('+')
+        hazards = run_params['hazards']
         hazard_ratios = hazard_ratios[hazard_ratios.index.get_level_values('hazard').isin(hazards)]
         hazard_protection = hazard_protection[hazard_protection.index.get_level_values('hazard').isin(hazards)]
 
