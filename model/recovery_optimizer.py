@@ -6,13 +6,13 @@ import tqdm
 from scipy import integrate, optimize
 
 
-def delta_capital_k_eff_of_t(t_, recovery_parameters_):
+def delta_capital_k_eff_of_t(t_, recovery_params_):
     """
     Compute the dynamic effective capital loss at country level
     """
     dk_national = 0
-    for delta_k_h_eff_, lambda_h_ in recovery_parameters_:
-        dk_h = delta_k_h_eff_of_t_exp_regime(t_=t_, delta_k_h_eff_=delta_k_h_eff_, lambda_h_=lambda_h_)
+    for delta_k_h_eff_, lambda_h_ in recovery_params_:
+        dk_h = delta_k_h_eff_of_t(t_=t_, delta_k_h_eff_=delta_k_h_eff_, lambda_h_=lambda_h_)
         if dk_national is None:
             dk_national = dk_h
         else:
@@ -21,21 +21,6 @@ def delta_capital_k_eff_of_t(t_, recovery_parameters_):
 
 
 def delta_k_h_eff_of_t(t_, delta_k_h_eff_, lambda_h_):
-    """
-    Compute the dynamic effective capital loss
-    """
-    to_float = False
-    if isinstance(t_, (float, int)):
-        to_float = True
-        t_ = np.array([t_])
-    res = delta_k_h_eff_of_t_exp_regime(t_, delta_k_h_eff_, lambda_h_)
-    if to_float:
-        return res.item()
-    else:
-        return res
-
-
-def delta_k_h_eff_of_t_exp_regime(t_, delta_k_h_eff_, lambda_h_):
     """
     Compute the dynamic effective capital loss in the normal exponential recovery regime
     """
@@ -71,9 +56,8 @@ def delta_i_h_sp_of_t(t_, recovery_params_=None, productivity_pi_=None, social_p
             print(recovery_params_, productivity_pi_, social_protection_share_gamma_h_, delta_tax_sp_)
             raise ValueError("To include tax, recovery parameters, productivity and social protection share must "
                              "be provided to compute social protection income loss.")
-        else:
-            delta_capital_k_eff_national = delta_capital_k_eff_of_t(t_, recovery_params_)
-            return delta_capital_k_eff_national * productivity_pi_ * delta_tax_sp_ * social_protection_share_gamma_h_
+        delta_capital_k_eff_national = delta_capital_k_eff_of_t(t_, recovery_params_)
+        return delta_capital_k_eff_national * productivity_pi_ * delta_tax_sp_ * social_protection_share_gamma_h_
     return 0 if isinstance(t_, (float, int)) else np.zeros(t_.shape)
 
 
@@ -82,11 +66,11 @@ def cum_delta_i_h_sp_of_t(t_, recovery_parameters_, productivity_pi_, social_pro
     if delta_tax_sp_ != 0:
         if recovery_parameters_ is not None:
             cum_d_i_h_sp_of_t = None
-            for delta_k_h_eff_, lambda_h_ in recovery_parameters_:
-                delta_k_h_eff_of_h_other_of_t = delta_k_h_eff_of_t_exp_regime(t_=t_, delta_k_h_eff_=delta_k_h_eff_,
-                                                                              lambda_h_=lambda_h_)
-                cum_d_i_h_sp_from_h_other = (social_protection_share_gamma_h_ * productivity_pi_ * delta_tax_sp_ / lambda_h_ *
-                                             (delta_k_h_eff_ - delta_k_h_eff_of_h_other_of_t))
+            for delta_k_h_eff_other_, lambda_h_other_ in recovery_parameters_:
+                delta_k_h_eff_other_of_t = delta_k_h_eff_of_t(t_=t_, delta_k_h_eff_=delta_k_h_eff_other_,
+                                                                   lambda_h_=lambda_h_other_)
+                cum_d_i_h_sp_from_h_other = (social_protection_share_gamma_h_ * productivity_pi_ * delta_tax_sp_ / lambda_h_other_ *
+                                             (delta_k_h_eff_other_ - delta_k_h_eff_other_of_t))
                 if cum_d_i_h_sp_of_t is None:
                     cum_d_i_h_sp_of_t = cum_d_i_h_sp_from_h_other
                 else:
@@ -128,20 +112,6 @@ def delta_i_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
 
 
 def delta_c_h_reco_of_t(t_, delta_k_h_eff_, lambda_h_, sigma_h_):
-    """
-    Compute the dynamic recovery consumption loss in the exponential recovery regime
-    """
-    to_float = False
-    if isinstance(t_, (float, int)):
-        to_float = True
-        t_ = np.array([t_])
-    res = delta_c_h_reco_of_t_exp_regime(t_, delta_k_h_eff_, lambda_h_, sigma_h_)
-    if to_float:
-        return res.item()
-    return res
-
-
-def delta_c_h_reco_of_t_exp_regime(t_, delta_k_h_eff_, lambda_h_, sigma_h_):
     """
     Compute the dynamic recovery consumption loss in the normal exponential recovery regime
     """
