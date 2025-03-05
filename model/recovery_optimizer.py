@@ -145,7 +145,7 @@ def calc_t_hat(lambda_h_=None, consumption_floor_xi_=None, productivity_pi_=None
             cum_d_i_h = cum_delta_i_h_of_t(t__, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, recovery_params_, social_protection_share_gamma_h_)
             cum_d_c_h_reco = cum_delta_c_h_reco_of_t(t__, delta_k_h_eff_, lambda_h_, sigma_h_)
             return cum_d_i_h + cum_d_c_h_reco
-        if cum_d_c(np.inf) < savings_s_h_ + delta_i_h_pds_:
+        if cum_d_c(np.inf) <= savings_s_h_ + delta_i_h_pds_:
             return np.inf
 
         # if not, find the time at which savings are used up
@@ -156,7 +156,7 @@ def calc_t_hat(lambda_h_=None, consumption_floor_xi_=None, productivity_pi_=None
                 recovery_params_, social_protection_share_gamma_h_
             )
             return cum_d_c_of_t__ - delta_c_h_floor * t__ - (savings_s_h_ + delta_i_h_pds_)
-        return optimize.root_scalar(search_func, method='brentq', bracket=[0, 100]).root
+        return optimize.root_scalar(search_func, method='brentq', bracket=[0, 1e4]).root
 
 
 def delta_c_h_savings_pds_of_t(t_, lambda_h_, sigma_h_, productivity_pi_, consumption_floor_xi_, t_hat_, delta_k_h_eff_,
