@@ -634,7 +634,7 @@ def plot_supfig_3(results_data_, outpath_=None):
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
         for label in capital_shares.index:
             ax.text(capital_shares[x].loc[label], capital_shares[y].loc[label], label, fontsize=6)
-        ax.set_xlabel('GDP per capita [$1,000 PPP]')
+        ax.set_xlabel('GDP per capita [$PPP 1,000]')
         ax.set_title(name)
     axs[0, -1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     axs[0, 0].set_ylabel('share [%]')
@@ -1512,7 +1512,7 @@ def plot_fig_1_2(plot_data):
                       country_data.diversified_share, axs=[ax], show_ylabel=not legend, plot_capital=False,
                       plot_legend=False, linecolor=c, shading_color='dimgrey',
                       ylims=[(0, 10.000), None], title=title)
-    axs[0].set_ylabel('Consumption [$PPP 1,000]')
+    axs[0].set_ylabel('Consumption\n[$PPP 1,000 / yr]')
     legend = axs[-1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     handles = legend.legend_handles
     handles[-1].set_color('k')
@@ -1570,7 +1570,7 @@ def plot_fig_1_1(plot_data):
     )
     ax.legend(frameon=False)
     ax.set_ylabel(None)
-    ax.set_title('Income\n[$PPP 1,000]')
+    ax.set_title('Income\n[$PPP 1,000 / yr]')
 
     # plot liquidity data
     ax = axs[0, 2]
