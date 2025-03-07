@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 from misc.helpers import get_country_name_dicts, df_to_iso3
@@ -148,12 +150,12 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, ppp_ref
     if ppp_reference_year == 2021:
         gni = get_wb_series('NY.GNP.PCAP.PP.KD').rename('GNI') # constant 2021 itl. dollars
     elif ppp_reference_year == 2017:
-        gni = pd.read_excel("./data/raw/WB_socio_economic_data/WB-WDI.xlsx", sheet_name='Data')
+        gni = pd.read_excel(os.path.join(root_dir_, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
         gni = gni[gni['Indicator ID'] == 'WB.WDI.NY.GNP.PCAP.PP.KD']
         gni = gni.rename({'Economy Name': 'country'}, axis=1).set_index('country').iloc[:, 8:]
         gni.columns.name = 'year'
         gni = gni.stack()
-        gni = get_most_recent_value(gni).rename('GNI')
+        # gni = get_most_recent_value(gni).rename('GNI')
     else:
         raise ValueError("PPP reference year not supported")
     gni = gni.reset_index()

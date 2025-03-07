@@ -142,14 +142,17 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     if ppp_reference_year == 2021:
         gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
     elif ppp_reference_year == 2017:
-        gdp_pc_pp = pd.read_excel("./data/raw/WB_socio_economic_data/WB-WDI.xlsx", sheet_name='Data')
+        gdp_pc_pp = pd.read_excel(os.path.join(root_dir, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
         gdp_pc_pp = gdp_pc_pp[gdp_pc_pp['Indicator ID'] == 'WB.WDI.NY.GDP.PCAP.PP.KD']
-        gdp_pc_pp = gdp_pc_pp.rename({'Economy Name': 'country'}, axis=1).set_index('country').iloc[:, 8:]
+        gdp_pc_pp = gdp_pc_pp.rename({'Economy Name': 'country'}, axis=1)
+        gdp_pc_pp['country'] = gdp_pc_pp['country'].replace({'Vietnam': 'Viet Nam'})
+        gdp_pc_pp = gdp_pc_pp.set_index('country').iloc[:, 8:]
         gdp_pc_pp.columns.name = 'year'
         gdp_pc_pp = gdp_pc_pp.stack()
         gdp_pc_pp = get_most_recent_value(gdp_pc_pp).rename('gdp_pc_pp')
     else:
         raise ValueError("PPP reference year not supported")
+
     pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
 
     # create output data frames
