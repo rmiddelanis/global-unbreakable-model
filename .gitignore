@@ -3,3 +3,9 @@ __pycache__/*
 .DS_Store
 __pycache__
 ~$*
+
+# ignore add all files in processed data folder except exposure_bias_per_quintile.csv and flopros_protection_processed.csv, 
+# because these are not automatically generated when force_recompute flag is set 
+scenario/data/processed/*
+!scenario/data/processed/exposure_bias_per_quintile.csv
+!scenario/data/processed/flopros_protection_processed.csv
