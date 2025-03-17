@@ -215,8 +215,8 @@ def print_results_table(results_data_, data_coverage_=None):
 
 
 def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_,
-                  delta_i_h_pds_, delta_c_h_max_, recovery_params_, social_protection_share_gamma_h_, diversified_share_,
-                  show_sp_losses=False, consumption_floor_xi_=None, t_hat_=None, t_tilde_=None, delta_tilde_k_h_eff_=None,
+                  delta_i_h_pds_, recovery_params_, social_protection_share_gamma_h_, diversified_share_,
+                  show_sp_losses=False, consumption_floor_xi_=None, t_hat_=None,
                   consumption_offset_=None, title=None, ylims=None, plot_legend=True, show_ylabel=True, fig=None, axs=None,
                   plot_capital=True, linecolor='black', shading_color='red'):
     """
@@ -230,12 +230,8 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
             axs = [axs]
 
     t_ = np.linspace(0, t_max, 1000)
-    if t_tilde_ is not None and t_tilde_ not in t_:
-        t_ = np.array(sorted(list(t_) + [t_tilde_]))
     if t_hat_ is not None and t_hat_ not in t_:
         t_ = np.array(sorted(list(t_) + [t_hat_]))
-    if t_hat_ is not None and t_tilde_ is not None and t_hat_ + t_tilde_ not in t_:
-        t_ = np.array(sorted(list(t_) + [t_hat_ + t_tilde_]))
     c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
     di_h_lab, di_h_sp, dc_reco, dc_savings_pds = delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
                                                                 sigma_h_, savings_s_h_, delta_i_h_pds_,
@@ -945,7 +941,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
 
     plot_recovery(20, inset_plot_data.avg_prod_k, inset_plot_data.tau_tax, inset_plot_data.k, inset_plot_data.dk,
                   inset_plot_data.lambda_h, inset_plot_data.k_household_share, inset_plot_data.liquidity,
-                  0, np.nan, inset_plot_data.recovery_params, inset_plot_data.gamma_SP * inset_plot_data.n,
+                  0, inset_plot_data.recovery_params, inset_plot_data.gamma_SP * inset_plot_data.n,
                   inset_plot_data.diversified_share, axs=[inset_ax], show_ylabel=True, plot_capital=False,
                   ylims=[(0, inset_plot_data.c * 1.05), None], plot_legend=False)
 
@@ -1508,7 +1504,7 @@ def plot_fig_1_2(plot_data):
         recovery_params = [(k / 1e3, l) for (k, l) in country_data.recovery_params]
         plot_recovery(3, country_data.avg_prod_k, country_data.tau_tax, country_data.k, country_data.dk,
                       country_data.lambda_h, country_data.k_household_share, country_data.liquidity / 1e3,
-                      0, np.nan, recovery_params, country_data.gamma_SP * country_data.n,
+                      0, recovery_params, country_data.gamma_SP * country_data.n,
                       country_data.diversified_share, axs=[ax], show_ylabel=not legend, plot_capital=False,
                       plot_legend=False, linecolor=c, shading_color='dimgrey',
                       ylims=[(0, 10.000), None], title=title)
