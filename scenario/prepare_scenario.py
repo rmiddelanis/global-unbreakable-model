@@ -1019,7 +1019,7 @@ def prepare_scenario(scenario_params):
         drop_incomplete=True,
         force_recompute=run_params['force_recompute'],
         verbose=run_params['verbose'],
-        match_macro_years=run_params['match_macro_years'],
+        include_spl=run_params['include_spl'],
     )
 
     # print duration

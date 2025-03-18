@@ -122,7 +122,7 @@ def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value
 
 
 def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False, drop_incomplete=True,
-                force_recompute=True, verbose=True, save=True, match_macro_years=True):
+                force_recompute=True, verbose=True, save=True, include_spl=False):
     macro_path = os.path.join(root_dir, "data/processed/wb_data_macro.csv")
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
     if not force_recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
@@ -165,10 +165,22 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
     pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
-    # create output data frames
-    if match_macro_years:
-        macro_df = get_most_recent_value(pd.concat([gdp_pc_pp, gni_pc_pp, pop], axis=1).dropna(), drop_year=False)
-        macro_df.rename({'year': 'macro_year'}, axis=1, inplace=True)
+    # if include_spl, make sure that years of macro data points match
+    if include_spl:
+        pip_data = pd.read_csv(os.path.join(root_dir, "data/raw/WB_socio_economic_data/2025-03-07_pip_data.csv"))
+        pip_data = pip_data.rename({'country_code': 'iso3', 'reporting_year': 'year'}, axis=1)
+        pip_data.year = pip_data.year.astype(str)
+        pip_data.set_index(['iso3', 'year', 'reporting_level', 'welfare_type'], inplace=True)
+        pip_data = pip_data.xs('national', level='reporting_level')
+        spl = pd.merge(
+            pip_data.xs('income', level='welfare_type').spl,
+            pip_data.xs('consumption', level='welfare_type').spl,
+            left_index=True, right_index=True, how='outer'
+        )
+        spl = spl.spl_x.fillna(spl.spl_y).rename('spl').to_frame()
+
+        macro_df = pd.concat([gdp_pc_pp, gni_pc_pp, pop, spl], axis=1).dropna()
+        macro_df = get_most_recent_value(macro_df)
     else:
         macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop)], axis=1)
 
