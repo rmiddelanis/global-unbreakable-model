@@ -16,6 +16,7 @@ scenario_params:
     force_recompute: False
     verbose: False
     countries: 'all'
+    exclude_countries: ['THA']
     hazards: 'all'
     ppp_reference_year: 2021
     include_spl: False

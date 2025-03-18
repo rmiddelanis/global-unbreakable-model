@@ -133,8 +133,6 @@ def load_data(simulation_paths_, model_root_dir_):
     }
 
     for k in results_data_.keys():
-        if 'THA' in results_data_[k].index:
-            results_data_[k] = results_data_[k].drop('THA')
         results_data_[k][['resilience', 'risk', 'risk_to_assets']] *= 100
         results_data_[k] = results_data_[k].join(gini_index_, on='iso3')
         results_data_[k]['log_gdp_pc_pp'] = np.log(results_data_[k]['gdp_pc_pp'])
