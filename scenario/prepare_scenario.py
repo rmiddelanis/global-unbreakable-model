@@ -1031,7 +1031,7 @@ def prepare_scenario(scenario_params):
     liquidity_and_axfin = load_findex_liquidity_and_axfin(
         root_dir_=scenario_root_dir,
         any_to_wb_=any_to_wb,
-        gni_pc_pp=wb_data_macro[['gni_pc_pp', 'macro_year']].rename(columns={'macro_year': 'year'}).set_index('year', append=True).squeeze(),
+        gni_pc_pp=wb_data_macro.gni_pc_pp,
         force_recompute_=run_params['force_recompute'],
         verbose_=run_params['verbose'],
         scale_liquidity_=policy_params.pop('scale_liquidity', None),
