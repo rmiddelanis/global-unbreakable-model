@@ -199,7 +199,7 @@ def delta_c_h_savings_pds_of_t(t_, lambda_h_, sigma_h_, productivity_pi_, consum
             # consumption losses can be fully offset with savings
             d_c_h_savings_pds_of_t = delta_i_h + delta_c_h_reco
     if isinstance(t_, (float, int)):
-        if not (0 < t_ < t_hat_):
+        if not (0 <= t_ < t_hat_):
             d_c_h_savings_pds_of_t = 0
     else:
         d_c_h_savings_pds_of_t[t_ >= t_hat_] = 0
