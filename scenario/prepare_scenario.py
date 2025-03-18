@@ -124,8 +124,8 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, force_reco
         }
         liquidity_ = get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths, gni_pc_pp, verbose=verbose_)
         liquidity_ = liquidity_[['liquidity_share', 'liquidity']].prod(axis=1).rename('liquidity')
-        liquidity_ = liquidity_.iloc[liquidity_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
-        liquidity_ = liquidity_.droplevel('year')
+        # liquidity_ = liquidity_.iloc[liquidity_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()]
+        # liquidity_ = liquidity_.droplevel('year')
 
         axfin_ = gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths, verbose=verbose_)
         axfin_ = axfin_.iloc[axfin_.reset_index().groupby(['iso3', 'income_cat']).year.idxmax()].axfin.droplevel('year')
