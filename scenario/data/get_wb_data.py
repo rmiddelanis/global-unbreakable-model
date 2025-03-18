@@ -10,8 +10,24 @@ from datetime import date
 
 YEAR_TODAY = date.today().year
 
+AGG_REGIONS = ['Africa Eastern and Southern', 'Africa Western and Central', 'Arab World', 'Caribbean small states',
+               'Central Europe and the Baltics', 'Early-demographic dividend', 'East Asia & Pacific',
+               'East Asia & Pacific (excluding high income)', 'East Asia & Pacific (IDA & IBRD countries)',
+               'Euro area', 'Europe & Central Asia', 'Europe & Central Asia (excluding high income)',
+               'Europe & Central Asia (IDA & IBRD countries)', 'European Union', 'Fragile and conflict affected situations',
+               'Heavily indebted poor countries (HIPC)', 'High income', 'IBRD only', 'IDA & IBRD total', 'IDA blend',
+               'IDA only', 'IDA total', 'Late-demographic dividend', 'Latin America & Caribbean',
+               'Latin America & Caribbean (excluding high income)', 'Latin America & the Caribbean (IDA & IBRD countries)',
+               'Least developed countries: UN classification', 'Low & middle income', 'Low income', 'Lower middle income',
+               'Middle East & North Africa', 'Middle East & North Africa (excluding high income)',
+               'Middle East & North Africa (IDA & IBRD countries)', 'Middle income', 'North America', 'Not classified',
+               'OECD members', 'Other small states', 'Pacific island small states', 'Post-demographic dividend',
+               'Pre-demographic dividend', 'Small states', 'South Asia', 'South Asia (IDA & IBRD)',
+               'Sub-Saharan Africa', 'Sub-Saharan Africa (excluding high income)', 'Sub-Saharan Africa (IDA & IBRD countries)',
+               'Upper middle income', 'World']
 
-def guess_missing_transfers_shares(macro_df_, cat_info_df_, root_dir_, any_to_wb, verbose=True):
+
+def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=True):
     regression_spec = {
         'q1': 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY + MNA', # R2=0.557
         'q2': 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.558
@@ -48,7 +64,6 @@ def guess_missing_transfers_shares(macro_df_, cat_info_df_, root_dir_, any_to_wb
     #                unemployment, self_employment, labforce_part_rate, gvt_effectiveness], axis=1)
     x = pd.concat([remittances, ilo_sp_exp,
                    pd.get_dummies(income_groups['Region']), pd.get_dummies(income_groups['Country income group']),
-                   macro_df_.gdp_pc_pp / 1000, np.log(macro_df_.gdp_pc_pp).rename('ln_gdp_pc_pp'),
                    unemployment], axis=1)
     x['FSY'] = False
     x.loc[fsy_countries, 'FSY'] = True
@@ -87,26 +102,6 @@ def guess_missing_transfers_shares(macro_df_, cat_info_df_, root_dir_, any_to_wb
     return cat_info_df_
 
 
-def clean_merge_update(df_, series_other_, any_to_wb):
-    if df_.index.names is None:
-        raise ValueError('df_ index names are None')
-    if series_other_.index.names != df_.index.names:
-        series_other_.index.names = df_.index.names
-    if type(series_other_) is not pd.Series:
-        raise ValueError('series_other_ is not a series')
-    if series_other_.name is None:
-        raise ValueError('series_other_ has no name')
-
-    df_other_ = series_other_.reset_index()
-    df_other_.country = df_other_.country.apply(lambda x: str.lower(x)).replace(any_to_wb)
-    series_other_clean = df_other_.set_index(['country', 'income_cat'])[series_other_.name]
-
-    res = pd.merge(df_, series_other_clean, on=series_other_.index.names, how="outer")
-    res[series_other_clean.name] = res[series_other_clean.name + '_x'].fillna(res[series_other_clean.name + '_y'])
-    res.drop([series_other_clean.name + '_x', series_other_clean.name + '_y'], axis=1, inplace=True)
-    return res
-
-
 def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value=True, upper_bound=None,
                       lower_bound=None):
     data_q1 = get_wb_series(id_q1, 'q1')
@@ -127,7 +122,7 @@ def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value
 
 
 def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False, drop_incomplete=True,
-                force_recompute=True, verbose=True, save=True):
+                force_recompute=True, verbose=True, save=True, match_macro_years=True):
     macro_path = os.path.join(root_dir, "data/processed/wb_data_macro.csv")
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
     if not force_recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
@@ -140,40 +135,52 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
 
     # World Development Indicators
     if ppp_reference_year == 2021:
-        gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
+        # gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
+        gdp_pc_pp = get_wb_series('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
+        gni_pc_pp = get_wb_series('NY.GNP.PCAP.PP.KD', 'gni_pc_pp')
     elif ppp_reference_year == 2017:
-        gdp_pc_pp = pd.read_excel(os.path.join(root_dir, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
-        gdp_pc_pp = gdp_pc_pp[gdp_pc_pp['Indicator ID'] == 'WB.WDI.NY.GDP.PCAP.PP.KD']
-        gdp_pc_pp = gdp_pc_pp.rename({'Economy Name': 'country'}, axis=1)
-        gdp_pc_pp['country'] = gdp_pc_pp['country'].replace({'Vietnam': 'Viet Nam'})
-        gdp_pc_pp = gdp_pc_pp.set_index('country').iloc[:, 8:]
+        wb_wdi = pd.read_excel(os.path.join(root_dir, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
+        wb_wdi = wb_wdi.rename({'Economy Name': 'country'}, axis=1)
+        wb_wdi['country'] = wb_wdi['country'].replace({'Vietnam': 'Viet Nam'})
+
+        gni_pc_pp = wb_wdi[wb_wdi['Indicator ID'] == 'WB.WDI.NY.GNP.PCAP.PP.KD'].set_index('country').iloc[:, 8:]
+        gni_pc_pp.columns.name = 'year'
+        gni_pc_pp = gni_pc_pp.stack().rename('gni_pc_pp')
+        # gni_pc_pp = get_most_recent_value(gni_pc_pp).rename('gni_pc_pp')
+
+        gdp_pc_pp = wb_wdi[wb_wdi['Indicator ID'] == 'WB.WDI.NY.GDP.PCAP.PP.KD'].set_index('country').iloc[:, 8:]
         gdp_pc_pp.columns.name = 'year'
-        gdp_pc_pp = gdp_pc_pp.stack()
-        gdp_pc_pp = get_most_recent_value(gdp_pc_pp).rename('gdp_pc_pp')
+        gdp_pc_pp = gdp_pc_pp.stack().rename('gdp_pc_pp')
+        # gdp_pc_pp = get_most_recent_value(gdp_pc_pp).rename('gdp_pc_pp')
     else:
         raise ValueError("PPP reference year not supported")
+    gdp_pc_pp = gdp_pc_pp.drop(np.intersect1d(gdp_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
+    gdp_pc_pp = df_to_iso3(gdp_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
-    pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
+    gni_pc_pp = gni_pc_pp.drop(np.intersect1d(gni_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
+    gni_pc_pp = df_to_iso3(gni_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
+
+    # pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
+    pop = get_wb_series('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
+    pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
+    pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
     # create output data frames
-    # macro_df = pd.concat([gdp_pc_pp, pop, urbanization_rate], axis=1).reset_index()
-    macro_df = pd.concat([gdp_pc_pp, pop], axis=1).reset_index()
-    macro_df.country = macro_df.country.replace(any_to_wb)
-    macro_df = macro_df.dropna(subset='country').set_index('country')
-
-    cat_info_df = pd.DataFrame(index=pd.MultiIndex.from_product((macro_df.index, ['q1', 'q2', 'q3', 'q4', 'q5'])),
-                               columns=['income_share', 'transfers'])
-    cat_info_df.index.names = ['country', 'income_cat']
+    if match_macro_years:
+        macro_df = get_most_recent_value(pd.concat([gdp_pc_pp, gni_pc_pp, pop], axis=1).dropna(), drop_year=False)
+        macro_df.rename({'year': 'macro_year'}, axis=1, inplace=True)
+    else:
+        macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop)], axis=1)
 
     # income shares (source: Poverty and Inequality Platform)
     income_shares = download_cat_info(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
                                       id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
-                                      most_recent_value=True, upper_bound=100, lower_bound=0) / 100
+                                      # most_recent_value=True, upper_bound=100, lower_bound=0) / 100
+                                      most_recent_value=False, upper_bound=100, lower_bound=0) / 100
     # make sure income shares add up to 1
     income_shares /= income_shares.unstack('income_cat').sum(axis=1)
-
-    cat_info_df = clean_merge_update(cat_info_df, income_shares, any_to_wb)
-
+    income_shares = df_to_iso3(income_shares.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year', 'income_cat']).drop('country', axis=1)
+    income_shares = get_most_recent_value(income_shares.dropna())
     # ASPIRE
 
     # Adequacies
@@ -202,28 +209,29 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
                                               id_q4='per_allsp.cov_q4_tot', id_q5='per_allsp.cov_q5_tot',
                                               most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
-
     if include_remittances:
         # fraction of income that is from transfers
-        transfers = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab +
-                                       coverage_remittances * adequacy_remittances).rename('transfers')
+        # transfers = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab +
+        #                                coverage_remittances * adequacy_remittances).rename('transfers')
+        transfers = (coverage_all_prot_lab * adequacy_all_prot_lab + coverage_remittances * adequacy_remittances).rename('transfers')
     else:
         # fraction of income that is from transfers
-        transfers = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab).rename('transfers')
-    cat_info_df = clean_merge_update(cat_info_df, transfers, any_to_wb)
+        # transfers = get_most_recent_value(coverage_all_prot_lab * adequacy_all_prot_lab).rename('transfers')
+        transfers = (coverage_all_prot_lab * adequacy_all_prot_lab).rename('transfers')
+    transfers = df_to_iso3(transfers.reset_index(), 'country', any_to_wb, verbose)
+    transfers = transfers.dropna(subset='iso3').set_index(['iso3', 'year', 'income_cat']).transfers
+    transfers = get_most_recent_value(transfers.dropna())
 
-    macro_df = df_to_iso3(macro_df.reset_index(), 'country', any_to_wb, verbose_=verbose)
-    macro_df = macro_df[~macro_df.iso3.isna()].set_index('iso3').drop('country', axis=1)
+    cat_info_df = pd.concat([income_shares, transfers], axis=1).sort_index()
+
+    # store data coverage
     for v in macro_df.columns:
         update_data_coverage(root_dir, v, macro_df.dropna(subset=v).index.unique(), None)
-
-    cat_info_df = df_to_iso3(cat_info_df.reset_index(), 'country', any_to_wb, verbose_=verbose)
-    cat_info_df = cat_info_df[~cat_info_df.iso3.isna()].set_index(['iso3', 'income_cat']).drop('country', axis=1)
     for v in cat_info_df.columns:
         update_data_coverage(root_dir, v, cat_info_df[v].unstack('income_cat').dropna().index.unique(), None)
 
     if impute_missing_data:
-        cat_info_df = guess_missing_transfers_shares(macro_df, cat_info_df, root_dir, any_to_wb, verbose)
+        cat_info_df = guess_missing_transfers_shares(cat_info_df, root_dir, any_to_wb, verbose)
 
     complete_macro = macro_df.dropna().index.get_level_values('iso3').unique()
     complete_cat_info = cat_info_df.isna().any(axis=1).replace(True, np.nan).unstack('income_cat').dropna(how='any').index.unique()
@@ -254,10 +262,14 @@ def get_wb_mrv(wb_name, colname):
     return get_most_recent_value(get_wb_df(wb_name, colname))
 
 
-def get_most_recent_value(data):
+def get_most_recent_value(data, drop_year=True):
     levels_new = data.index.droplevel('year').names
     res = data.dropna().reset_index()
-    return res.loc[res.groupby(levels_new)['year'].idxmax()].drop(columns='year').set_index(levels_new).squeeze()
+    if drop_year:
+        res = res.loc[res.groupby(levels_new)['year'].idxmax()].drop(columns='year').set_index(levels_new).squeeze()
+    else:
+        res = res.loc[res.groupby(levels_new)['year'].idxmax()].set_index(levels_new).squeeze()
+    return res
 
 
 def get_wb_df(wb_name, colname):

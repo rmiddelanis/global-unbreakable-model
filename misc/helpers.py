@@ -80,70 +80,72 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
     if 'iso3' in df_:
         raise Exception("iso3 column already exists")
 
+    hard_coded = {
+        'congo, dem. rep.': 'COD',
+        'congo, democratic republic': 'COD',
+        'democratic republic of the congo': 'COD',
+        'congo, rep.': 'COG',
+        'congo brazzaville': 'COG',
+        'congo, republic of the': 'COG',
+        'cape verde': 'CPV',
+        'côte d’ivoire': 'CIV',
+        'côte d\'ivoire': 'CIV',
+        'cote d\'ivoire': 'CIV',
+        'hong kong sar, china': 'HKG',
+        'china, hong kong special administrative region': 'HKG',
+        'hong kong, china': 'HKG',
+        'macao sar, china': 'MAC',
+        'china, macao special administrative region': 'MAC',
+        'macau, china': 'MAC',
+        'macao, china': 'MAC',
+        'taiwan, china': 'TWN',
+        'korea, rep.': 'KOR',
+        'republic of korea': 'KOR',
+        'korea, south': 'KOR',
+        "korea, dem. people's rep.": 'PRK',
+        'korea, dem. rep.': 'PRK',
+        'korea (the democratic people\'s republic of)': 'PRK',
+        'st. vincent and the grenadines': 'VCT',
+        'st. vincent ': 'VCT',
+        'swaziland': 'SWZ',
+        'bolivia (plurinational state of)': 'BOL',
+        'faeroe islands': 'FRO',
+        'iran (islamic republic of)': 'IRN',
+        'iran, islamic rep.': 'IRN',
+        'iran': 'IRN',
+        'micronesia (federated states of)': 'FSM',
+        'micronesia, fed. sts': 'FSM',
+        'micronesia, fed. sts.': 'FSM',
+        'the former yugoslav republic of macedonia': 'MKD',
+        'macedonia, fyr': 'MKD',
+        'united states virgin islands': 'VIR',
+        'virgin islands (u.s.)': 'VIR',
+        'venezuela (bolivarian republic of)': 'VEN',
+        'venezuela, rb': 'VEN',
+        'netherlands antilles': 'ANT',
+        'st. kitts and nevis': 'KNA',
+        'st. lucia': 'LCA',
+        'st. martin (french part)': 'MAF',
+        'bahamas, the': 'BHS',
+        'curacao': 'CUW',
+        'egypt, arab rep.': 'EGY',
+        'gambia, the': 'GMB',
+        'lao pdr': 'LAO',
+        'turkiye': 'TUR',
+        'turkey (turkiye)': 'TUR',
+        'türkiye': 'TUR',
+        'west bank and gaza': 'PSE',
+        'gaza strip': 'PSE',
+        'west bank': 'PSE',
+        'occupied palestinian territory': 'PSE',
+        'yemen, rep.': 'YEM',
+        'kosovo': 'XKX',
+        'tanzania, united rep.': 'TZA',
+        'bosnia herzegovina': 'BIH',
+    }
+
     def get_iso3(name):
         # hard coded country names:
-        hard_coded = {
-            'congo, dem. rep.': 'COD',
-            'congo, democratic republic': 'COD',
-            'democratic republic of the congo': 'COD',
-            'congo, rep.': 'COG',
-            'congo brazzaville': 'COG',
-            'congo, republic of the': 'COG',
-            'cape verde': 'CPV',
-            'côte d’ivoire': 'CIV',
-            'côte d\'ivoire': 'CIV',
-            'hong kong sar, china': 'HKG',
-            'china, hong kong special administrative region': 'HKG',
-            'hong kong, china': 'HKG',
-            'macao sar, china': 'MAC',
-            'china, macao special administrative region': 'MAC',
-            'macau, china': 'MAC',
-            'macao, china': 'MAC',
-            'taiwan, china': 'TWN',
-            'korea, rep.': 'KOR',
-            'republic of korea': 'KOR',
-            'korea, south': 'KOR',
-            "korea, dem. people's rep.": 'PRK',
-            'korea, dem. rep.': 'PRK',
-            'korea (the democratic people\'s republic of)': 'PRK',
-            'st. vincent and the grenadines': 'VCT',
-            'st. vincent ': 'VCT',
-            'swaziland': 'SWZ',
-            'bolivia (plurinational state of)': 'BOL',
-            'faeroe islands': 'FRO',
-            'iran (islamic republic of)': 'IRN',
-            'iran, islamic rep.': 'IRN',
-            'iran': 'IRN',
-            'micronesia (federated states of)': 'FSM',
-            'micronesia, fed. sts': 'FSM',
-            'micronesia, fed. sts.': 'FSM',
-            'the former yugoslav republic of macedonia': 'MKD',
-            'macedonia, fyr': 'MKD',
-            'united states virgin islands': 'VIR',
-            'virgin islands (u.s.)': 'VIR',
-            'venezuela (bolivarian republic of)': 'VEN',
-            'venezuela, rb': 'VEN',
-            'netherlands antilles': 'ANT',
-            'st. kitts and nevis': 'KNA',
-            'st. lucia': 'LCA',
-            'st. martin (french part)': 'MAF',
-            'bahamas, the': 'BHS',
-            'curacao': 'CUW',
-            'egypt, arab rep.': 'EGY',
-            'gambia, the': 'GMB',
-            'lao pdr': 'LAO',
-            'turkiye': 'TUR',
-            'turkey (turkiye)': 'TUR',
-            'türkiye': 'TUR',
-            'west bank and gaza': 'PSE',
-            'gaza strip': 'PSE',
-            'west bank': 'PSE',
-            'occupied palestinian territory': 'PSE',
-            'yemen, rep.': 'YEM',
-            'kosovo': 'XKX',
-            'tanzania, united rep.': 'TZA',
-            'bosnia herzegovina': 'BIH',
-        }
         if str.lower(name) in hard_coded:
             return hard_coded[str.lower(name)]
 
@@ -166,14 +168,17 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
                 else:
                     if verbose_:
                         print(f"Warning: {name} not found in pycountry, and fuzzy search failed")
+                    hard_coded[str.lower(name)] = None
                     return None
             if len(fuzzy_search_res) == 1:
                 if verbose_:
                     print(f"Warning: {name} not found in pycountry, but fuzzy search found {fuzzy_search_res[0].name}")
+                    hard_coded[str.lower(name)] = fuzzy_search_res[0].alpha_3
                 return fuzzy_search_res[0].alpha_3
             elif len(fuzzy_search_res) > 1:
                 if verbose_:
                     print(f"Warning: {name} not found in pycountry, but fuzzy search found multiple matches: {fuzzy_search_res}")
+                hard_coded[str.lower(name)] = None
                 return None
 
     df = df_.copy()

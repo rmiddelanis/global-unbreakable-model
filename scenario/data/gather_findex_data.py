@@ -108,7 +108,7 @@ def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, verbose=True):
     return axfin_data
 
 
-def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, ppp_reference_year, drop_refused=True, verbose=True):
+def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, gni_pc_pp, drop_refused=True, verbose=True):
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}
 
     # Gather the data from the FINDEX datasets
@@ -142,34 +142,15 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, ppp_ref
     # summing the groups, and then dividing by the sum of the 'wgt' column for each group
     liquidity_shares = (findex_data[['wgt', 'liquidity']].prod(axis=1).groupby(['country', 'year', 'income_cat']).sum()
                         / findex_data.groupby(['country', 'year', 'income_cat']).wgt.sum()).rename('liquidity_share')
+    liquidity_shares = df_to_iso3(liquidity_shares.reset_index('country'), 'country', any_to_wb_, verbose_=verbose)
+    liquidity_shares = liquidity_shares.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat']).drop('country', axis=1)
+    liquidity_shares = get_most_recent_value(liquidity_shares, 'liquidity_share')
 
     # respondents are asked whether they could come up with 1/20 of the GNI pc in the country currency. Thus, the
     # findex shares are combined with the GNI pc data to obtain the average liquidity per quintile
 
-    # load GNI data
-    if ppp_reference_year == 2021:
-        gni = get_wb_series('NY.GNP.PCAP.PP.KD').rename('GNI') # constant 2021 itl. dollars
-    elif ppp_reference_year == 2017:
-        gni = pd.read_excel(os.path.join(root_dir_, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
-        gni = gni[gni['Indicator ID'] == 'WB.WDI.NY.GNP.PCAP.PP.KD']
-        gni = gni.rename({'Economy Name': 'country'}, axis=1).set_index('country').iloc[:, 8:]
-        gni.columns.name = 'year'
-        gni = gni.stack()
-        # gni = get_most_recent_value(gni).rename('GNI')
-    else:
-        raise ValueError("PPP reference year not supported")
-    gni = gni.reset_index()
-    gni.year = gni.year.astype(int)
-    gni.country = gni.country.apply(lambda ctry: any_to_wb_.loc[ctry] if ctry in any_to_wb_ else ctry)
-    gni = gni.set_index(['country', 'year']).squeeze().unstack('country')
-    gni = gni.interpolate(method='nearest').ffill().bfill()  # fill missing values with the nearest non-missing value
-    gni = gni.stack().reorder_levels(['country', 'year']).sort_index().rename('GNI')
-
-    liquidity_data = pd.merge(liquidity_shares, (gni / 20).rename('liquidity'), left_index=True, right_index=True,
+    liquidity_data = pd.merge(liquidity_shares, (gni_pc_pp / 20).rename('liquidity'), left_index=True, right_index=True,
                               how='left').dropna()
-
-    liquidity_data = df_to_iso3(liquidity_data.reset_index('country'), 'country', any_to_wb_, verbose_=verbose)
-    liquidity_data = liquidity_data.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat'])
 
     return liquidity_data
 
