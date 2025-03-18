@@ -238,9 +238,13 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
                                                                 True)
     di_h = di_h_lab + di_h_sp
     if show_sp_losses:
-        axs[0].fill_between(t_, c_baseline, c_baseline - di_h_sp, color=shading_color, alpha=0.75, label='Transfers loss', lw=0)
-    axs[0].fill_between(t_, c_baseline - di_h_sp, c_baseline - di_h, color=shading_color, alpha=0.5,
-                       label='Income loss', lw=0)
+        axs[0].fill_between(t_, c_baseline, c_baseline - di_h_sp, color=shading_color, alpha=0.75,
+                            label='Diversified income loss', lw=0)
+        axs[0].fill_between(t_, c_baseline - di_h_sp, c_baseline - di_h, color=shading_color, alpha=0.5,
+                            label='Labor income loss', lw=0)
+    else:
+        axs[0].fill_between(t_, c_baseline, c_baseline - di_h, color=shading_color, alpha=0.5,
+                            label='Income loss', lw=0)
     axs[0].fill_between(t_, c_baseline - di_h, c_baseline - (di_h + dc_reco), color=shading_color, alpha=0.25,
                         label='Reconstruction loss', lw=0)
     axs[0].fill_between(t_[dc_savings_pds != 0], (c_baseline - (di_h + dc_reco) + dc_savings_pds)[dc_savings_pds != 0],
@@ -939,7 +943,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
 
     plot_recovery(20, inset_plot_data.avg_prod_k, inset_plot_data.tau_tax, inset_plot_data.k, inset_plot_data.dk,
                   inset_plot_data.lambda_h, inset_plot_data.k_household_share, inset_plot_data.liquidity,
-                  0, inset_plot_data.recovery_params, inset_plot_data.gamma_SP * inset_plot_data.n,
+                  0, inset_plot_data.recovery_params, inset_plot_data.gamma_SP,
                   inset_plot_data.diversified_share, axs=[inset_ax], show_ylabel=True, plot_capital=False,
                   ylims=[(0, inset_plot_data.c * 1.05), None], plot_legend=False)
 
@@ -1502,9 +1506,9 @@ def plot_fig_1_2(plot_data):
         recovery_params = [(k / 1e3, l) for (k, l) in country_data.recovery_params]
         plot_recovery(3, country_data.avg_prod_k, country_data.tau_tax, country_data.k, country_data.dk,
                       country_data.lambda_h, country_data.k_household_share, country_data.liquidity / 1e3,
-                      0, recovery_params, country_data.gamma_SP * country_data.n,
+                      0, recovery_params, country_data.gamma_SP,
                       country_data.diversified_share, axs=[ax], show_ylabel=not legend, plot_capital=False,
-                      plot_legend=False, linecolor=c, shading_color='dimgrey',
+                      plot_legend=False, linecolor=c, shading_color='dimgrey', show_sp_losses=False,
                       ylims=[(0, 10.000), None], title=title)
     axs[0].set_ylabel('Consumption\n[$PPP 1,000 / yr]')
     legend = axs[-1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
