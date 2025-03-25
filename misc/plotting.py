@@ -137,6 +137,8 @@ def load_data(simulation_paths_, model_root_dir_):
         results_data_[k] = results_data_[k].join(gini_index_, on='iso3')
         results_data_[k]['log_gdp_pc_pp'] = np.log(results_data_[k]['gdp_pc_pp'])
         results_data_[k] = pd.merge(results_data_[k], income_groups_, left_on='iso3', right_index=True, how='left')
+        if 'THA' in results_data_[k].index:
+            results_data_[k].drop('THA', inplace=True)
 
     hazard_protection_ = {
         k: pd.read_csv(os.path.join(v, "scenario__hazard_protection.csv"), index_col=[0, 1]) for k, v in
@@ -624,7 +626,7 @@ def plot_supfig_3(results_data_, outpath_=None):
     capital_shares['k_pub_share'] = 100 - capital_shares['k_priv_share'] - capital_shares['k_household_share']
     capital_shares['gdp_pc_pp'] /= 1e3
 
-    for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_priv_share'), ('gdp_pc_pp', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
+    for ax, (x, y), name in zip(axs[0, :], [('gdp_pc_pp', 'k_pub_share'), ('gdp_pc_pp', 'k_priv_share'), ('gdp_pc_pp', 'k_household_share')], ['public capital share ' + r'$\kappa^p$', 'firm-owned capital share ' + r'$\kappa^f$', 'household-owned capital share ' + r'$\kappa^h$']):
         legend = False
         if ax == axs[0, -1]:
             legend = True
@@ -637,7 +639,7 @@ def plot_supfig_3(results_data_, outpath_=None):
     axs[0, -1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     axs[0, 0].set_ylabel('share [%]')
 
-    for ax, (x, y), name in zip(axs[1, :], [('self_employment', 'k_pub_share'), ('self_employment', 'k_priv_share'), ('self_employment', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
+    for ax, (x, y) in zip(axs[1, :], [('self_employment', 'k_pub_share'), ('self_employment', 'k_priv_share'), ('self_employment', 'k_household_share')]):
         x_ = capital_shares[x]
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
@@ -646,7 +648,7 @@ def plot_supfig_3(results_data_, outpath_=None):
             ax.set_xlabel('self employment rate [%]')
         axs[1, 0].set_ylabel('share [%]')
 
-    for ax, (x, y), name in zip(axs[2, :], [('owner_occupied_share_of_value_added', 'k_pub_share'), ('owner_occupied_share_of_value_added', 'k_priv_share'), ('owner_occupied_share_of_value_added', 'k_household_share')], [r'$\kappa^p$', r'$\kappa^f$', r'$\kappa^h$']):
+    for ax, (x, y) in zip(axs[2, :], [('owner_occupied_share_of_value_added', 'k_pub_share'), ('owner_occupied_share_of_value_added', 'k_priv_share'), ('owner_occupied_share_of_value_added', 'k_household_share')]):
         x_ = capital_shares[x]
         sns.scatterplot(capital_shares, x=x, y=y, ax=ax, alpha=.5, s=10, hue='Country income group', hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'], legend=False, palette=INCOME_GROUP_COLORS,
                                    style='Country income group', markers=INCOME_GROUP_MARKERS)
@@ -991,7 +993,7 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=None, outfile=None, show=T
         'reduce_total_vulnerability_0.05': '3: Reduce total vulnerability by 5%',
         'reduce_poor_vulnerability_0.05': '4: Reduce total vulnerability by 5%\n    targeting the poor',
         'increase_gdp_pc_and_liquidity_0.05': '5: Increase GDP and liquidity by 5%',
-        'reduce_gini_10': '6: Equally redistribute 10%\n    of all income',
+        'reduce_gini_10': '6: Reduce income inequality by 10%',
         'reduce_self_employment_0.1': '7: Reduce self-employment\n    rate by 10%',
         'reduce_non_diversified_income_0.1': '8: Reduce non-diversified\n    income by 10%',
         'pds40': '9: PDS equal to 40% of\n    asset losses of the poor',
@@ -1012,7 +1014,7 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=None, outfile=None, show=T
         difference['Country income group'] = ref_data['Country income group']
         difference = difference.assign(scenario=scenario_name)
         differences.append(difference)
-    differences = pd.concat(differences)
+    differences = pd.concat(differences).reset_index()
 
     # compute avoided wellbeing losses over avoided asset losses by country income group
     reduced_assets_impact = differences[differences.scenario.isin(list(policy_scenarios.values())[:6])].copy()
