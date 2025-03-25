@@ -1,6 +1,5 @@
 import os
-from functools import partial
-
+import xarray as xr
 import numpy as np
 import pandas as pd
 import pycountry as pc
@@ -38,6 +37,24 @@ def concat_categories(p,np, index):
     
     #makes sure a series is returned when possible
     return y.squeeze()
+
+
+def xr_average_over_rp(da, protection=None):
+    if type(da) not in (xr.DataArray, xr.Dataset):
+        raise ValueError("da should be an xarray data object. Use average_over_rp for pandas objects.")
+    return_periods = da.coords['rp']
+    rp_probabilities = 1 / return_periods - np.append(1 / return_periods, 0)[1:]
+    probabilities = rp_probabilities.broadcast_like(da)
+
+    if protection is not None:
+        if type(protection) is pd.Series:
+            protection = xr.DataArray.from_series(protection)
+        elif type(protection) is pd.DataFrame:
+            protection = xr.DataArray.from_series(protection.squeeze())
+        protection = protection.broadcast_like(da).fillna(0)
+        probabilities.where(protection >= return_periods.broadcast_like(da), 0, inplace=True)
+
+    return (da * probabilities).sum('rp')
 
 
 def average_over_rp(df, protection=None):
