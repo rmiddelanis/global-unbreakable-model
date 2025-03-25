@@ -68,6 +68,11 @@ inch = 2.54
 centimeter = 1 / inch
 
 
+def compute_total_consumption_loss(cat_info_data_, macro_data_):
+    for key in cat_info_data_.keys():
+        output_loss = (cat_info_data_[key].dk / cat_info_data_[key].lambda_h).fillna(0) * macro_data_[key].avg_prod_k
+        consumption_loss = output_loss * (1 - macro_data_[key].tau_tax) + cat_info_data_[key].gamma_SP * macro_data_[key].tau_tax * (output_loss * cat_info_data_[key].n).groupby(['iso3', 'hazard', 'rp']).sum() + cat_info_data_[key].dc_long_term - cat_info_data_[key].dS_reco_PDS + cat_info_data_[key].dk * macro_data_[key].k_household_share
+        cat_info_data_[key] = pd.merge(cat_info_data_[key], consumption_loss.rename('dc'), left_index=True, right_index=True, how='left')
 
 def compute_average_recovery_duration(df, aggregation_level, agg_rp=None):
     df = df[['n', 't_reco_95']].xs('a', level='affected_cat').copy()
@@ -113,6 +118,11 @@ def load_data(simulation_paths_, model_root_dir_):
 
     income_groups_ = load_income_groups(os.path.join(model_root_dir_, 'scenario'))
 
+    macro_data_ = {
+        k: pd.read_csv(os.path.join(v, "macro.csv"), index_col=[0, 1, 2]) for k, v in
+        simulation_paths_.items()
+    }
+
     cat_info_data_ = {
         k: pd.read_csv(os.path.join(v, "iah.csv"), index_col=[0, 1, 2, 3, 4, 5]) for k, v in
         simulation_paths_.items()
@@ -120,12 +130,10 @@ def load_data(simulation_paths_, model_root_dir_):
 
     for k in cat_info_data_.keys():
         cat_info_data_[k]['t_reco_95'] = np.log(1 / .05) / cat_info_data_[k].lambda_h
-        cat_info_data_[k].recovery_params = cat_info_data_[k].recovery_params.apply(lambda x: [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in x[2:-2].split('), (')])
+        cat_info_data_[k].recovery_params = cat_info_data_[k].recovery_params.apply(
+            lambda x: [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in x[2:-2].split('), (')])
 
-    macro_data_ = {
-        k: pd.read_csv(os.path.join(v, "macro.csv"), index_col=[0, 1, 2]) for k, v in
-        simulation_paths_.items()
-    }
+    compute_total_consumption_loss(cat_info_data_, macro_data_)
 
     results_data_ = {
         k: pd.read_csv(os.path.join(v, "results.csv"), index_col=0) for k, v in
@@ -181,7 +189,7 @@ def load_data(simulation_paths_, model_root_dir_):
     return income_groups_, gini_index_, cat_info_data_, macro_data_, results_data_, hazard_protection_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_, data_coverage_
 
 
-def print_stats(results_data_):
+def print_stats(results_data_, macro_data_, cat_info_data_, hazard_protection_):
     # print the asset losses, wellbeing losses, and resilience for TJK and HTI
     for c in ['HTI', 'TJK']:
         print(
@@ -198,6 +206,27 @@ def print_stats(results_data_):
     # print minimum and maximum resilience of each Country income group
     print('Minimum and maximum resilience of each Country income group:')
     print(results_data_.groupby('Country income group').resilience.agg(['min', 'max', 'idxmin', 'idxmax']))
+
+    # print the elasticity of consumption w.r.t. household-owned asset losses
+    print('Asset loss elasticity of consumption:')
+    print('Phlippines')
+    data = cat_info_data_[['dc', 'dk_reco', 'k', 'c']].mul(cat_info_data_.n, axis=0).groupby(['iso3', 'hazard', 'rp']).sum()
+    data['k'] = data['k'] * macro_data_.k_household_share  # only household-owned assets
+    elasticity = (data.dc / data.c) / (data.dk_reco / data.k)
+    print(elasticity.loc[pd.IndexSlice['PHL', ['Storm surge', 'Wind'], 10]])
+
+    # compare to Bui et al. (2014). The impact of natural disasters on household income, expenditure, poverty and inequality: evidence from Vietnam
+    print('Vietnam')
+    dc_vnm_a = cat_info_data_.xs('a', level='affected_cat') # Bui et al. report income loss of affected hh
+    dc_vnm_a = dc_vnm_a[['dc', 'n']].prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum() / dc_vnm_a.n.groupby(['iso3', 'hazard', 'rp']).sum()
+    dc_vnm_a = average_over_rp(dc_vnm_a, hazard_protection_).loc['VNM'].sum()
+    c_vnm = results_data_.loc['VNM', 'gdp_pc_pp']
+    dk_vnm = results_data_.loc['VNM', 'dk']
+    dk_study = 90941e9 / 20 # VNM currency, assets occur over 20 years
+    gdp_vnm = 1.62e15 # VNM currency
+    dc_over_c_study = 0.07
+    print("VNM elasticity from Unbreakable: ", (dc_vnm_a / c_vnm) / (dk_vnm / c_vnm))  # at the ntl. level, GDP = C
+    print("VNM elasticity from Bui et al. (2014): ", dc_over_c_study / (dk_study / gdp_vnm))
 
 
 def print_results_table(results_data_, data_coverage_=None):
@@ -1855,6 +1884,9 @@ if __name__ == '__main__':
 
     print_stats(
         results_data_=results_data['baseline'],
+        cat_info_data_=cat_info_data['baseline'],
+        macro_data_=macro_data['baseline'],
+        hazard_protection_=hazard_protection['baseline'],
     )
 
     print_results_table(
