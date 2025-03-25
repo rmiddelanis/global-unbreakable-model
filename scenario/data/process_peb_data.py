@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 
 
-def process_peb_data(root_dir="./", exposure_data_path="inputs/PEB/exposure bias.dta",
-                     poverty_data_path="inputs/PEB/poverty_data/",
-                     wb_macro_path="inputs/WB_socio_economic_data/wb_data_macro.csv", outpath=None,
+def process_peb_data(root_dir="./", exposure_data_path="scenario/data/raw/PEB/exposure bias.dta",
+                     poverty_data_path="scenario/data/raw/PEB/poverty_data/",
+                     wb_macro_path="scenario/data/raw/WB_socio_economic_data/wb_data_macro.csv", outpath=None,
                      exclude_povline=None):
     exposure_data_path = os.path.join(root_dir, exposure_data_path)
     poverty_data_path = os.path.join(root_dir, poverty_data_path)

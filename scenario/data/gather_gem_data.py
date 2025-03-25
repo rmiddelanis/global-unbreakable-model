@@ -225,10 +225,10 @@ def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True
 
 
 if __name__ == '__main__':
-    gem_repo_root_dir = '../../data/raw/GEM_vulnerability/global_exposure_model/'
+    gem_repo_root_dir = './data/raw/GEM_vulnerability/global_exposure_model/'
     vulnarebility_class_mapping = "./data/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx"
-    hazus_gem_mapping_path = '../../data/raw/GEM_vulnerability/hazus-gem_mapping.csv'
-    gem_fields_path = "../../data/raw/GEM_vulnerability/gem_taxonomy_fields.json"
+    hazus_gem_mapping_path = './data/raw/GEM_vulnerability/hazus-gem_mapping.csv'
+    gem_fields_path = "./data/raw/GEM_vulnerability/gem_taxonomy_fields.json"
     # vulnerability_class_output = './data/raw/GEM_vulnerability/country_vulnerability_classes.csv'
     gem_data, vuln_class_shares = gather_gem_data(
         gem_repo_root_dir_=gem_repo_root_dir,
@@ -237,7 +237,7 @@ if __name__ == '__main__':
         vuln_class_mapping_=vulnarebility_class_mapping,
         vulnerability_class_output_=None,
         weight_by='total_replacement_cost',
-        verbose=True
+        verbose=True,
     )
     print(gem_data)
     print(vuln_class_shares)
