@@ -41,12 +41,12 @@ INCOME_GROUP_MARKERS = ['o', 's', 'D', '^']
 
 NAME_DICT = {
     'resilience': 'socio-economic\nresilience [%]',
-    'risk': 'risk to wellbeing\n[% of GDP]',
+    'risk': 'risk to well-being\n[% of GDP]',
     'risk_to_assets': 'risk to assets\n[% of GDP]',
     'gdp_pc_pp': 'GDPpc [$PPP]',
     'log_gdp_pc_pp': 'ln(GDPpc [$PPP])',
     'dk_tot': 'risk to assets\n[$PPP]',
-    'dWtot_currency': 'risk to wellbeing\n[$PPP]',
+    'dWtot_currency': 'risk to well-being\n[$PPP]',
     'gini_index': 'Gini index [%]',
 }
 
@@ -155,7 +155,7 @@ def load_data(simulation_paths_, model_root_dir_):
 
     name_dict_ = {
         'resilience': 'socio-economic resilience [%]',
-        'risk': 'risk to wellbeing [% of GDP]',
+        'risk': 'risk to well-being [% of GDP]',
         'risk_to_assets': 'risk to assets [% of GDP]',
         'gdp_pc_pp': 'GDP per capita [$PPP]',
         'dk_tot': 'Asset losses [$PPP]',
@@ -190,7 +190,7 @@ def load_data(simulation_paths_, model_root_dir_):
 
 
 def print_stats(results_data_, macro_data_, cat_info_data_, hazard_protection_):
-    # print the asset losses, wellbeing losses, and resilience for TJK and HTI
+    # print the asset losses, well-being losses, and resilience for TJK and HTI
     for c in ['HTI', 'TJK']:
         print(
             f'{c}: dK={results_data_.loc[c, "dk_tot"] / 1e9}, dC^eq={results_data_.loc[c, "dWtot_currency"] / 1e9}, Psi={results_data_.loc[c, "resilience"]}')
@@ -916,7 +916,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
     ax.set_ylim(nodes.y0.min(), nodes.y1.max())
     ax.set_xlim(nodes.x0.min(), nodes.x1.max())
 
-    for label, x in zip(['Assets', 'Output', 'Diversification', 'Consumption', 'Wellbeing losses\n(short-term / long-term)'], [x_assets, x_output, x_transfers, x_consumption, x_wellbeing_loss]):
+    for label, x in zip(['Assets', 'Output', 'Diversification', 'Consumption', 'Well-being losses\n(short-term / long-term)'], [x_assets, x_output, x_transfers, x_consumption, x_wellbeing_loss]):
         line1 = label.split('\n')[0]
         line2 = label.split('\n')[1] if len(label.split('\n')) > 1 else ''
         y1 = 1.085
@@ -1011,7 +1011,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
 def plot_fig_5(results_data_, cat_info_data_, plot_rp=None, outfile=None, show=True):
     variables = {
         'risk_to_assets': 'Avoided risk to\nassets [%]',
-        'risk': 'Avoided risk to\nwellbeing [%]',
+        'risk': 'Avoided risk to\nwell-being [%]',
         'resilience': 'Socioeconomic resilience\nchange [pp]',
         'recovery increase': 'Recovery time\nreduction [%]',
     }
@@ -1045,7 +1045,7 @@ def plot_fig_5(results_data_, cat_info_data_, plot_rp=None, outfile=None, show=T
         differences.append(difference)
     differences = pd.concat(differences).reset_index()
 
-    # compute avoided wellbeing losses over avoided asset losses by country income group
+    # compute avoided well-being losses over avoided asset losses by country income group
     reduced_assets_impact = differences[differences.scenario.isin(list(policy_scenarios.values())[:6])].copy()
     reduced_assets_impact['avoided_dw_over_avoided_dk'] = reduced_assets_impact['risk'] / reduced_assets_impact['risk_to_assets']
     print(reduced_assets_impact.groupby(['scenario', 'Country income group']).avoided_dw_over_avoided_dk.describe())
@@ -1287,10 +1287,10 @@ def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outfile=None, 
     boxplot_data.index.names = ['iso3', 'Household income quintile', 'loss_type']
     boxplot_data.name = 'shares [%]'
     boxplot_data = boxplot_data.reset_index()
-    boxplot_data = boxplot_data.replace({'dw_rel': 'wellbeing loss', 'dk_rel': 'asset loss'})
+    boxplot_data = boxplot_data.replace({'dw_rel': 'well-being loss', 'dk_rel': 'asset loss'})
 
-    # print relative wellbeing and asset loss share statistics for each Household income quintile
-    print('Relative wellbeing and asset loss share statistics for each Household income quintile:')
+    # print relative well-being and asset loss share statistics for each Household income quintile
+    print('Relative well-being and asset loss share statistics for each Household income quintile:')
     print(boxplot_data.groupby(['Household income quintile', 'loss_type'])['shares [%]'].describe())
 
     sns_boxplot = sns.boxplot(x='Household income quintile', y='shares [%]', hue='loss_type',
@@ -1513,7 +1513,7 @@ def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Flood', plot_rp=1
 
     print("Characteristics:\n", plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped'], ['fa', 't_reco_95']])
     print("Asset losses [bn USD]:\n", plot_data[['dk', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
-    print("Wellbeing losses [bn USD]:\n", plot_data[['dw_currency', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
+    print("Well-being losses [bn USD]:\n", plot_data[['dw_currency', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
 
     fig1_1 = plot_fig_1_1(plot_data)
     fig1_2 = plot_fig_1_2(plot_data)
@@ -1661,23 +1661,23 @@ def plot_fig_1_1(plot_data):
     ax.set_ylabel(None)
     ax.set_title('Recovery time\n[yr]')
 
-    # plot wellbeing losses of exposed households
+    # plot well-being losses of exposed households
     ax = axs[1, 2]
     sns.barplot(
         data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
         x='income_cat', y='dw_currency', ax=ax, hue='iso3', legend=False
     )
     ax.set_ylabel(None)
-    ax.set_title('Wellbeing losses, affected\n[$PPP 1,000]')
+    ax.set_title('Well-being losses, affected\n[$PPP 1,000]')
 
-    # plot wellbeing losses of exposed households
+    # plot well-being losses of exposed households
     ax = axs[1, 3]
     sns.barplot(
         data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'na', 'not_helped']],
         x='income_cat', y='dw_currency', ax=ax, hue='iso3', legend=False
     )
     ax.set_ylabel(None)
-    ax.set_title('Wellbeing losses, non-affected\n[$PPP 1,000]')
+    ax.set_title('Well-being losses, non-affected\n[$PPP 1,000]')
 
     plt.tight_layout()
 
