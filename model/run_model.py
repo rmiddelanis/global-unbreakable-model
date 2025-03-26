@@ -69,7 +69,7 @@ def run_model(settings: dict):
         cat_info_event_iah=cat_info_event_iah,
         macro_event=macro_event,
         event_level_=event_level,
-        capital_t=20,
+        capital_t=50,
         num_cores=num_cores,
     )
 
