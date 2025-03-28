@@ -1152,7 +1152,7 @@ def prepare_scenario(scenario_params):
     hazard_protection.dropna(inplace=True)
 
     # retain common (and selected) countries only
-    countries = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index and c in hazard_protection.index and c not in run_params['exclude_countries']]
+    countries = [c for c in macro.index if c in cat_info.index and c in hazard_ratios.index and c in hazard_protection.index and c not in run_params.get('exclude_countries', [])]
 
     # keep track of imputed data
     data_coverage = pd.read_csv(os.path.join(scenario_root_dir, "data/processed/data_coverage.csv"), index_col='iso3')
