@@ -52,7 +52,7 @@ def xr_average_over_rp(da, protection=None):
         elif type(protection) is pd.DataFrame:
             protection = xr.DataArray.from_series(protection.squeeze())
         protection = protection.broadcast_like(da).fillna(0)
-        probabilities.where(protection >= return_periods.broadcast_like(da), 0, inplace=True)
+        probabilities.where(protection >= return_periods.broadcast_like(da), 0)
 
     return (da * probabilities).sum('rp')
 
