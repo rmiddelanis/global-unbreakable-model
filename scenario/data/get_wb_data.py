@@ -29,11 +29,11 @@ AGG_REGIONS = ['Africa Eastern and Southern', 'Africa Western and Central', 'Ara
 
 def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=True):
     regression_spec = {
-        'q1': 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY + MNA', # R2=0.557
-        'q2': 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.558
-        'q3': 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.503
-        'q4': 'transfers ~ exp_SP_GDP + remittances_GDP + HICs + UMICs + EAP + LAC + MNA',  # R2=0.468
-        'q5': 'transfers ~ exp_SP_GDP + remittances_GDP + UMICs + EAP',  # R2=0.328
+        .2: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY + MNA', # R2=0.557
+        .4: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.558
+        .6: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.503
+        .8: 'transfers ~ exp_SP_GDP + remittances_GDP + HICs + UMICs + EAP + LAC + MNA',  # R2=0.468
+        1: 'transfers ~ exp_SP_GDP + remittances_GDP + UMICs + EAP',  # R2=0.328
     }
 
     remittances = get_wb_mrv('BX.TRF.PWKR.DT.GD.ZS', 'remittances_GDP').dropna().astype(float)
@@ -102,13 +102,13 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=T
     return cat_info_df_
 
 
-def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value=True, upper_bound=None,
-                      lower_bound=None):
-    data_q1 = get_wb_series(id_q1, 'q1')
-    data_q2 = get_wb_series(id_q2, 'q2')
-    data_q3 = get_wb_series(id_q3, 'q3')
-    data_q4 = get_wb_series(id_q4, 'q4')
-    data_q5 = get_wb_series(id_q5, 'q5')
+def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value=True, upper_bound=None,
+                           lower_bound=None):
+    data_q1 = get_wb_series(id_q1, .2)
+    data_q2 = get_wb_series(id_q2,.4)
+    data_q3 = get_wb_series(id_q3, .6)
+    data_q4 = get_wb_series(id_q4, .8)
+    data_q5 = get_wb_series(id_q5, 1)
     data = pd.concat([data_q1, data_q2, data_q3, data_q4, data_q5], axis=1).dropna().stack().rename(name)
     data.index.names = ['country', 'year', 'income_cat']
     # note: setting upper and lower bounds to nan s.th. the more recent available value is used
@@ -122,7 +122,7 @@ def download_cat_info(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value
 
 
 def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False, drop_incomplete=True,
-                force_recompute=True, verbose=True, save=True, include_spl=False):
+                force_recompute=True, verbose=True, save=True, include_spl=False, resolution=.2):
     macro_path = os.path.join(root_dir, "data/processed/wb_data_macro.csv")
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
     if not force_recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
@@ -185,41 +185,61 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop)], axis=1)
 
     # income shares (source: Poverty and Inequality Platform)
-    income_shares = download_cat_info(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
-                                      id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
-                                      # most_recent_value=True, upper_bound=100, lower_bound=0) / 100
-                                      most_recent_value=False, upper_bound=100, lower_bound=0) / 100
-    # make sure income shares add up to 1
-    income_shares /= income_shares.unstack('income_cat').sum(axis=1)
-    income_shares = df_to_iso3(income_shares.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year', 'income_cat']).drop('country', axis=1)
-    income_shares = get_most_recent_value(income_shares.dropna())
+    if resolution == .2:
+        income_shares = download_quintile_data(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
+                                               id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
+                                               # most_recent_value=True, upper_bound=100, lower_bound=0) / 100
+                                               most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+        # make sure income shares add up to 1
+        income_shares /= income_shares.unstack('income_cat').sum(axis=1)
+        income_shares = df_to_iso3(income_shares.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year', 'income_cat']).drop('country', axis=1)
+        income_shares = get_most_recent_value(income_shares.dropna())
+    elif resolution == .1:
+        pip_data = pd.read_csv(os.path.join(root_dir, "data/raw/WB_socio_economic_data/2025-03-07_pip_data.csv"))
+        pip_data = pip_data.rename({'country_code': 'iso3', 'reporting_year': 'year'}, axis=1)
+        pip_data.year = pip_data.year.astype(str)
+        pip_data.set_index(['iso3', 'year', 'reporting_level', 'welfare_type'], inplace=True)
+        pip_data = pip_data.xs('national', level='reporting_level')
+        pip_data = pip_data[[f'decile{i + 1}' for i in range(10)]].dropna()
+        pip_data.columns = np.linspace(.1, 1, 10)
+        pip_data = pip_data.stack()
+        pip_data.index.names = ['iso3', 'year', 'welfare_type', 'income_cat']
+        income_shares = pd.merge(
+            pip_data.xs('income', level='welfare_type').rename('income_welfare'),
+            pip_data.xs('consumption', level='welfare_type').rename('consumption_welfare'),
+            left_index=True, right_index=True, how='outer'
+        )
+        income_shares = income_shares.income_welfare.fillna(income_shares.consumption_welfare).rename('income_share').to_frame()
+        income_shares = get_most_recent_value(income_shares)
+    else:
+        raise ValueError(f"Resolution {resolution} not supported")
     # ASPIRE
 
     # Adequacies
     # Total transfer amount received by all beneficiaries in a population group as a share of the total welfare of
     # beneficiaries in that group
-    adequacy_remittances = download_cat_info(name='adequacy_remittances', id_q1='per_pr_allpr.adq_q1_tot',
-                                             id_q2='per_pr_allpr.adq_q2_tot', id_q3='per_pr_allpr.adq_q3_tot',
-                                             id_q4='per_pr_allpr.adq_q4_tot', id_q5='per_pr_allpr.adq_q5_tot',
-                                             most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+    adequacy_remittances = download_quintile_data(name='adequacy_remittances', id_q1='per_pr_allpr.adq_q1_tot',
+                                                  id_q2='per_pr_allpr.adq_q2_tot', id_q3='per_pr_allpr.adq_q3_tot',
+                                                  id_q4='per_pr_allpr.adq_q4_tot', id_q5='per_pr_allpr.adq_q5_tot',
+                                                  most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
     # Total transfer amount received by all beneficiaries in a population group as a share of the total welfare of
     # beneficiaries in that group
-    adequacy_all_prot_lab = download_cat_info(name='adequacy_all_prot_lab', id_q1='per_allsp.adq_q1_tot',
-                                              id_q2='per_allsp.adq_q2_tot', id_q3='per_allsp.adq_q3_tot',
-                                              id_q4='per_allsp.adq_q4_tot', id_q5='per_allsp.adq_q5_tot',
-                                              most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+    adequacy_all_prot_lab = download_quintile_data(name='adequacy_all_prot_lab', id_q1='per_allsp.adq_q1_tot',
+                                                   id_q2='per_allsp.adq_q2_tot', id_q3='per_allsp.adq_q3_tot',
+                                                   id_q4='per_allsp.adq_q4_tot', id_q5='per_allsp.adq_q5_tot',
+                                                   most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
     # Coverage
-    coverage_remittances = download_cat_info(name='coverage_remittances', id_q1='per_pr_allpr.cov_q1_tot',
-                                             id_q2='per_pr_allpr.cov_q2_tot', id_q3='per_pr_allpr.cov_q3_tot',
-                                             id_q4='per_pr_allpr.cov_q4_tot', id_q5='per_pr_allpr.cov_q5_tot',
-                                             most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+    coverage_remittances = download_quintile_data(name='coverage_remittances', id_q1='per_pr_allpr.cov_q1_tot',
+                                                  id_q2='per_pr_allpr.cov_q2_tot', id_q3='per_pr_allpr.cov_q3_tot',
+                                                  id_q4='per_pr_allpr.cov_q4_tot', id_q5='per_pr_allpr.cov_q5_tot',
+                                                  most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
-    coverage_all_prot_lab = download_cat_info(name='coverage_all_prot_lab', id_q1='per_allsp.cov_q1_tot',
-                                              id_q2='per_allsp.cov_q2_tot', id_q3='per_allsp.cov_q3_tot',
-                                              id_q4='per_allsp.cov_q4_tot', id_q5='per_allsp.cov_q5_tot',
-                                              most_recent_value=False, upper_bound=100, lower_bound=0) / 100
+    coverage_all_prot_lab = download_quintile_data(name='coverage_all_prot_lab', id_q1='per_allsp.cov_q1_tot',
+                                                   id_q2='per_allsp.cov_q2_tot', id_q3='per_allsp.cov_q3_tot',
+                                                   id_q4='per_allsp.cov_q4_tot', id_q5='per_allsp.cov_q5_tot',
+                                                   most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
     if include_remittances:
         # fraction of income that is from transfers
@@ -234,16 +254,25 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     transfers = transfers.dropna(subset='iso3').set_index(['iso3', 'year', 'income_cat']).transfers
     transfers = get_most_recent_value(transfers.dropna())
 
-    cat_info_df = pd.concat([income_shares, transfers], axis=1).sort_index()
-
     # store data coverage
     for v in macro_df.columns:
         update_data_coverage(root_dir, v, macro_df.dropna(subset=v).index.unique(), None)
-    for v in cat_info_df.columns:
-        update_data_coverage(root_dir, v, cat_info_df[v].unstack('income_cat').dropna().index.unique(), None)
+    update_data_coverage(root_dir, 'income_shares', income_shares.unstack('income_cat').dropna().index.unique(), None)
+    update_data_coverage(root_dir, 'transfers', transfers.unstack('income_cat').dropna().index.unique(), None)
 
     if impute_missing_data:
-        cat_info_df = guess_missing_transfers_shares(cat_info_df, root_dir, any_to_wb, verbose)
+        transfers = guess_missing_transfers_shares(transfers.to_frame(), root_dir, any_to_wb, verbose).squeeze()
+
+    # scale to resolution
+    transfers = transfers.unstack('income_cat')
+    for i in range(int(.2 / resolution) - 1):
+        transfers_ = transfers.copy()
+        transfers_.columns = transfers_.columns - (i + 1) * resolution
+        transfers = pd.concat([transfers, transfers_], axis=1)
+    transfers = transfers.stack().rename('transfers').sort_index()
+
+    cat_info_df = pd.concat([income_shares, transfers], axis=1).sort_index()  # .groupby('iso3').apply(lambda x: x.bfill()).reset_index(0, drop=True)
+    cat_info_df.index = cat_info_df.index.set_levels(np.round((cat_info_df.index.levels[1] / resolution), 0).astype(int), level='income_cat')
 
     complete_macro = macro_df.dropna().index.get_level_values('iso3').unique()
     complete_cat_info = cat_info_df.isna().any(axis=1).replace(True, np.nan).unstack('income_cat').dropna(how='any').index.unique()
@@ -264,7 +293,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     return macro_df, cat_info_df
 
 
-def get_wb_series(wb_name, colname='value'):
+def get_wb_series(wb_name, colname):
     """"gets a pandas SERIES (instead of dataframe, for convinience) from wb data with all years and all countries, and a lotof nans"""
     return get_wb_df(wb_name, colname)[colname]
 
