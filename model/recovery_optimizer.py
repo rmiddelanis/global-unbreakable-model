@@ -403,6 +403,43 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         )[3]
     used_liquidity = integrate.quad(used_liquidity_func, 0, min(capital_t_, np.log(1/1e-6) / lambda_h_), limit=50)[0]
 
+    def dc_short_term_func(t_):
+        return delta_c_h_of_t(
+            t_=t_,
+            productivity_pi_=productivity_pi_,
+            delta_tax_sp_=delta_tax_sp_,
+            delta_k_h_eff_=delta_k_h_eff_,
+            lambda_h_=lambda_h_,
+            sigma_h_=sigma_h_,
+            savings_s_h_=savings_s_h_,
+            delta_i_h_pds_=delta_i_h_pds_,
+            recovery_params_=recovery_params_,
+            social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+            return_elements=False,
+            consumption_floor_xi_=consumption_floor_xi_,
+            t_hat=t_hat,
+            consumption_offset=consumption_offset
+        )
+    dc_short_term = integrate.quad(dc_short_term_func, 0, min(capital_t_, np.log(1/1e-6) / lambda_h_), limit=50)[0]
+
+
+    delta_c_h_max = delta_c_h_of_t(
+            t_=0,
+            productivity_pi_=productivity_pi_,
+            delta_tax_sp_=delta_tax_sp_,
+            delta_k_h_eff_=delta_k_h_eff_,
+            lambda_h_=lambda_h_,
+            sigma_h_=sigma_h_,
+            savings_s_h_=savings_s_h_,
+            delta_i_h_pds_=delta_i_h_pds_,
+            recovery_params_=recovery_params_,
+            social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+            return_elements=False,
+            consumption_floor_xi_=consumption_floor_xi_,
+            t_hat=t_hat,
+            consumption_offset=consumption_offset,
+        )
+
     w_baseline = aggregate_welfare_w_of_c_of_capital_t(
         capital_t_=capital_t_,
         discount_rate_rho_=discount_rate_rho_,
@@ -444,7 +481,8 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         include_tax=True
     )
 
-    return w_baseline - w_disaster, used_liquidity
+    # return w_baseline - w_disaster, used_liquidity
+    return w_baseline - w_disaster, used_liquidity, dc_short_term, delta_c_h_max
 
 
 def recompute_with_tax_wrapper(recompute_args):
@@ -481,7 +519,8 @@ def recompute_data_with_tax(df_in, num_cores=None):
     with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(recompute_with_tax_wrapper, df_in.iterrows()), total=len(df_in),
                              desc='Recomputing actual welfare loss and used liquidity'))
-    res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS'], index=df_in.index)
+    # res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS'], index=df_in.index)
+    res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS', 'dc_short_term', 'dC_max'], index=df_in.index)
     return res
 
 

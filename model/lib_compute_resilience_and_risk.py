@@ -154,9 +154,9 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
 
     recompute_data = pd.merge(recompute_data, recovery_parameters, left_index=True, right_index=True, how='left')
 
-    dw_ds_reco = recompute_data_with_tax(recompute_data, num_cores)
+    recompute_result = recompute_data_with_tax(recompute_data, num_cores)
 
-    cat_info_event_iah = pd.merge(cat_info_event_iah, dw_ds_reco, left_index=True, right_index=True, how='left')
+    cat_info_event_iah = pd.merge(cat_info_event_iah, recompute_result, left_index=True, right_index=True, how='left')
     cat_info_event_iah = pd.merge(cat_info_event_iah, recovery_parameters, left_index=True, right_index=True, how='left')
 
     return cat_info_event_iah
@@ -200,6 +200,7 @@ def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, num_
     cat_info_event_iah_, macro_event_ = compute_dw_long_term(cat_info_event_iah_, macro_event, event_level_)#, long_term_horizon_)
 
     # sum the welfare losses from reconstruction and long-term welfare losses
+    cat_info_event_iah_['dc'] = cat_info_event_iah_['dc_long_term'] + cat_info_event_iah_['dc_short_term']
     cat_info_event_iah_['dw'] = cat_info_event_iah_['dW_reco'] + cat_info_event_iah_['dW_long_term']
     return cat_info_event_iah_, macro_event_
 
