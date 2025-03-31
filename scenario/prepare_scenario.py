@@ -543,7 +543,8 @@ def process_vulnerability_data(
     building_class_vuln.columns.name = 'vulnerability_class'
 
     # compute extreme case of vuln. distribution, assuming that the poorest live in the most vulnerable buildings
-    quantiles = np.round(np.linspace(resolution, 1, int(1 / resolution)), len(str(resolution).split('.')[1]))
+    # quantiles = np.round(np.linspace(resolution, 1, int(1 / resolution)), len(str(resolution).split('.')[1]))
+    quantiles = np.round(np.linspace(.2, 1, 5), 1)
     v_gem = pd.DataFrame(
         index=pd.MultiIndex.from_product((building_classes.index, quantiles), names=['iso3', 'income_cat']),
         columns=pd.Index(building_classes.columns.get_level_values(0).unique(), name='hazard'),
@@ -553,7 +554,7 @@ def process_vulnerability_data(
         for hazard in v_gem.columns:
             share_h_q = (
                 (building_classes[hazard] - (building_classes[hazard].cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(0) -
-                (building_classes[hazard] - (building_classes[hazard].cumsum(axis=1).add(-(cum_head - resolution), axis=0)).clip(lower=0)).clip(0)) / resolution
+                (building_classes[hazard] - (building_classes[hazard].cumsum(axis=1).add(-(cum_head - 1 / len(quantiles)), axis=0)).clip(lower=0)).clip(0)) / (1 / len(quantiles))
             v_gem_h_q = (share_h_q * building_class_vuln.loc[hazard]).sum(axis=1, skipna=True)
             v_gem.loc[(slice(None), cum_head), hazard] = v_gem_h_q.values
     v_gem = v_gem.stack().rename('v')
@@ -596,7 +597,7 @@ def process_vulnerability_data(
             vuln_distr.fillna(vuln_distr.mean(axis=0), inplace=True)
         vuln_distr.columns.name = 'income_cat'
         vuln_distr = vuln_distr.stack().rename('v_rel').sort_index()
-        vuln_distr = broadcast_to_population_resolution(vuln_distr, resolution)
+        # vuln_distr = broadcast_to_population_resolution(vuln_distr, resolution)
 
         # compute vulnerability per income quintile as the product of national-level vulnerability and the relative
         # vulnerability distribution
@@ -614,7 +615,6 @@ def process_vulnerability_data(
             elif vulnerability_bounds == 'gem_extremes':
                 v_gem_minmax = v_gem.unstack('income_cat')
                 v_gem_minmax = v_gem_minmax.rename({v_gem_minmax.columns.min(): 'v_max', v_gem_minmax.columns.max(): 'v_min'}, axis=1)[['v_min', 'v_max']]
-                print(v_gem_minmax.loc[('AGO', 'Earthquake')])
                 vulnerability_ = pd.merge(vulnerability_, v_gem_minmax, left_index=True, right_index=True, how='left')
             else:
                 raise ValueError(f"Unknown value for vulnerability_bounds: {vulnerability_bounds}")
@@ -627,7 +627,7 @@ def process_vulnerability_data(
         elif vulnerability_[vulnerability_ > 1].any():
             print(f"Warning. No vulnerability bounds provided. {len(vulnerability_[vulnerability_ > 1])} entries with"
                   f"excess vulnerability values > 1!")
-    vulnerability_ = pd.concat((vulnerability_, vulnerability_tot), axis=0).sort_index()
+    vulnerability_ = pd.concat((broadcast_to_population_resolution(vulnerability_, resolution), vulnerability_tot), axis=0).sort_index()
     return vulnerability_
 
 
