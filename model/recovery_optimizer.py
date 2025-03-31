@@ -401,7 +401,7 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
             t_hat=t_hat,
             consumption_offset=consumption_offset,
         )[3]
-    used_liquidity = integrate.quad(used_liquidity_func, 0, capital_t_, limit=50)[0]
+    used_liquidity = integrate.quad(used_liquidity_func, 0, min(capital_t_, np.log(1/1e-6) / lambda_h_), limit=50)[0]
 
     w_baseline = aggregate_welfare_w_of_c_of_capital_t(
         capital_t_=capital_t_,
