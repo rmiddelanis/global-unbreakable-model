@@ -1,7 +1,10 @@
 import sys
 import os
+
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import argparse
+from misc.helpers import get_population_scope_indices
 from scenario.prepare_scenario import prepare_scenario
 from model.lib_compute_resilience_and_risk import *
 import os
@@ -56,7 +59,7 @@ def run_model(settings: dict):
         macro_event=macro_event,
         cat_info_event_ia=cat_info_event_ia,
         event_level=event_level,
-        scope=pds_params['pds_scope'],
+        scope=get_population_scope_indices(pds_params['pds_scope'], cat_info_event_ia),
         targeting=pds_params['pds_targeting'],
         lending_rate=pds_params['pds_lending_rate'],
         variant=pds_params['pds_variant'],

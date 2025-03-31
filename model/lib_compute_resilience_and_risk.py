@@ -78,7 +78,8 @@ def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending
     if variant == "no":
         reference_loss = 0
     elif variant == "unif_poor":
-        reference_loss = cat_info_event_iah_.xs(("q1", "a", "helped"), level=['income_cat', 'affected_cat', 'helped_cat'])[loss_measure]
+        poor_cat = cat_info_event_iah_.index.get_level_values('income_cat').min()
+        reference_loss = cat_info_event_iah_.xs((poor_cat, "a", "helped"), level=['income_cat', 'affected_cat', 'helped_cat'])[loss_measure]
     elif variant == "proportional":
         reference_loss = cat_info_event_iah_.loc[helped_slice, loss_measure]
     else:

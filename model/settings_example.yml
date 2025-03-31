@@ -8,18 +8,19 @@ model_params:
     pds_targeting: 'data'
     pds_borrowing_ability: 'unlimited'
     pds_lending_rate: 0.05
-    pds_scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+    pds_scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
     covered_loss_share: 0.4
 scenario_params:
   run_params:
     outpath: './output/'
-    force_recompute: False
+    force_recompute: True
     verbose: False
     countries: 'all'
     exclude_countries: ['THA']
     hazards: 'all'
     ppp_reference_year: 2021
     include_spl: False
+    resolution: .2
   macro_params:
     income_elasticity_eta: 1.5
     discount_rate_rho: .06
@@ -34,26 +35,26 @@ scenario_params:
   policy_params:
     scale_self_employment:
       parameter: 1
-      scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+      scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
     scale_non_diversified_income:
       parameter: 1
-      scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+      scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
     min_diversified_share:
       parameter: 0
-      scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+      scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
     scale_income:
       parameter: 1
-      scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+      scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
     scale_liquidity:
       parameter: 1
-      scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+      scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
     scale_exposure:
       parameter: 1
-      scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+      scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
       scale_total: False
     scale_vulnerability:
       parameter: 1
-      scope: ['q1', 'q2', 'q3', 'q4', 'q5']
+      scope: [[0, .2], [.2, .4], [.4, .6], [.6, .8], [.8, 1]]
       scale_total: False
     scale_gini_index:
       parameter: 1

@@ -2,41 +2,41 @@ import argparse
 import os
 import numpy as np
 import yaml
-from geopandas.datasets import available
 from scipy.optimize import curve_fit
 from scenario.data.gather_findex_data import get_liquidity_from_findex, gather_axfin_data
 from scenario.data.gather_gem_data import gather_gem_data
 from scenario.data.gather_gir_data import load_gir_hazard_loss_rel
-from scenario.data.get_wb_data import get_wb_data, get_wb_mrv
+from scenario.data.get_wb_data import get_wb_data, get_wb_mrv, broadcast_to_population_resolution
 import pandas as pd
-from misc.helpers import get_country_name_dicts, df_to_iso3, load_income_groups, update_data_coverage
+from misc.helpers import get_country_name_dicts, df_to_iso3, load_income_groups, update_data_coverage, \
+    get_population_scope_indices
 from time import time
 
 
-def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, n_quantiles_, axfin_impact_,
+def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, resolution, axfin_impact_,
                              scale_non_diversified_income_=None, min_diversified_share_=None, scale_income_=None,
                              scale_gini_index_=None):
     print("Computing diversified income share and tax...")
     cat_info_['diversified_share'] = cat_info_.transfers + cat_info_.axfin * axfin_impact_
     if scale_non_diversified_income_ is not None:
-        scope = scale_non_diversified_income_['scope']
+        scope = get_population_scope_indices(scale_non_diversified_income_['scope'], cat_info_)
         parameter = scale_non_diversified_income_['parameter']
         cat_info_.loc[pd.IndexSlice[:, scope], 'diversified_share'] = 1 - (1 - cat_info_['diversified_share']) * parameter
     cat_info_['diversified_share'] = cat_info_['diversified_share'].clip(upper=1, lower=0)
     if min_diversified_share_ is not None:
-        scope = min_diversified_share_['scope']
+        scope = get_population_scope_indices(min_diversified_share_['scope'], cat_info_)
         parameter = min_diversified_share_['parameter']
         cat_info_.loc[pd.IndexSlice[:, scope], 'diversified_share'] = cat_info_['diversified_share'].clip(lower=parameter)
 
     # reduces the gini index by redistributing a certain percentage of each quintile's income equally among all quintiles
     if scale_gini_index_ is not None:
-        cat_info_.income_share = cat_info_.income_share * scale_gini_index_['parameter'] + (cat_info_.income_share * (1 - scale_gini_index_['parameter'])).groupby('iso3').sum() / n_quantiles_
+        cat_info_.income_share = cat_info_.income_share * scale_gini_index_['parameter'] + (cat_info_.income_share * (1 - scale_gini_index_['parameter'])).groupby('iso3').sum() * resolution
 
-    cat_info_['n'] = 1 / n_quantiles_
+    cat_info_['n'] = resolution
     cat_info_['c'] = cat_info_.income_share / cat_info_.n * wb_data_macro_.gdp_pc_pp
 
     if scale_income_ is not None:
-        scope = scale_income_['scope']
+        scope = get_population_scope_indices(scale_income_['scope'], cat_info_)
         parameter = scale_income_['parameter']
         cat_info_.loc[pd.IndexSlice[:, scope], 'c'] *= parameter
         wb_data_macro_.gdp_pc_pp = cat_info_.groupby('iso3').c.mean()
@@ -108,7 +108,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     return prot
 
 
-def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, force_recompute_=True, verbose_=True, scale_liquidity_=None):
+def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, resolution, force_recompute_=True, verbose_=True, scale_liquidity_=None):
     outpath = os.path.join(root_dir_, 'data', 'processed', 'findex_liquidity_and_axfin.csv')
     if not force_recompute_ and os.path.exists(outpath):
         print("Loading liquidity and axfin data from file...")
@@ -135,8 +135,10 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, force_reco
         update_data_coverage(root_dir_, 'findex', liquidity_and_axfin.index.get_level_values('iso3').unique(), None)
 
         liquidity_and_axfin.to_csv(outpath)
+    liquidity_and_axfin = broadcast_to_population_resolution(liquidity_and_axfin, resolution)
     if scale_liquidity_ is not None:
-        liquidity_and_axfin.loc[pd.IndexSlice[:, scale_liquidity_['scope']], 'liquidity'] *= scale_liquidity_['parameter']
+        scope = get_population_scope_indices(scale_liquidity_['scope'], liquidity_and_axfin)
+        liquidity_and_axfin.loc[pd.IndexSlice[:, scope], 'liquidity'] *= scale_liquidity_['parameter']
     return liquidity_and_axfin
 
 
@@ -379,7 +381,6 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         capital_shares[['k_labor_share', 'self_employment', 'owner_occupied_share_of_value_added', 'real_est_k_to_va_shares_ratio']].to_csv(capital_shares_before_adjustment_path)
 
     if scale_self_employment is not None:
-        # capital_shares.loc[pd.IndexSlice[:, scale_self_employment['scope']], 'self_employment'] *= scale_self_employment['parameter']
         capital_shares['self_employment'] *= scale_self_employment['parameter']
 
     capital_shares['k_self_share'] = capital_shares['k_labor_share'] * capital_shares['self_employment']
@@ -389,9 +390,14 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
     return capital_shares.dropna(subset='k_household_share')[['k_priv_share', 'k_household_share', 'owner_occupied_share_of_value_added', 'self_employment', 'real_est_k_to_va_shares_ratio']]
 
 
-def apply_poverty_exposure_bias(root_dir_, exposure_fa_, guess_missing_countries, population_data_=None,
+def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missing_countries, population_data_=None,
                                 peb_data_path="exposure_bias_per_quintile.csv"):
-    bias = pd.read_csv(os.path.join(root_dir_, "data/processed/", peb_data_path), index_col=[0, 1, 2]).squeeze()
+    bias = pd.read_csv(os.path.join(root_dir_, "data/processed/", peb_data_path))
+    bias['income_cat'] = bias.income_cat.apply(lambda x: int(x.split('q')[1]))
+    bias['income_cat'] = np.round(bias.income_cat / bias.income_cat.max(), 2)
+    bias = bias.set_index(['iso3', 'hazard', 'income_cat'])
+    bias = broadcast_to_population_resolution(bias, resolution).squeeze()
+    # bias = pd.read_csv(os.path.join(root_dir_, "data/processed/", peb_data_path), index_col=[0, 1, 2]).squeeze()
     eb_hazards = bias.index.get_level_values('hazard').unique()
     missing_index = pd.MultiIndex.from_tuples(
         np.setdiff1d(exposure_fa_.index.droplevel('rp').unique(), bias.index.unique()), names=bias.index.names)
@@ -422,7 +428,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, guess_missing_countries
     return exposure_fa_with_peb_
 
 
-def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, verbose=True, force_recompute_=False,
+def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, verbose=True, force_recompute_=False,
                                        apply_exposure_bias=True, population_data=None, scale_exposure=None,
                                        scale_vulnerability=None, early_warning_data=None, reduction_vul=.2,
                                        no_ew_hazards="Earthquake+Tsunami"):
@@ -453,7 +459,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
         vulnerability_unadjusted_ = process_vulnerability_data(
             root_dir_=root_dir_,
             building_classes=gem_building_classes,
-            n_quantiles_=n_quantiles,
+            resolution=resolution,
             use_gmd_to_distribute=True,
             fill_missing_gmd_with_country_average=False,
             vulnerability_bounds='gem_extremes',
@@ -498,13 +504,14 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
         hazard_ratios['fa'] = apply_poverty_exposure_bias(
             root_dir_=root_dir_,
             exposure_fa_=hazard_ratios['fa'],
+            resolution=resolution,
             guess_missing_countries=True,
-            population_data_=population_data
+            population_data_=population_data,
         ).clip(lower=0, upper=fa_threshold_)
 
     for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
         if policy_dict is not None:
-            scope = policy_dict['scope']
+            scope = get_population_scope_indices(policy_dict['scope'], hazard_ratios)
             parameter = policy_dict['parameter']
             scale_total = policy_dict['scale_total']
             if not scale_total:
@@ -513,7 +520,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
                 average = hazard_ratios[col_name].groupby(['iso3', 'hazard', 'rp']).mean()
                 scope_sum = hazard_ratios.loc[pd.IndexSlice[:, :, :, scope], col_name].groupby(['iso3', 'hazard', 'rp']).sum()
                 none_scope_sum = hazard_ratios[col_name].groupby(['iso3', 'hazard', 'rp']).sum() - scope_sum
-                scope_factor = (average * parameter - 1 / n_quantiles * none_scope_sum) / (1 / n_quantiles * scope_sum)
+                scope_factor = (average * parameter - resolution * none_scope_sum) / (resolution * scope_sum)
                 hazard_ratios.loc[pd.IndexSlice[:, :, :, scope], col_name] *= scope_factor
 
     if early_warning_data is not None:
@@ -524,12 +531,8 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, n_quantiles, ve
 
 
 def process_vulnerability_data(
-        root_dir_,
-        building_classes,
-        n_quantiles_=5,
-        use_gmd_to_distribute=True,
-        fill_missing_gmd_with_country_average=False,
-        vulnerability_bounds='gem_extremes',
+        root_dir_, building_classes, resolution, use_gmd_to_distribute=True,
+        fill_missing_gmd_with_country_average=False, vulnerability_bounds='gem_extremes',
         building_class_vuln_path="GEM_vulnerability/building_class_to_vulenrability_mapping.csv",
         gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling quintile vul ratio.xlsx",
 ):
@@ -540,20 +543,19 @@ def process_vulnerability_data(
     building_class_vuln.columns.name = 'vulnerability_class'
 
     # compute extreme case of vuln. distribution, assuming that the poorest live in the most vulnerable buildings
-    quantiles = [f"q{q}" for q in range(1, n_quantiles_ + 1)]
-    q_headcount = 1 / n_quantiles_
+    quantiles = np.round(np.linspace(resolution, 1, int(1 / resolution)), len(str(resolution).split('.')[1]))
     v_gem = pd.DataFrame(
         index=pd.MultiIndex.from_product((building_classes.index, quantiles), names=['iso3', 'income_cat']),
         columns=pd.Index(building_classes.columns.get_level_values(0).unique(), name='hazard'),
         dtype=float
     )
-    for cum_head, quantile in zip(np.linspace(q_headcount, 1, n_quantiles_), quantiles):
+    for cum_head in quantiles:
         for hazard in v_gem.columns:
             share_h_q = (
                 (building_classes[hazard] - (building_classes[hazard].cumsum(axis=1).add(-cum_head, axis=0)).clip(lower=0)).clip(0) -
-                (building_classes[hazard] - (building_classes[hazard].cumsum(axis=1).add(-(cum_head - q_headcount), axis=0)).clip(lower=0)).clip(0)) / q_headcount
+                (building_classes[hazard] - (building_classes[hazard].cumsum(axis=1).add(-(cum_head - resolution), axis=0)).clip(lower=0)).clip(0)) / resolution
             v_gem_h_q = (share_h_q * building_class_vuln.loc[hazard]).sum(axis=1, skipna=True)
-            v_gem.loc[(slice(None), quantile), hazard] = v_gem_h_q.values
+            v_gem.loc[(slice(None), cum_head), hazard] = v_gem_h_q.values
     v_gem = v_gem.stack().rename('v')
     v_gem = v_gem.reorder_levels(['iso3', 'hazard', 'income_cat']).sort_index()
 
@@ -574,10 +576,10 @@ def process_vulnerability_data(
         vuln_distr = pd.read_excel(os.path.join(root_dir_, "data/raw/", gmd_vulnerability_distribution_path), sheet_name='Data')
         vuln_distr = vuln_distr.loc[vuln_distr.groupby('code')['year'].idxmax()]
         vuln_distr.rename(
-            {'code': 'iso3', 'ratio1': 'q1', 'ratio2': 'q2', 'ratio3': 'q3', 'ratio4': 'q4', 'ratio5': 'q5'},
+            {'code': 'iso3', 'ratio1': .2, 'ratio2': .4, 'ratio3': .6, 'ratio4': .8, 'ratio5': 1},
             axis=1, inplace=True
         )
-        vuln_distr = vuln_distr.set_index('iso3')[['q1', 'q2', 'q3', 'q4', 'q5']]
+        vuln_distr = vuln_distr.set_index('iso3')[[.2, .4, .6, .8, 1]]
 
         available_countries = vuln_distr.index
         update_data_coverage(root_dir_, 'gmd_vulnerability_rel', available_countries, None)
@@ -594,6 +596,7 @@ def process_vulnerability_data(
             vuln_distr.fillna(vuln_distr.mean(axis=0), inplace=True)
         vuln_distr.columns.name = 'income_cat'
         vuln_distr = vuln_distr.stack().rename('v_rel').sort_index()
+        vuln_distr = broadcast_to_population_resolution(vuln_distr, resolution)
 
         # compute vulnerability per income quintile as the product of national-level vulnerability and the relative
         # vulnerability distribution
@@ -610,7 +613,8 @@ def process_vulnerability_data(
                 )
             elif vulnerability_bounds == 'gem_extremes':
                 v_gem_minmax = v_gem.unstack('income_cat')
-                v_gem_minmax = v_gem_minmax.rename({'q1': 'v_max', 'q5': 'v_min'}, axis=1)[['v_min', 'v_max']]
+                v_gem_minmax = v_gem_minmax.rename({v_gem_minmax.columns.min(): 'v_max', v_gem_minmax.columns.max(): 'v_min'}, axis=1)[['v_min', 'v_max']]
+                print(v_gem_minmax.loc[('AGO', 'Earthquake')])
                 vulnerability_ = pd.merge(vulnerability_, v_gem_minmax, left_index=True, right_index=True, how='left')
             else:
                 raise ValueError(f"Unknown value for vulnerability_bounds: {vulnerability_bounds}")
@@ -1020,6 +1024,7 @@ def prepare_scenario(scenario_params):
         force_recompute=run_params['force_recompute'],
         verbose=run_params['verbose'],
         include_spl=run_params['include_spl'],
+        resolution=run_params['resolution'],
     )
 
     # print duration
@@ -1032,6 +1037,7 @@ def prepare_scenario(scenario_params):
         root_dir_=scenario_root_dir,
         any_to_wb_=any_to_wb,
         gni_pc_pp=wb_data_macro.gni_pc_pp,
+        resolution=run_params['resolution'],
         force_recompute_=run_params['force_recompute'],
         verbose_=run_params['verbose'],
         scale_liquidity_=policy_params.pop('scale_liquidity', None),
@@ -1041,8 +1047,6 @@ def prepare_scenario(scenario_params):
         timestamp = time()
 
     cat_info = pd.merge(wb_data_cat_info, liquidity_and_axfin, left_index=True, right_index=True, how='inner')
-
-    n_quantiles = len(wb_data_cat_info.index.get_level_values('income_cat').unique())
 
     disaster_preparedness = load_disaster_preparedness_data(
         root_dir_=scenario_root_dir,
@@ -1096,9 +1100,9 @@ def prepare_scenario(scenario_params):
     hazard_ratios = compute_exposure_and_vulnerability(
         root_dir_=scenario_root_dir,
         force_recompute_=run_params['force_recompute'],
+        resolution=run_params['resolution'],
         verbose=run_params['verbose'],
         fa_threshold_=hazard_params['fa_threshold'],
-        n_quantiles=n_quantiles,
         apply_exposure_bias=not hazard_params['no_exposure_bias'],
         population_data=wb_data_macro['pop'],
         scale_exposure=policy_params.pop('scale_exposure', None),
@@ -1116,7 +1120,7 @@ def prepare_scenario(scenario_params):
         cat_info_=cat_info,
         wb_data_macro_=wb_data_macro,
         avg_prod_k_=avg_prod_k,
-        n_quantiles_=n_quantiles,
+        resolution=run_params['resolution'],
         axfin_impact_=macro_params['axfin_impact'],
         scale_non_diversified_income_=policy_params.pop('scale_non_diversified_income', None),
         min_diversified_share_=policy_params.pop('min_diversified_share', None),

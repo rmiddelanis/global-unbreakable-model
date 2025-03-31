@@ -5,9 +5,15 @@ import pandas as pd
 import pycountry as pc
 
 
-# from sorted_nicely import sorted_nicely
+def get_population_scope_indices(scope, df):
+    income_cat_indices = np.sort(df.index.get_level_values('income_cat').unique())
+    indices = []
+    for a, b in scope:
+        lower, upper = sorted([a, b])
+        indices += income_cat_indices[(income_cat_indices > lower) & (income_cat_indices <= upper)].tolist()
+    return indices
 
- 
+
 def get_list_of_index_names(df):
     """returns name of index in a data frame as a list. (single element list if the dataframe as a single index)""
     """

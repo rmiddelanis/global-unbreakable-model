@@ -27,6 +27,21 @@ AGG_REGIONS = ['Africa Eastern and Southern', 'Africa Western and Central', 'Ara
                'Upper middle income', 'World']
 
 
+def broadcast_to_population_resolution(data, resolution):
+    # scale to resolution
+    if type(data) == pd.DataFrame:
+        return pd.concat([broadcast_to_population_resolution(data[col], resolution) for col in data.columns], axis=1)
+    elif type(data) == pd.Series:
+        series_name = data.name
+        data_ = data.unstack('income_cat').copy()
+        data_ = pd.concat([data_] + [data_.rename(columns={c: np.round(c - (i + 1) * resolution, len(str(resolution).split('.')[1])) for c in data_.columns}) for i in range(int(.2 / resolution) - 1)], axis=1)
+        data_ = data_.stack().sort_index()
+        data_.name = series_name
+    else:
+        raise ValueError("Data must be a DataFrame or Series")
+    return data_
+
+
 def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=True):
     regression_spec = {
         .2: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY + MNA', # R2=0.557
@@ -201,7 +216,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         pip_data.set_index(['iso3', 'year', 'reporting_level', 'welfare_type'], inplace=True)
         pip_data = pip_data.xs('national', level='reporting_level')
         pip_data = pip_data[[f'decile{i + 1}' for i in range(10)]].dropna()
-        pip_data.columns = np.linspace(.1, 1, 10)
+        pip_data.columns = np.round(np.linspace(.1, 1, 10), 1)
         pip_data = pip_data.stack()
         pip_data.index.names = ['iso3', 'year', 'welfare_type', 'income_cat']
         income_shares = pd.merge(
@@ -263,16 +278,10 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     if impute_missing_data:
         transfers = guess_missing_transfers_shares(transfers.to_frame(), root_dir, any_to_wb, verbose).squeeze()
 
-    # scale to resolution
-    transfers = transfers.unstack('income_cat')
-    for i in range(int(.2 / resolution) - 1):
-        transfers_ = transfers.copy()
-        transfers_.columns = transfers_.columns - (i + 1) * resolution
-        transfers = pd.concat([transfers, transfers_], axis=1)
-    transfers = transfers.stack().rename('transfers').sort_index()
+    transfers = broadcast_to_population_resolution(transfers, resolution)
 
     cat_info_df = pd.concat([income_shares, transfers], axis=1).sort_index()  # .groupby('iso3').apply(lambda x: x.bfill()).reset_index(0, drop=True)
-    cat_info_df.index = cat_info_df.index.set_levels(np.round((cat_info_df.index.levels[1] / resolution), 0).astype(int), level='income_cat')
+    # cat_info_df.index = cat_info_df.index.set_levels(np.round((cat_info_df.index.levels[1] / resolution), 0).astype(int), level='income_cat')
 
     complete_macro = macro_df.dropna().index.get_level_values('iso3').unique()
     complete_cat_info = cat_info_df.isna().any(axis=1).replace(True, np.nan).unstack('income_cat').dropna(how='any').index.unique()

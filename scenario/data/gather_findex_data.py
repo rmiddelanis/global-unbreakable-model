@@ -56,7 +56,8 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
 
             findex_data = findex_data.astype({'country': 'str', 'income_cat': 'int', varname_: 'float',
                                               'wgt': 'float', 'year': 'int', 'FINDEX_wave': 'int'})
-            findex_data.income_cat = findex_data.income_cat.apply(lambda x: 'q{}'.format(x))
+            # findex_data.income_cat = findex_data.income_cat.apply(lambda x: 'q{}'.format(x))
+            findex_data.income_cat = findex_data.income_cat.apply(lambda x: np.round(x / 5, 1))
 
             # Set the index of the DataFrame to be a combination of country, and income quintile
             findex_data.set_index(['country', 'year', 'income_cat'], inplace=True)

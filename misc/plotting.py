@@ -247,7 +247,7 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
                   delta_i_h_pds_, recovery_params_, social_protection_share_gamma_h_, diversified_share_,
                   show_sp_losses=False, consumption_floor_xi_=None, t_hat_=None,
                   consumption_offset_=None, title=None, ylims=None, plot_legend=True, show_ylabel=True, fig=None, axs=None,
-                  plot_capital=True, linecolor='black', shading_color='red'):
+                  plot_capital=True, linecolor='black', shading_color='red', show_liquidity_impact=True):
     """
     Make a plot of the consumption and capital losses over time
     """
@@ -278,9 +278,10 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
                             label='Income loss', lw=0)
     axs[0].fill_between(t_, c_baseline - di_h, c_baseline - (di_h + dc_reco), color=shading_color, alpha=0.25,
                         label='Reconstruction loss', lw=0)
-    axs[0].fill_between(t_[dc_savings_pds != 0], (c_baseline - (di_h + dc_reco) + dc_savings_pds)[dc_savings_pds != 0],
-                       (c_baseline - (di_h + dc_reco))[dc_savings_pds != 0], facecolor='none', lw=0, hatch='XXX',
-                        edgecolor='grey', label='Liquidity')
+    if show_liquidity_impact:
+        axs[0].fill_between(t_[dc_savings_pds != 0], (c_baseline - (di_h + dc_reco) + dc_savings_pds)[dc_savings_pds != 0],
+                           (c_baseline - (di_h + dc_reco))[dc_savings_pds != 0], facecolor='none', lw=0, hatch='XXX',
+                            edgecolor='grey', label='Liquidity')
     axs[0].plot([-0.03 * (max(t_) - min(t_)), 0], [c_baseline, c_baseline], color=linecolor, label='__none__')
     axs[0].plot([0, 0], [c_baseline, (c_baseline - di_h - dc_reco + dc_savings_pds)[0]], color=linecolor, label='__none__')
     axs[0].plot(t_, c_baseline - di_h - dc_reco + dc_savings_pds, color=linecolor, label='Consumption')
