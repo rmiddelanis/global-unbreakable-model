@@ -356,7 +356,9 @@ def aggregate_welfare_w_of_c_of_capital_t(capital_t_, discount_rate_rho_, produc
     args = (discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
             sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, recovery_params_,
             social_protection_share_gamma_h_, diversified_share_, consumption_floor_xi_, t_hat, consumption_offset, True, include_tax)
-    w_agg = integrate.quad(welfare_w_of_t, 0, capital_t_, args=args, limit=50)[0]
+    # w_agg = integrate.quad(welfare_w_of_t, 0, capital_t_, args=args, limit=50)[0]
+    t_ = np.array([0] + list(np.geomspace(1e-6, capital_t_, int(np.ceil(5000/np.log(50) * np.log(capital_t_))))))
+    w_agg = integrate.trapezoid(welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, recovery_params_, social_protection_share_gamma_h_, diversified_share_, consumption_floor_xi_, t_hat, consumption_offset, True, include_tax), t_)
     return w_agg
 
 
@@ -401,7 +403,9 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
             t_hat=t_hat,
             consumption_offset=consumption_offset,
         )[3]
-    used_liquidity = integrate.quad(used_liquidity_func, 0, min(capital_t_, np.log(1/1e-6) / lambda_h_), limit=50)[0]
+    # used_liquidity = integrate.quad(used_liquidity_func, 0, capital_t_, limit=50)[0]
+    t_ = np.array([0] + list(np.geomspace(1e-6, capital_t_, int(np.ceil(5000/np.log(50) * np.log(capital_t_))))))
+    used_liquidity = integrate.trapezoid(used_liquidity_func(t_), t_)
 
     def dc_short_term_func(t_):
         return delta_c_h_of_t(
@@ -420,8 +424,8 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
             t_hat=t_hat,
             consumption_offset=consumption_offset
         )
-    dc_short_term = integrate.quad(dc_short_term_func, 0, min(capital_t_, np.log(1/1e-6) / lambda_h_), limit=50)[0]
-
+    # dc_short_term = integrate.quad(dc_short_term_func, 0, capital_t_, limit=50)[0]
+    dc_short_term = integrate.trapezoid(dc_short_term_func(t_), t_)
 
     delta_c_h_max = delta_c_h_of_t(
             t_=0,
@@ -620,8 +624,9 @@ def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity
 
     # for the optimization, include leftover savings, s.th. not the first but the fastest recovery path is chosen where
     # consumption losses can be fully offset
-    objective += calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                                       delta_i_h_pds_)
+    leftover = calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                                     delta_i_h_pds_)
+    objective += leftover
     return -objective  # negative to transform into a minimization problem
 
 
