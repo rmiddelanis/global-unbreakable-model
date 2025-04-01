@@ -124,7 +124,7 @@ def load_data(simulation_paths_, model_root_dir_):
     }
 
     cat_info_data_ = {
-        k: pd.read_csv(os.path.join(v, "iah.csv"), index_col=[0, 1, 2, 3, 4, 5]) for k, v in
+        k: pd.read_csv(os.path.join(v, "iah.csv"), index_col=[0, 1, 2, 3, 4, 5]).rename(index={.2: 'q1', .4: 'q2', .6: 'q3', .8: 'q4', 1: 'q5'}, level='income_cat') for k, v in
         simulation_paths_.items()
     }
 
@@ -133,7 +133,7 @@ def load_data(simulation_paths_, model_root_dir_):
         cat_info_data_[k].recovery_params = cat_info_data_[k].recovery_params.apply(
             lambda x: [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in x[2:-2].split('), (')])
 
-    compute_total_consumption_loss(cat_info_data_, macro_data_)
+    # compute_total_consumption_loss(cat_info_data_, macro_data_)
 
     results_data_ = {
         k: pd.read_csv(os.path.join(v, "results.csv"), index_col=0) for k, v in
@@ -1748,18 +1748,30 @@ if __name__ == '__main__':
     model_root_dir = os.path.dirname(Path(os.path.abspath(__file__)).parent)
 
     simulation_paths = {
+        # 'baseline': '0_baseline',
+        # 'reduce_total_exposure_0.05': '1_reduce_total_exposure/q1+q2+q3+q4+q5/0.95',
+        # 'reduce_poor_exposure_0.05': '1_reduce_total_exposure/q1/0.95',
+        # 'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/q1+q2+q3+q4+q5/0.95',
+        # 'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/q1/0.95',
+        # 'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
+        # 'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
+        # 'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
+        # 'pds40': '8_post_disaster_support/q1+q2+q3+q4+q5/0.4',
+        # 'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
+        # 'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
+        # 'reduce_gini_10': '11_scale_gini_index/0.9',
         'baseline': '0_baseline',
-        'reduce_total_exposure_0.05': '1_reduce_total_exposure/q1+q2+q3+q4+q5/0.95',
-        'reduce_poor_exposure_0.05': '1_reduce_total_exposure/q1/0.95',
-        'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/q1+q2+q3+q4+q5/0.95',
-        'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/q1/0.95',
-        'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
-        'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
-        'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
-        'pds40': '8_post_disaster_support/q1+q2+q3+q4+q5/0.4',
-        'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
-        'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
-        'reduce_gini_10': '11_scale_gini_index/0.9',
+        'reduce_total_exposure_0.05': '1_reduce_total_exposure/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.95',
+        'reduce_poor_exposure_0.05': '1_reduce_total_exposure/0-0.2/0.95',
+        'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.95',
+        'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/0-0.2/0.95',
+        'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/1.05',
+        'reduce_self_employment_0.1': '6_scale_self_employment/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.9',
+        'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.9',
+        'pds40': '8_post_disaster_support/0-1/0.4',
+        'insurance20': '9_insurance/0-1/0.2',
+        'noLiquidity': '10_scale_income_and_liquidity/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0',
+        'reduce_gini_10': '11_scale_gini_index/0-1/0.9',
     }
     simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
