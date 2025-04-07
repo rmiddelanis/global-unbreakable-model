@@ -360,7 +360,7 @@ def add_regression(ax_, data_, x_var_, y_var_, p_val_pos='above left'):
         va = 'bottom'
     elif p_val_pos == 'above right':
         xy = (1, 1.01)
-        ha = 'left'
+        ha = 'right'
         va = 'bottom'
     elif p_val_pos == 'lower left':
         xy = (.01, .01)
