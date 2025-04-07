@@ -358,10 +358,6 @@ def add_regression(ax_, data_, x_var_, y_var_, p_val_pos='above left'):
         xy = (0, 1.01)
         ha = 'left'
         va = 'bottom'
-    elif p_val_pos == 'above right':
-        xy = (1, 1.01)
-        ha = 'right'
-        va = 'bottom'
     elif p_val_pos == 'lower left':
         xy = (.01, .01)
         ha = 'left'
@@ -370,6 +366,18 @@ def add_regression(ax_, data_, x_var_, y_var_, p_val_pos='above left'):
         xy = (.01, .99)
         ha = 'left'
         va = 'top'
+    elif p_val_pos == 'above right':
+        xy = (.99, 1.01)
+        ha = 'right'
+        va = 'bottom'
+    elif p_val_pos == 'upper right':
+        xy = (.99, .99)
+        ha = 'right'
+        va = 'top'
+    elif p_val_pos == 'lower right':
+        xy = (.99, .01)
+        ha = 'right'
+        va = 'bottom'
     else:
         raise ValueError('p_val_pos should be "above left", "above right", "lower left", or "upper left".')
     ax_.annotate(f'R2={r2:.2f}{significance}', xy=xy, xycoords='axes fraction',
