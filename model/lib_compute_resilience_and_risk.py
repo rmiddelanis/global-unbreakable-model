@@ -216,8 +216,10 @@ def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_p
 
     # aggregate delta_W at event-level
     out["dw"] = agg_to_event_level(cat_info_event_iah, "dw", event_level)
+    out["dc"] = agg_to_event_level(cat_info_event_iah, "dc", event_level)
 
     out["dk_tot"] = out["dk"] * macro_event["pop"]
+    out["dc_tot"] = out["dc"] * macro_event["pop"]
     out["dw_tot"] = out["dw"] * macro_event["pop"]
 
     # aggregate losses

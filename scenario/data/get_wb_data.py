@@ -140,6 +140,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
                 force_recompute=True, verbose=True, save=True, include_spl=False, resolution=.2):
     macro_path = os.path.join(root_dir, "data/processed/wb_data_macro.csv")
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
+    rem_ade_path = os.path.join(root_dir, "data/processed/adequacy_remittances.csv")
     if not force_recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
         print("Loading World Bank data from file...")
         macro_df = pd.read_csv(macro_path, index_col='iso3')
@@ -299,6 +300,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     if save:
         macro_df.to_csv(macro_path)
         cat_info_df.to_csv(cat_info_path)
+        pd.concat([adequacy_remittances, adequacy_all_prot_lab, coverage_remittances, coverage_all_prot_lab], axis=1).to_csv(rem_ade_path)
     return macro_df, cat_info_df
 
 

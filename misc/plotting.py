@@ -636,8 +636,8 @@ def plot_supfig_4(results_data_, outfile=None, show=False):
         legend_handle.set_alpha(1)
     dk_tot_label = NAME_DICT['dk_tot'].replace('\n', ' ')
     dw_tot_currency_label = NAME_DICT['dWtot_currency'].replace('\n', ' ')
-    axs[1].set_xlabel(f"ln({dk_tot_label})")
-    axs[1].set_ylabel(f"ln({dw_tot_currency_label})")
+    axs[1].set_xlabel(dk_tot_label)
+    axs[1].set_ylabel(dw_tot_currency_label)
 
     axs[1].set_yscale('log')
     axs[1].set_xscale('log')
@@ -657,7 +657,7 @@ def plot_supfig_4(results_data_, outfile=None, show=False):
         plt.close()
 
 
-def plot_supfig_3(results_data_, outpath_=None):
+def plot_supfig_3(results_data_, outpath_=None, numbering=True):
     capital_shares = results_data_.copy()
     fig, axs = plt.subplots(ncols=3, nrows=3, figsize=(double_col_width * centimeter, 16 * centimeter), sharex=False, sharey='row')
     capital_shares[['k_priv_share', 'k_household_share', 'owner_occupied_share_of_value_added', 'self_employment']] *= 100
@@ -696,6 +696,12 @@ def plot_supfig_3(results_data_, outpath_=None):
         axs[2, 0].set_ylabel('share [%]')
 
     plt.tight_layout()
+
+    if numbering:
+        for i, ax in enumerate(axs.flatten()):
+            ax.text(-.05, 1.08, f'{chr(97 + i)}', ha='left', va='top', fontsize=8, fontweight='bold',
+                    transform=ax.transAxes)
+
     if outpath_ is not None:
         fig.savefig(outpath_, dpi=300, bbox_inches='tight')
     plt.show(block=False)
@@ -1756,30 +1762,18 @@ if __name__ == '__main__':
     model_root_dir = os.path.dirname(Path(os.path.abspath(__file__)).parent)
 
     simulation_paths = {
-        # 'baseline': '0_baseline',
-        # 'reduce_total_exposure_0.05': '1_reduce_total_exposure/q1+q2+q3+q4+q5/0.95',
-        # 'reduce_poor_exposure_0.05': '1_reduce_total_exposure/q1/0.95',
-        # 'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/q1+q2+q3+q4+q5/0.95',
-        # 'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/q1/0.95',
-        # 'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/q1+q2+q3+q4+q5/1.05',
-        # 'reduce_self_employment_0.1': '6_scale_self_employment/q1+q2+q3+q4+q5/0.9',
-        # 'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/q1+q2+q3+q4+q5/0.9',
-        # 'pds40': '8_post_disaster_support/q1+q2+q3+q4+q5/0.4',
-        # 'insurance20': '9_insurance/q1+q2+q3+q4+q5/0.2',
-        # 'noLiquidity': '10_scale_income_and_liquidity/q1+q2+q3+q4+q5/0',
-        # 'reduce_gini_10': '11_scale_gini_index/0.9',
         'baseline': '0_baseline',
         'reduce_total_exposure_0.05': '1_reduce_total_exposure/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.95',
         'reduce_poor_exposure_0.05': '1_reduce_total_exposure/0-0.2/0.95',
-        'reduce_total_vulnerability_0.05': '3_reduce_total_vulnerability/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.95',
-        'reduce_poor_vulnerability_0.05': '3_reduce_total_vulnerability/0-0.2/0.95',
-        'increase_gdp_pc_and_liquidity_0.05': '5_scale_income_and_liquidity/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/1.05',
-        'reduce_self_employment_0.1': '6_scale_self_employment/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.9',
-        'reduce_non_diversified_income_0.1': '7_scale_non_diversified_income/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.9',
+        'reduce_total_vulnerability_0.05': '2_reduce_total_vulnerability/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.95',
+        'reduce_poor_vulnerability_0.05': '2_reduce_total_vulnerability/0-0.2/0.95',
+        'increase_gdp_pc_and_liquidity_0.05': '3_scale_income_and_liquidity/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/1.05',
+        'reduce_self_employment_0.1': '4_scale_self_employment/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.9',
+        'reduce_non_diversified_income_0.1': '5_scale_non_diversified_income/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0.9',
+        'noLiquidity': '6_scale_liquidity/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0',
+        'reduce_gini_10': '7_scale_gini_index/0-1/0.9',
         'pds40': '8_post_disaster_support/0-1/0.4',
         'insurance20': '9_insurance/0-1/0.2',
-        'noLiquidity': '10_scale_income_and_liquidity/0-0.2__0.2-0.4__0.4-0.6__0.6-0.8__0.8-1/0',
-        'reduce_gini_10': '11_scale_gini_index/0-1/0.9',
     }
     simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
