@@ -1,4 +1,18 @@
-import os
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
+
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
 
 import numpy as np
 import pandas as pd
@@ -8,21 +22,29 @@ from scenario.data.get_wb_data import get_wb_series, get_most_recent_value
 
 def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_: str, varname_: str, verbose: bool=False):
     """
-    This function gathers and processes data from the FINDEX datasets.
+    Gathers and processes data from the FINDEX datasets.
 
-    Data can be obtained from
-    https://doi.org/10.48529/JQ97-AJ70 (FINDEX 2021)
-    https://doi.org/10.48529/d3cf-fj47 (FINDEX 2017)
-    https://doi.org/10.48529/9j25-hr41 (FINDEX 2014)
-    https://doi.org/10.48529/wnvd-y919 (FINDEX 2011)
-
-    Parameters:
-    findex_data_path (dict): Values contain the paths to the FINDEX data file with the year as dict key.
-    outpath (str, optional): The path to the output file. If provided, the result will be saved to this file.
+    Args:
+        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data files.
+        question_ids_ (dict): Dictionary mapping years to question IDs for the FINDEX datasets.
+        root_dir_ (str): Root directory of the project.
+        varname_ (str): Variable name to assign to the selected question data.
+        verbose (bool): Whether to print warnings or additional information. Defaults to False.
 
     Returns:
-    None
+        pd.DataFrame: Processed FINDEX data indexed by country, year, and income category.
+
+    Raises:
+        ValueError: If an unknown FINDEX year is encountered.
+
+    Notes:
+        Data can be obtained from
+        https://doi.org/10.48529/JQ97-AJ70 (FINDEX 2021)
+        https://doi.org/10.48529/d3cf-fj47 (FINDEX 2017)
+        https://doi.org/10.48529/9j25-hr41 (FINDEX 2014)
+        https://doi.org/10.48529/wnvd-y919 (FINDEX 2011)
     """
+
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir_)
 
     findex_datasets = []
@@ -73,6 +95,19 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
 
 
 def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, verbose=True):
+    """
+    Processes FINDEX data to calculate the share of individuals saving money using formal financial institutions.
+
+    Args:
+        root_dir_ (str): Root directory of the project.
+        any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
+        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data files.
+        verbose (bool): Whether to print warnings or additional information. Defaults to True.
+
+    Returns:
+        pd.Series: Processed data containing the share of individuals saving money, indexed by ISO3, year, and income category.
+    """
+
     # fin17a (2021): "Saved using an account at a financial institution"
     # fin17a (2017): "In the PAST 12 MONTHS, have you, personally, saved or set aside any money by using an
     #                   account at a bank or another type of formal financial institution (This can include
@@ -110,6 +145,29 @@ def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, verbose=True):
 
 
 def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, gni_pc_pp, drop_refused=True, verbose=True):
+    """
+    Calculates liquidity data from FINDEX datasets, combining it with GNI per capita data.
+
+    Args:
+        root_dir_ (str): Root directory of the project.
+        any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
+        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data files.
+        gni_pc_pp (pd.Series): GNI per capita data indexed by ISO3.
+        drop_refused (bool): Whether to drop respondents who refused to answer. Defaults to True.
+        verbose (bool): Whether to print warnings or additional information. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Liquidity data indexed by ISO3, year, and income category, containing liquidity shares and average liquidity.
+
+    Raises:
+        ValueError: If an unknown FINDEX year is encountered.
+
+    Notes:
+        - Liquidity is defined as the ability to come up with 1/20 of the GNI per capita in the country currency.
+        - Respondents answering "don’t know", "cannot come up with the money", or "would need to sell assets" are considered not liquid.
+        - The function processes FINDEX data to calculate liquidity shares and combines them with GNI per capita data to compute average liquidity.
+    """
+
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}
 
     # Gather the data from the FINDEX datasets
@@ -145,7 +203,7 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, gni_pc_
                         / findex_data.groupby(['country', 'year', 'income_cat']).wgt.sum()).rename('liquidity_share')
     liquidity_shares = df_to_iso3(liquidity_shares.reset_index('country'), 'country', any_to_wb_, verbose_=verbose)
     liquidity_shares = liquidity_shares.set_index('iso3', append=True).reorder_levels(['iso3', 'year', 'income_cat']).drop('country', axis=1)
-    liquidity_shares = get_most_recent_value(liquidity_shares, 'liquidity_share')
+    liquidity_shares = get_most_recent_value(liquidity_shares, True)
 
     # respondents are asked whether they could come up with 1/20 of the GNI pc in the country currency. Thus, the
     # findex shares are combined with the GNI pc data to obtain the average liquidity per quintile
@@ -154,40 +212,3 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, gni_pc_
                               how='left').dropna()
 
     return liquidity_data
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

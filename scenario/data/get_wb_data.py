@@ -1,4 +1,19 @@
-# Downloads wb data
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
+
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
+
 import os
 import pandas as pd
 from pandas_datareader import wb
@@ -27,7 +42,85 @@ AGG_REGIONS = ['Africa Eastern and Southern', 'Africa Western and Central', 'Ara
                'Upper middle income', 'World']
 
 
+def get_wb_series(wb_name, colname):
+    """
+    Retrieves a World Bank series and renames its column.
+
+    Args:
+        wb_name (str): World Bank indicator name.
+        colname (str): Column name for the data.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the World Bank series.
+    """
+    return get_wb_df(wb_name, colname)[colname]
+
+
+def get_wb_mrv(wb_name, colname):
+    """
+    Retrieves the most recent value of a World Bank series.
+
+    Args:
+        wb_name (str): World Bank indicator name.
+        colname (str): Column name for the data.
+
+    Returns:
+        pd.Series: Series containing the most recent values of the World Bank series.
+    """
+    return get_most_recent_value(get_wb_df(wb_name, colname))
+
+
+def get_most_recent_value(data, drop_year=True):
+    """
+    Extracts the most recent value for each group in the data.
+
+    Args:
+        data (pd.DataFrame or pd.Series): Input data.
+        drop_year (bool): Whether to drop the year column. Defaults to True.
+
+    Returns:
+        pd.Series: Data with the most recent values for each group.
+    """
+    levels_new = data.index.droplevel('year').names
+    res = data.dropna().reset_index()
+    if drop_year:
+        res = res.loc[res.groupby(levels_new)['year'].idxmax()].drop(columns='year').set_index(levels_new).squeeze()
+    else:
+        res = res.loc[res.groupby(levels_new)['year'].idxmax()].set_index(levels_new).squeeze()
+    return res
+
+
+def get_wb_df(wb_name, colname):
+    """
+    Downloads a World Bank dataset and renames its column.
+
+    Args:
+        wb_name (str): World Bank indicator name.
+        colname (str): Column name for the data.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the World Bank dataset.
+    """
+    # return all values
+    wb_raw = (wb.download(indicator=wb_name, start=2000, end=YEAR_TODAY, country="all"))
+    # sensible name for the column
+    return wb_raw.rename(columns={wb_raw.columns[0]: colname})
+
+
 def broadcast_to_population_resolution(data, resolution):
+    """
+    Scales data to a specified population resolution.
+
+    Args:
+        data (pd.DataFrame or pd.Series): Input data to be scaled.
+        resolution (float): Resolution to scale the data to.
+
+    Returns:
+        pd.DataFrame or pd.Series: Data scaled to the specified resolution.
+
+    Raises:
+        ValueError: If the input data is not a DataFrame or Series.
+    """
     # scale to resolution
     if type(data) == pd.DataFrame:
         return pd.concat([broadcast_to_population_resolution(data[col], resolution) for col in data.columns], axis=1)
@@ -43,6 +136,19 @@ def broadcast_to_population_resolution(data, resolution):
 
 
 def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=True, reg_data_outpath=None):
+    """
+    Predicts missing transfer shares using regression models. Regression specification is hard-coded.
+
+    Args:
+        cat_info_df_ (pd.DataFrame): DataFrame containing category information with transfer shares.
+        root_dir_ (str): Root directory of the project.
+        any_to_wb (dict): Mapping of country names to World Bank ISO3 codes.
+        verbose (bool): Whether to print verbose output. Defaults to True.
+        reg_data_outpath (str, optional): Path to save regression data. Defaults to None.
+
+    Returns:
+        pd.DataFrame: Updated category information with predicted transfer shares.
+    """
     regression_spec = {
         .2: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY + MNA', # R2=0.557
         .4: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.558
@@ -97,7 +203,6 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=T
 
     cat_info_df_ = pd.concat([cat_info_df_, transfers_predicted], axis=1)
     imputed_countries = cat_info_df_[cat_info_df_.transfers.isna() & cat_info_df_.transfers_predicted.notna()].index.get_level_values('iso3').unique()
-    # imputed_countries = pd.Series(index=imputed_countries, data=True).rename('transfers_share')
     available_countries = np.setdiff1d(cat_info_df_.index.get_level_values('iso3').unique(), imputed_countries)
     update_data_coverage(root_dir_, 'transfers', available_countries, imputed_countries)
 
@@ -109,6 +214,23 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=T
 
 def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value=True, upper_bound=None,
                            lower_bound=None):
+    """
+    Downloads World Bank quintile data and processes it.
+
+    Args:
+        name (str): Name of the data.
+        id_q1 (str): World Bank indicator ID for the first quintile.
+        id_q2 (str): World Bank indicator ID for the second quintile.
+        id_q3 (str): World Bank indicator ID for the third quintile.
+        id_q4 (str): World Bank indicator ID for the fourth quintile.
+        id_q5 (str): World Bank indicator ID for the fifth quintile.
+        most_recent_value (bool): Whether to use the most recent value. Defaults to True.
+        upper_bound (float, optional): Upper bound for the data. Defaults to None.
+        lower_bound (float, optional): Lower bound for the data. Defaults to None.
+
+    Returns:
+        pd.Series: Processed quintile data indexed by country, year, and income category.
+    """
     data_q1 = get_wb_series(id_q1, .2)
     data_q2 = get_wb_series(id_q2,.4)
     data_q3 = get_wb_series(id_q3, .6)
@@ -128,6 +250,26 @@ def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_
 
 def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False, drop_incomplete=True,
                 force_recompute=True, verbose=True, save=True, include_spl=False, resolution=.2):
+    """
+    Downloads and processes World Bank socio-economic data, including macroeconomic and income-level data.
+
+    Args:
+        root_dir (str): Root directory of the project.
+        ppp_reference_year (int): Reference year for PPP data. Defaults to 2021.
+        include_remittances (bool): Whether to include remittance data. Defaults to True.
+        impute_missing_data (bool): Whether to impute missing data. Defaults to False.
+        drop_incomplete (bool): Whether to drop countries with incomplete data. Defaults to True.
+        force_recompute (bool): Whether to force recomputation of data. Defaults to True.
+        verbose (bool): Whether to print verbose output. Defaults to True.
+        save (bool): Whether to save the processed data. Defaults to True.
+        include_spl (bool): Whether to include shared prosperity line data. Defaults to False.
+        resolution (float): Resolution for income shares. Defaults to 0.2.
+
+    Returns:
+        tuple: A tuple containing:
+            - pd.DataFrame: Macroeconomic data indexed by ISO3 country codes.
+            - pd.DataFrame: Category-level data indexed by ISO3 country codes and income categories.
+    """
     macro_path = os.path.join(root_dir, "data/processed/wb_data_macro.csv")
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
     rem_ade_path = os.path.join(root_dir, "data/processed/adequacy_remittances.csv")
@@ -153,12 +295,10 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         gni_pc_pp = wb_wdi[wb_wdi['Indicator ID'] == 'WB.WDI.NY.GNP.PCAP.PP.KD'].set_index('country').iloc[:, 8:]
         gni_pc_pp.columns.name = 'year'
         gni_pc_pp = gni_pc_pp.stack().rename('gni_pc_pp')
-        # gni_pc_pp = get_most_recent_value(gni_pc_pp).rename('gni_pc_pp')
 
         gdp_pc_pp = wb_wdi[wb_wdi['Indicator ID'] == 'WB.WDI.NY.GDP.PCAP.PP.KD'].set_index('country').iloc[:, 8:]
         gdp_pc_pp.columns.name = 'year'
         gdp_pc_pp = gdp_pc_pp.stack().rename('gdp_pc_pp')
-        # gdp_pc_pp = get_most_recent_value(gdp_pc_pp).rename('gdp_pc_pp')
     else:
         raise ValueError("PPP reference year not supported")
     gdp_pc_pp = gdp_pc_pp.drop(np.intersect1d(gdp_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
@@ -167,7 +307,6 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     gni_pc_pp = gni_pc_pp.drop(np.intersect1d(gni_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
     gni_pc_pp = df_to_iso3(gni_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
-    # pop = get_wb_mrv('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
     pop = get_wb_series('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
     pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
     pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
@@ -289,31 +428,3 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         cat_info_df.to_csv(cat_info_path)
         pd.concat([adequacy_remittances, adequacy_all_prot_lab, coverage_remittances, coverage_all_prot_lab], axis=1).to_csv(rem_ade_path)
     return macro_df, cat_info_df
-
-
-def get_wb_series(wb_name, colname):
-    """"gets a pandas SERIES (instead of dataframe, for convinience) from wb data with all years and all countries, and a lotof nans"""
-    return get_wb_df(wb_name, colname)[colname]
-
-
-def get_wb_mrv(wb_name, colname):
-    """most recent value from WB API"""
-    return get_most_recent_value(get_wb_df(wb_name, colname))
-
-
-def get_most_recent_value(data, drop_year=True):
-    levels_new = data.index.droplevel('year').names
-    res = data.dropna().reset_index()
-    if drop_year:
-        res = res.loc[res.groupby(levels_new)['year'].idxmax()].drop(columns='year').set_index(levels_new).squeeze()
-    else:
-        res = res.loc[res.groupby(levels_new)['year'].idxmax()].set_index(levels_new).squeeze()
-    return res
-
-
-def get_wb_df(wb_name, colname):
-    """gets a dataframe from wb data with all years and all countries, and a lot of nans"""
-    # return all values
-    wb_raw = (wb.download(indicator=wb_name, start=2000, end=YEAR_TODAY, country="all"))
-    # sensible name for the column
-    return wb_raw.rename(columns={wb_raw.columns[0]: colname})

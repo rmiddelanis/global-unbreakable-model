@@ -1,3 +1,19 @@
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
+
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
+
 import multiprocessing
 from functools import partial
 import numpy as np
@@ -8,7 +24,15 @@ from scipy import integrate, optimize
 
 def delta_capital_k_eff_of_t(t_, recovery_params_):
     """
-    Compute the dynamic effective capital loss at country level
+    Compute the dynamic effective capital loss at the national level.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+
+    Returns:
+        float or np.ndarray: Effective capital loss at the national level.
     """
     dk_national = 0
     for delta_k_h_eff_, lambda_h_ in recovery_params_:
@@ -22,7 +46,15 @@ def delta_capital_k_eff_of_t(t_, recovery_params_):
 
 def delta_k_h_eff_of_t(t_, delta_k_h_eff_, lambda_h_):
     """
-    Compute the dynamic effective capital loss in the normal exponential recovery regime
+    Compute the dynamic effective capital loss in the exponential recovery regime.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        delta_k_h_eff_ (float): Initial effective household-level capital loss.
+        lambda_h_ (float): Recovery rate.
+
+    Returns:
+        float or np.ndarray: Effective household-level capital loss at time t_.
     """
     if delta_k_h_eff_ == 0:
         return 0 if isinstance(t_, (float, int)) else np.zeros(t_.shape)
@@ -31,7 +63,17 @@ def delta_k_h_eff_of_t(t_, delta_k_h_eff_, lambda_h_):
 
 def delta_i_h_lab_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_):
     """
-    Compute dynamic the labor income loss
+    Compute the dynamic labor income loss.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        productivity_pi_ (float): Productivity parameter.
+        delta_tax_sp_ (float): Tax adjustment factor.
+        delta_k_h_eff_ (float): Initial effective household-level capital loss.
+        lambda_h_ (float): Recovery rate.
+
+    Returns:
+        float or np.ndarray: Household-level labor income loss at time t_.
     """
     if delta_k_h_eff_ == 0:
         return 0 if isinstance(t_, (float, int)) else np.zeros(t_.shape)
@@ -41,15 +83,40 @@ def delta_i_h_lab_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lamb
 
 def cum_delta_i_h_lab_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_):
     """
-    Compute the cumulative dynamic labor income loss in the exponential recovery regime.
+    Compute the cumulative household-level labor income loss at time t_.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        productivity_pi_ (float): Productivity parameter.
+        delta_tax_sp_ (float): Tax adjustment factor.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        lambda_h_ (float): Recovery rate.
+
+    Returns:
+        float or np.ndarray: Cumulative labor household-level income loss at time t_.
     """
     if delta_k_h_eff_ == 0:
         return 0 if isinstance(t_, (float, int)) else np.zeros(t_.shape)
     return (1 - delta_tax_sp_) * productivity_pi_ / lambda_h_ * delta_k_h_eff_ * (1 - np.exp(-lambda_h_ * t_))
 
 
-def delta_i_h_sp_of_t(t_, recovery_params_=None, productivity_pi_=None, social_protection_share_gamma_h_=None,
-                      delta_tax_sp_=None, verbose=True):
+def delta_i_h_div_of_t(t_, recovery_params_=None, productivity_pi_=None, social_protection_share_gamma_h_=None,
+                       delta_tax_sp_=None, verbose=True):
+    """
+    Compute the diversified income loss.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+        productivity_pi_ (float): Capital productivity.
+        social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+        delta_tax_sp_ (float): Tax rate.
+        verbose (bool): Whether to print warnings. Defaults to True.
+
+    Returns:
+        float or np.ndarray: Social protection income loss at time t_.
+    """
     if delta_tax_sp_ != 0:
         if (recovery_params_ is None or productivity_pi_ is None or social_protection_share_gamma_h_ is None or
                 delta_tax_sp_ is None) and verbose:
@@ -62,6 +129,21 @@ def delta_i_h_sp_of_t(t_, recovery_params_=None, productivity_pi_=None, social_p
 
 def cum_delta_i_h_sp_of_t(t_, recovery_parameters_, productivity_pi_, social_protection_share_gamma_h_,
                           delta_tax_sp_, verbose=True):
+    """
+    Compute the cumulative dynamic social protection income loss.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        recovery_parameters_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+        productivity_pi_ (float): Capital productivity.
+        social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+        delta_tax_sp_ (float): Tax rate.
+        verbose (bool): Whether to print warnings. Defaults to True.
+
+    Returns:
+        float or np.ndarray: Cumulative social protection income loss at time t_.
+    """
     if delta_tax_sp_ != 0:
         if recovery_parameters_ is not None:
             cum_d_i_h_sp_of_t = None
@@ -83,7 +165,20 @@ def cum_delta_i_h_sp_of_t(t_, recovery_parameters_, productivity_pi_, social_pro
 def cum_delta_i_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
                        recovery_params_, social_protection_share_gamma_h_):
     """
-    Compute the cumulative dynamic income loss
+    Compute the cumulative dynamic income loss.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        productivity_pi_ (float): Capital productivity.
+        delta_tax_sp_ (float): Tax rate.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        lambda_h_ (float): Recovery rate.
+        recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+        social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+
+    Returns:
+        float or np.ndarray: Cumulative income loss at time t_.
     """
     cum_d_i_h_lab_of_t = cum_delta_i_h_lab_of_t(t_, productivity_pi_=productivity_pi_, delta_tax_sp_=delta_tax_sp_,
                                                 delta_k_h_eff_=delta_k_h_eff_, lambda_h_=lambda_h_)
@@ -97,13 +192,28 @@ def cum_delta_i_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lamb
 def delta_i_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
                    recovery_params_, social_protection_share_gamma_h_, return_elements=False):
     """
-    Compute the dynamic income loss
+    Compute the dynamic income loss.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        productivity_pi_ (float): Capital productivity.
+        delta_tax_sp_ (float): Tax rate.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        lambda_h_ (float): Recovery rate.
+        recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+        social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+        return_elements (bool): Whether to return individual components. Defaults to False.
+
+    Returns:
+        float or np.ndarray: Total income loss at time t_.
+        If return_elements is True, returns a tuple of individual components.
     """
     d_i_h_lab_of_t = delta_i_h_lab_of_t(t_, productivity_pi_=productivity_pi_, delta_tax_sp_=delta_tax_sp_,
                                         delta_k_h_eff_=delta_k_h_eff_, lambda_h_=lambda_h_)
-    d_i_h_sp_of_t = delta_i_h_sp_of_t(t_, recovery_params_=recovery_params_, productivity_pi_=productivity_pi_,
-                                      social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-                                      delta_tax_sp_=delta_tax_sp_)
+    d_i_h_sp_of_t = delta_i_h_div_of_t(t_, recovery_params_=recovery_params_, productivity_pi_=productivity_pi_,
+                                       social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+                                       delta_tax_sp_=delta_tax_sp_)
     # income from post disaster support (a one-time payment) is similar to savings and not considered here
     if return_elements:
         return d_i_h_lab_of_t, d_i_h_sp_of_t
@@ -112,7 +222,16 @@ def delta_i_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
 
 def delta_c_h_reco_of_t(t_, delta_k_h_eff_, lambda_h_, sigma_h_):
     """
-    Compute the dynamic recovery consumption loss in the normal exponential recovery regime
+    Compute the dynamic recovery consumption loss in the exponential recovery regime.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        lambda_h_ (float): Recovery rate.
+        sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+
+    Returns:
+        float or np.ndarray: Recovery consumption loss at time t_.
     """
     if delta_k_h_eff_ == 0:
         return 0 if isinstance(t_, (float, int)) else np.zeros(t_.shape)
@@ -121,8 +240,16 @@ def delta_c_h_reco_of_t(t_, delta_k_h_eff_, lambda_h_, sigma_h_):
 
 def cum_delta_c_h_reco_of_t(t_, delta_k_h_eff_, lambda_h_, sigma_h_):
     """
-    Compute the cumulative dynamic recovery consumption loss in the normal exponential recovery regime.
-    This is the integral of delta_c_h_reco_of_t_exp_regime from 0 to t
+    Compute the cumulative dynamic recovery consumption loss in the exponential recovery regime.
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        lambda_h_ (float): Recovery rate.
+        sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+
+    Returns:
+        float or np.ndarray: Cumulative recovery consumption loss at time t_.
     """
     if delta_k_h_eff_ == 0:
         return 0 if isinstance(t_, (float, int)) else np.zeros(t_.shape)
@@ -133,7 +260,23 @@ def calc_t_hat(lambda_h_=None, consumption_floor_xi_=None, productivity_pi_=None
                delta_k_h_eff_=None, savings_s_h_=None, delta_i_h_pds_=None,
                recovery_params_=None, social_protection_share_gamma_h_=None, sigma_h_=None):
     """
-    Compute the time at which the consumption floor is reached
+    Compute the time at which the consumption floor is reached.
+
+    Args:
+        lambda_h_ (float): Recovery rate.
+        consumption_floor_xi_ (float): Consumption floor parameter.
+        productivity_pi_ (float): Productivity parameter.
+        delta_tax_sp_ (float): Tax rate.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        savings_s_h_ (float): Savings available for recovery.
+        delta_i_h_pds_ (float): Post-disaster support income.
+        recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+        social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+        sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+
+    Returns:
+        float: Time at which the consumption floor is reached.
     """
     if delta_tax_sp_ == 0:
         if consumption_floor_xi_ is None or lambda_h_ is None:
@@ -163,7 +306,31 @@ def delta_c_h_savings_pds_of_t(t_, lambda_h_, sigma_h_, productivity_pi_, consum
                                savings_s_h_, delta_i_h_pds_, delta_i_h, delta_c_h_reco, delta_tax_sp_,
                                recovery_params_, social_protection_share_gamma_h_, consumption_offset_):
     """
-    Compute the dynamic consumption gain from savings and PDS
+    Compute the dynamic consumption gain from savings and post-disaster support (PDS).
+
+    Args:
+        t_ (float or np.ndarray): Time or array of time points.
+        lambda_h_ (float): Recovery rate.
+        sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+        productivity_pi_ (float): Capital productivity.
+        consumption_floor_xi_ (float): Consumption floor parameter.
+        t_hat_ (float): Time at which the consumption floor is reached.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        savings_s_h_ (float): Savings available for recovery.
+        delta_i_h_pds_ (float): Post-disaster support income.
+        delta_i_h (float or np.ndarray): Total income loss at time t_.
+        delta_c_h_reco (float or np.ndarray): Recovery consumption loss at time t_.
+        delta_tax_sp_ (float): Tax rate.
+        recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+        social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+        consumption_offset_ (float or None): Offset for recomputation of consumption losses.
+
+    Returns:
+        float or np.ndarray: Dynamic consumption gain from savings and PDS at time t_.
+
+    Raises:
+        ValueError: If both `consumption_offset_` and `consumption_floor_xi_` are provided.
     """
     if savings_s_h_ + delta_i_h_pds_ <= 0:
         return 0 if isinstance(t_, (float, int)) else np.zeros(t_.shape)
@@ -212,8 +379,38 @@ def delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
                    consumption_floor_xi_=None, t_hat=None,
                    consumption_offset=None, return_elements=False):
     """
-    Compute the dynamic consumption loss
-    """
+        Compute the dynamic consumption loss.
+
+        Args:
+            t_ (float or np.ndarray): Time or array of time points.
+            productivity_pi_ (float): Capital productivity.
+            delta_tax_sp_ (float): Tax rate.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+                delta_k_h_eff_ (float) and lambda_h_ (float).
+            social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+            consumption_floor_xi_ (float, optional): Consumption floor parameter. Defaults to None.
+            t_hat (float, optional): Time at which the consumption floor is reached. Defaults to None.
+            consumption_offset (float, optional): Offset for recomputation of consumption losses. Defaults to None.
+            return_elements (bool, optional): Whether to return individual components of the consumption loss.
+                Defaults to False.
+
+        Returns:
+            float or np.ndarray: Total dynamic consumption loss at time t_.
+            If `return_elements` is True, returns a tuple containing:
+                - d_i_h_lab_of_t: Labor income loss.
+                - d_i_h_sp_of_t: Social protection income loss.
+                - delta_c_h_reco: Recovery consumption loss.
+                - delta_c_h_savings_pds: Consumption gain from savings and PDS.
+
+        Raises:
+            ValueError: If `consumption_floor_xi_` and `t_hat` are not both provided or both are None.
+        """
+
     # no income loss from labor or social protection and transfers --> baseline case
     if delta_k_h_eff_ == 0 and (recovery_params_ is None or np.all([rp[0] == 0 for rp in recovery_params_])):
         if return_elements:
@@ -267,7 +464,16 @@ def delta_c_h_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h
 
 def baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share):
     """
-    Compute the baseline consumption level
+    Compute the baseline consumption level for a household.
+
+    Args:
+        productivity_pi_ (float): Capital productivity.
+        k_h_eff_ (float): Effective capital stock of the household.
+        delta_tax_sp_ (float): Tax adjustment factor.
+        diversified_share (float): Share of income that is diversified.
+
+    Returns:
+        float: Baseline consumption level of the household.
     """
     return productivity_pi_ * k_h_eff_ * (1 - delta_tax_sp_) / (1 - diversified_share)
 
@@ -276,8 +482,30 @@ def consumption_c_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lamb
                        delta_i_h_pds_, k_h_eff_, recovery_params_, social_protection_share_gamma_h_,
                        diversified_share_, consumption_floor_xi_=None, t_hat=None, consumption_offset=None, include_tax=False):
     """
-    Compute the dynamic consumption level
-    """
+        Compute the dynamic consumption level.
+
+        Args:
+            t_ (float or np.ndarray): Time or array of time points.
+            productivity_pi_ (float): Capital productivity.
+            delta_tax_sp_ (float): Tax rate.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            k_h_eff_ (float): Effective capital stock of the household.
+            recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+                delta_k_h_eff_ (float) and lambda_h_ (float).
+            social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+            diversified_share_ (float): Share of income that is diversified.
+            consumption_floor_xi_ (float, optional): Consumption floor parameter. Defaults to None.
+            t_hat (float, optional): Time at which the consumption floor is reached. Defaults to None.
+            consumption_offset (float, optional): Offset for recomputation of consumption losses. Defaults to None.
+            include_tax (bool, optional): Whether to include tax in the computation. Defaults to False.
+
+        Returns:
+            float or np.ndarray: Dynamic consumption level at time t_.
+        """
     consumption_loss = delta_c_h_of_t(
         t_=t_,
         productivity_pi_=productivity_pi_,
@@ -302,9 +530,176 @@ def consumption_c_of_t(t_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lamb
     return baseline_consumption - consumption_loss
 
 
+def calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_):
+    """
+        Compute the alpha parameter.
+
+        Args:
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            productivity_pi_ (float): Capital productivity.
+
+        Returns:
+            float: The computed alpha parameter.
+        """
+    return (productivity_pi_ + lambda_h_ * sigma_h_) * delta_k_h_eff_
+
+
+def solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                               delta_i_h_pds_, delta_tax_sp_, recovery_params_,
+                               social_protection_share_gamma_h_):
+    """
+        Solve for the consumption floor parameter (\xi).
+
+        Args:
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            productivity_pi_ (float): Capital productivity.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            delta_tax_sp_ (float): Tax rate.
+            recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+                delta_k_h_eff_ (float) and lambda_h_ (float).
+            social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+
+        Returns:
+            tuple: A tuple containing:
+                - float: The solved consumption floor parameter (\xi).
+                - float: Time at which the consumption floor is reached (t\_hat).
+        """
+
+    # for the optimization problem, neglecting tax, social protection, and transfers
+    if delta_tax_sp_ == 0:
+        alpha = calc_alpha(
+            lambda_h_=lambda_h_,
+            sigma_h_=sigma_h_,
+            delta_k_h_eff_=delta_k_h_eff_,
+            productivity_pi_=productivity_pi_
+        )
+        if lambda_h_ <= 0 or savings_s_h_ + delta_i_h_pds_ <= 0:
+            xi_res, t_hat = np.nan, 0  # No savings available to offset consumption losses
+        elif savings_s_h_ + delta_i_h_pds_ >= alpha / lambda_h_:
+            xi_res, t_hat = 0, np.inf  # All capital losses can be repaired at time 0, and consumption loss can be reduced to 0
+        else:
+            # Solve numerically for xi
+            def xi_func(xi_):
+                rhs = 1 - lambda_h_ / alpha * (savings_s_h_ + delta_i_h_pds_)
+                lhs = xi_ * (1 - np.log(xi_)) if xi_ > 0 else 0
+                return lhs - rhs
+            xi_res = optimize.brentq(xi_func, 0, 1)
+            t_hat = calc_t_hat(lambda_h_=lambda_h_, consumption_floor_xi_=xi_res, delta_tax_sp_=delta_tax_sp_)
+
+    # for the recomputation, including tax, social protection, and transfers
+    else:
+        if savings_s_h_ + delta_i_h_pds_ <= 0:
+            # no savings to offset losses
+            xi_res, t_hat = np.nan, 0
+        else:
+            # find t_hat (with tax, social protection, and transfers), at which savings are used up
+            t_hat = calc_t_hat(
+                lambda_h_=lambda_h_,
+                consumption_floor_xi_=None,
+                productivity_pi_=productivity_pi_,
+                delta_tax_sp_=delta_tax_sp_,
+                delta_k_h_eff_=delta_k_h_eff_,
+                savings_s_h_=savings_s_h_,
+                delta_i_h_pds_=delta_i_h_pds_,
+                recovery_params_=recovery_params_,
+                social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+                sigma_h_=sigma_h_,
+            )
+            # with tax, xi_res has no meaning (as alpha would also depend on tax and income losses from transfers)
+            xi_res = np.nan
+    return xi_res, t_hat
+
+
+def calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_):
+    """
+        Compute the leftover savings after accounting for recovery costs.
+
+        Args:
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            productivity_pi_ (float): Capital productivity.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+
+        Returns:
+            float: The leftover savings after recovery costs are accounted for.
+        """
+    alpha = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
+    return max(0., savings_s_h_ + delta_i_h_pds_ - alpha / lambda_h_)
+
+
+def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_):
+    """
+        Objective function to be minimized for optimizing the recovery rate (\lambda_h).
+
+        Args:
+            lambda_h_ (float): Recovery rate to be optimized.
+            capital_t_ (float): Time horizon for the welfare computation.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            productivity_pi_ (float): Capital productivity.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            eta_ (float): Elasticity of marginal utility of consumption.
+            discount_rate_rho_ (float): Discount rate for future welfare.
+            k_h_eff_ (float): Effective capital stock of the household.
+            delta_tax_sp_ (float): Tax rate.
+            diversified_share_ (float): Share of income that is diversified.
+
+        Returns:
+            float: Negative of the aggregate welfare value, as the function is designed for minimization.
+        """
+    # print all inputs
+    if isinstance(lambda_h_, np.ndarray):
+        lambda_h_ = lambda_h_[0]
+
+    objective = aggregate_welfare_w_of_c_of_capital_t(
+        capital_t_=capital_t_,
+        lambda_h_=lambda_h_,
+        sigma_h_=sigma_h_,
+        delta_k_h_eff_=delta_k_h_eff_,
+        productivity_pi_=productivity_pi_,
+        eta_=eta_,
+        delta_tax_sp_=delta_tax_sp_,
+        discount_rate_rho_=discount_rate_rho_,
+        k_h_eff_=k_h_eff_,
+        savings_s_h_=savings_s_h_,
+        delta_i_h_pds_=delta_i_h_pds_,
+        recovery_params_=[(0, 0)],  # for optimization, no recovery parameters are needed
+        social_protection_share_gamma_h_=0,  # for optimization, no social protection share is needed
+        diversified_share_=diversified_share_,
+        include_tax=False
+    )
+
+    # for the optimization, include leftover savings, s.th. not the first but the fastest recovery path is chosen where
+    # consumption losses can be fully offset
+    leftover = calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
+                                     delta_i_h_pds_)
+    objective += leftover
+    return -objective  # negative to transform into a minimization problem
+
+
+
 def welfare_of_c(c_, eta_):
     """
-    The welfare function
+    Welfare function.
+
+    Args:
+        c_ (float or np.ndarray): Consumption level(s). Must be positive.
+        eta_ (float): Elasticity of marginal utility of consumption.
+
+    Returns:
+        float or np.ndarray: Welfare value(s) corresponding to the given consumption level(s).
+
+    Raises:
+        ValueError: If any value in `c_` is non-positive.
     """
     if (np.array(c_) <= 0).any():
         return -np.inf
@@ -317,8 +712,33 @@ def welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delt
                    consumption_floor_xi_=None, t_hat=None,
                    consumption_offset=None, discount=True, include_tax=False):
     """
-    Compute the discounted time-dependent welfare
-    """
+        Compute the discounted time-dependent welfare.
+
+        Args:
+            t_ (float or np.ndarray): Time or array of time points.
+            discount_rate_rho_ (float): Discount rate for future welfare.
+            productivity_pi_ (float): Capital productivity.
+            delta_tax_sp_ (float): Tax rate.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            eta_ (float): Elasticity of marginal utility of consumption.
+            k_h_eff_ (float): Effective capital stock of the household.
+            recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+                delta_k_h_eff_ (float) and lambda_h_ (float).
+            social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+            diversified_share_ (float): Share of income that is diversified.
+            consumption_floor_xi_ (float, optional): Consumption floor parameter. Defaults to None.
+            t_hat (float, optional): Time at which the consumption floor is reached. Defaults to None.
+            consumption_offset (float, optional): Offset for recomputation of consumption losses. Defaults to None.
+            discount (bool, optional): Whether to apply discounting to welfare. Defaults to True.
+            include_tax (bool, optional): Whether to include tax in the computation. Defaults to False.
+
+        Returns:
+            float or np.ndarray: Discounted welfare value(s) at time t_.
+        """
     c_of_t = consumption_c_of_t(
         t_=t_,
         productivity_pi_=productivity_pi_,
@@ -351,12 +771,32 @@ def aggregate_welfare_w_of_c_of_capital_t(capital_t_, discount_rate_rho_, produc
                                           consumption_floor_xi_=None, t_hat=None, consumption_offset=None,
                                           include_tax=False):
     """
-    Compute the time-aggregate welfare function
-    """
-    args = (discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_,
-            sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, recovery_params_,
-            social_protection_share_gamma_h_, diversified_share_, consumption_floor_xi_, t_hat, consumption_offset, True, include_tax)
-    # w_agg = integrate.quad(welfare_w_of_t, 0, capital_t_, args=args, limit=50)[0]
+        Compute the time-aggregate welfare function.
+
+        Args:
+            capital_t_ (float): Time horizon for the welfare computation.
+            discount_rate_rho_ (float): Discount rate for future welfare.
+            productivity_pi_ (float): Capital productivity.
+            delta_tax_sp_ (float): Tax rate.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            eta_ (float): Elasticity of marginal utility of consumption.
+            k_h_eff_ (float): Effective capital stock of the household.
+            recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+                delta_k_h_eff_ (float) and lambda_h_ (float).
+            social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+            diversified_share_ (float): Share of income that is diversified.
+            consumption_floor_xi_ (float, optional): Consumption floor parameter. Defaults to None.
+            t_hat (float, optional): Time at which the consumption floor is reached. Defaults to None.
+            consumption_offset (float, optional): Offset for recomputation of consumption losses. Defaults to None.
+            include_tax (bool, optional): Whether to include tax in the computation. Defaults to False.
+
+        Returns:
+            float: Time-aggregated welfare value over the specified time horizon.
+        """
     t_ = np.array([0] + list(np.geomspace(1e-6, capital_t_, int(np.ceil(5000/np.log(50) * np.log(capital_t_))))))
     w_agg = integrate.trapezoid(welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_, recovery_params_, social_protection_share_gamma_h_, diversified_share_, consumption_floor_xi_, t_hat, consumption_offset, True, include_tax), t_)
     return w_agg
@@ -365,6 +805,33 @@ def aggregate_welfare_w_of_c_of_capital_t(capital_t_, discount_rate_rho_, produc
 def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_,
                        lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_,
                        diversified_share_, recovery_params_, social_protection_share_gamma_h_):
+    """
+        Recompute the final change in welfare, including tax, social protection, and transfers.
+
+        Args:
+            capital_t_ (float): Time horizon for the welfare computation.
+            discount_rate_rho_ (float): Discount rate for future welfare.
+            productivity_pi_ (float): Capital productivity.
+            delta_tax_sp_ (float): Tax rate.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            lambda_h_ (float): Recovery rate.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            eta_ (float): Elasticity of marginal utility of consumption.
+            k_h_eff_ (float): Effective capital stock of the household.
+            diversified_share_ (float): Share of income that is diversified.
+            recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+                delta_k_h_eff_ (float) and lambda_h_ (float).
+            social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+
+        Returns:
+            tuple: A tuple containing:
+                - float: Welfare loss due to the disaster.
+                - float: Used liquidity (savings and post-disaster support).
+                - float: Short-term consumption loss.
+                - float: Maximum consumption loss.
+        """
     consumption_floor_xi_, t_hat = solve_consumption_floor_xi(
         lambda_h_=lambda_h_,
         sigma_h_=sigma_h_,
@@ -403,7 +870,6 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
             t_hat=t_hat,
             consumption_offset=consumption_offset,
         )[3]
-    # used_liquidity = integrate.quad(used_liquidity_func, 0, capital_t_, limit=50)[0]
     t_ = np.array([0] + list(np.geomspace(1e-6, capital_t_, int(np.ceil(5000/np.log(50) * np.log(capital_t_))))))
     used_liquidity = integrate.trapezoid(used_liquidity_func(t_), t_)
 
@@ -424,7 +890,6 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
             t_hat=t_hat,
             consumption_offset=consumption_offset
         )
-    # dc_short_term = integrate.quad(dc_short_term_func, 0, capital_t_, limit=50)[0]
     dc_short_term = integrate.trapezoid(dc_short_term_func(t_), t_)
 
     delta_c_h_max = delta_c_h_of_t(
@@ -485,14 +950,30 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         include_tax=True
     )
 
-    # return w_baseline - w_disaster, used_liquidity
     return w_baseline - w_disaster, used_liquidity, dc_short_term, delta_c_h_max
 
 
 def recompute_with_tax_wrapper(recompute_args):
     """
-    Wrapper for recompute_with_tax
-    """
+        Wrapper function for `recompute_with_tax`.
+
+        Args:
+            recompute_args (tuple): A tuple containing:
+                - index (int): The index of the row being processed.
+                - row (pd.Series): A pandas Series containing the input parameters for the `recompute_with_tax` function.
+
+        Returns:
+            tuple: A tuple containing:
+                - int: The index of the row being processed.
+                - tuple: The result of the `recompute_with_tax` function, which includes:
+                    - float: Welfare loss due to the disaster.
+                    - float: Used liquidity (savings and post-disaster support).
+                    - float: Short-term consumption loss.
+                    - float: Maximum consumption loss.
+
+        Raises:
+            Exception: If an error occurs during the execution of `recompute_with_tax`.
+        """
     index, row = recompute_args
     try:
         return recompute_with_tax(
@@ -518,124 +999,58 @@ def recompute_with_tax_wrapper(recompute_args):
 
 def recompute_data_with_tax(df_in, num_cores=None):
     """
-    Recompute the final change in welfare, including tax, social protection, and transfers.
-    """
+        Recompute the final change in welfare, savings, and consumption.
+        Calculation includes tax, social protection, and transfers.
+
+        Args:
+            df_in (pd.DataFrame): Input DataFrame containing the parameters for the welfare computation.
+            num_cores (int, optional): Number of CPU cores to use for parallel processing. Defaults to None,
+                which uses all available cores.
+
+        Returns:
+            pd.DataFrame: A DataFrame with the following columns:
+                - dW_reco: Welfare loss due to the disaster.
+                - dS_reco_PDS: Used liquidity (savings and post-disaster support).
+                - dc_short_term: Short-term consumption loss.
+                - dC_max: Maximum consumption loss.
+        """
     with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(recompute_with_tax_wrapper, df_in.iterrows()), total=len(df_in),
                              desc='Recomputing actual welfare loss and used liquidity'))
-    # res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS'], index=df_in.index)
     res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS', 'dc_short_term', 'dC_max'], index=df_in.index)
     return res
-
-
-def calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_):
-    """
-    Compute the alpha parameter
-    """
-    return (productivity_pi_ + lambda_h_ * sigma_h_) * delta_k_h_eff_
-
-
-def solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                               delta_i_h_pds_, delta_tax_sp_, recovery_params_,
-                               social_protection_share_gamma_h_):
-    """
-    Solve for the consumption floor xi
-    """
-
-    # for the optimization problem, neglecting tax, social protection, and transfers
-    if delta_tax_sp_ == 0:
-        alpha = calc_alpha(
-            lambda_h_=lambda_h_,
-            sigma_h_=sigma_h_,
-            delta_k_h_eff_=delta_k_h_eff_,
-            productivity_pi_=productivity_pi_
-        )
-        if lambda_h_ <= 0 or savings_s_h_ + delta_i_h_pds_ <= 0:
-            xi_res, t_hat = np.nan, 0  # No savings available to offset consumption losses
-        elif savings_s_h_ + delta_i_h_pds_ >= alpha / lambda_h_:
-            xi_res, t_hat = 0, np.inf  # All capital losses can be repaired at time 0, and consumption loss can be reduced to 0
-        else:
-            # Solve numerically for xi
-            def xi_func(xi_):
-                rhs = 1 - lambda_h_ / alpha * (savings_s_h_ + delta_i_h_pds_)
-                lhs = xi_ * (1 - np.log(xi_)) if xi_ > 0 else 0
-                return lhs - rhs
-            xi_res = optimize.brentq(xi_func, 0, 1)
-            t_hat = calc_t_hat(lambda_h_=lambda_h_, consumption_floor_xi_=xi_res, delta_tax_sp_=delta_tax_sp_)
-
-    # for the recomputation, including tax, social protection, and transfers
-    else:
-        if savings_s_h_ + delta_i_h_pds_ <= 0:
-            # no savings to offset losses
-            xi_res, t_hat = np.nan, 0
-        else:
-            # find t_hat (with tax, social protection, and transfers), at which savings are used up
-            t_hat = calc_t_hat(
-                lambda_h_=lambda_h_,
-                consumption_floor_xi_=None,
-                productivity_pi_=productivity_pi_,
-                delta_tax_sp_=delta_tax_sp_,
-                delta_k_h_eff_=delta_k_h_eff_,
-                savings_s_h_=savings_s_h_,
-                delta_i_h_pds_=delta_i_h_pds_,
-                recovery_params_=recovery_params_,
-                social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-                sigma_h_=sigma_h_,
-            )
-            # with tax, xi_res has no meaning (as alpha would also depend on tax and income losses from transfers)
-            xi_res = np.nan
-    return xi_res, t_hat
-
-
-def calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_):
-    """
-    Compute the leftover savings
-    """
-    alpha = calc_alpha(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_)
-    return max(0, savings_s_h_ + delta_i_h_pds_ - alpha / lambda_h_)
-
-
-def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                   delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_):
-    """
-    Objective function to be minimized
-    """
-    # print all inputs
-    if isinstance(lambda_h_, np.ndarray):
-        lambda_h_ = lambda_h_[0]
-
-    objective = aggregate_welfare_w_of_c_of_capital_t(
-        capital_t_=capital_t_,
-        lambda_h_=lambda_h_,
-        sigma_h_=sigma_h_,
-        delta_k_h_eff_=delta_k_h_eff_,
-        productivity_pi_=productivity_pi_,
-        eta_=eta_,
-        delta_tax_sp_=delta_tax_sp_,
-        discount_rate_rho_=discount_rate_rho_,
-        k_h_eff_=k_h_eff_,
-        savings_s_h_=savings_s_h_,
-        delta_i_h_pds_=delta_i_h_pds_,
-        recovery_params_=[(0, 0)],  # for optimization, no recovery parameters are needed
-        social_protection_share_gamma_h_=0,  # for optimization, no social protection share is needed
-        diversified_share_=diversified_share_,
-        include_tax=False
-    )
-
-    # for the optimization, include leftover savings, s.th. not the first but the fastest recovery path is chosen where
-    # consumption losses can be fully offset
-    leftover = calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
-                                     delta_i_h_pds_)
-    objective += leftover
-    return -objective  # negative to transform into a minimization problem
 
 
 def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
                                         delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_,
                                         delta_tax_sp_, diversified_share_, min_lambda_, max_lambda_):
     """
-    Compute the bounds for the lambda parameter
-    """
+        Compute the bounds for the recovery rate (\lambda_h) optimization.
+
+        Args:
+            capital_t_ (float): Time horizon for the welfare computation.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            productivity_pi_ (float): Capital productivity.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            eta_ (float): Elasticity of marginal utility of consumption.
+            discount_rate_rho_ (float): Discount rate for future welfare.
+            k_h_eff_ (float): Effective capital stock of the household.
+            delta_tax_sp_ (float): Tax rate.
+            diversified_share_ (float): Share of income that is diversified.
+            min_lambda_ (float): Minimum bound for the recovery rate.
+            max_lambda_ (float): Maximum bound for the recovery rate.
+
+        Returns:
+            tuple: A tuple containing:
+                - float: Minimum bound for the recovery rate (\lambda_h).
+                - float: Maximum bound for the recovery rate (\lambda_h).
+                - float: Initial guess for the recovery rate (\lambda_h) for optimization.
+
+        Raises:
+            ValueError: If no valid bounds for \lambda_h exist that maintain positive consumption.
+        """
 
     assert min_lambda_ >= 0
 
@@ -650,7 +1065,6 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
                   f"k_h_eff={k_h_eff_}, delta_tax_sp={delta_tax_sp_}, "
                   f"diversified_share={diversified_share_}. No lambda exists that maintains positive consumption.")
             return np.nan, np.nan, np.nan
-        # max_lambda_ = min(max_lambda_, productivity_pi_ / sigma_h_ * (k_h_eff_ / delta_k_h_eff_ - 1))
         max_lambda_ = min(max_lambda_, 1 / sigma_h_ * (c_baseline / delta_k_h_eff_ - productivity_pi_))
     elif savings_s_h_ + delta_i_h_pds_ > 0:
         def lambda_func(lambda_h_):
@@ -660,7 +1074,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
             return alpha_ * xi_ - (c_baseline - 1e-5)  # alpha * xi must be smaller than the baseline consumption
 
         if np.sign(lambda_func(min_lambda_)) != np.sign(lambda_func(max_lambda_)):
-            opt_lambda = optimize.brentq(lambda_func, min_lambda_, max_lambda_)
+            opt_lambda = optimize.brentq(lambda_func, min_lambda_, max_lambda_, full_output=True)[0]
             if lambda_func(opt_lambda - 1e-5) < lambda_func(opt_lambda + 1e-5):
                 max_lambda_ = min(max_lambda_, opt_lambda)
             else:
@@ -679,7 +1093,6 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
         lambda_full_offset = 1 / ((savings_s_h_ + delta_i_h_pds_) / delta_k_h_eff_ - sigma_h_) * productivity_pi_
         if lambda_full_offset < max_lambda_:
             min_lambda_ = max(min_lambda_, lambda_full_offset)
-            # print("min_lambda_ adjusted to:", min_lambda_)
 
     init_candidates = np.linspace(min_lambda_ + .2 * (max_lambda_ - min_lambda_),
                                   max_lambda_ - .2 * (max_lambda_ - min_lambda_), 10)
@@ -700,8 +1113,30 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
                     discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_,
                     tolerance=1e-10, min_lambda=0.05, max_lambda=100):
     """
-    Optimize the lambda parameter
-    """
+        Optimize the recovery rate (\lambda_h) for a given set of parameters.
+
+        Args:
+            capital_t_ (float): Time horizon for the welfare computation.
+            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+            delta_k_h_eff_ (float): Initial effective capital loss.
+            productivity_pi_ (float): Capital productivity.
+            savings_s_h_ (float): Savings available for recovery.
+            delta_i_h_pds_ (float): Post-disaster support income.
+            eta_ (float): Elasticity of marginal utility of consumption.
+            discount_rate_rho_ (float): Discount rate for future welfare.
+            k_h_eff_ (float): Effective capital stock of the household.
+            delta_tax_sp_ (float): Tax rate.
+            diversified_share_ (float): Share of income that is diversified.
+            tolerance (float, optional): Tolerance for the optimization algorithm. Defaults to 1e-10.
+            min_lambda (float, optional): Minimum bound for the recovery rate. Defaults to 0.05.
+            max_lambda (float, optional): Maximum bound for the recovery rate. Defaults to 100.
+
+        Returns:
+            float: The optimized recovery rate (\lambda_h).
+
+        Raises:
+            ValueError: If no valid bounds for \lambda_h exist that maintain positive consumption.
+        """
 
     min_lambda, max_lambda, lambda_h_init = calc_lambda_bounds_for_optimization(
         capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_, delta_i_h_pds_, eta_, discount_rate_rho_,
@@ -725,6 +1160,24 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
 
 
 def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
+    """
+        Wrapper function for `optimize_lambda`.
+
+        Args:
+            opt_args (tuple): A tuple containing:
+                - index (int): The index of the row being processed.
+                - row (pd.Series): A pandas Series containing the input parameters for the `optimize_lambda` function.
+            min_lambda (float): Minimum bound for the recovery rate (\lambda_h).
+            max_lambda (float): Maximum bound for the recovery rate (\lambda_h).
+
+        Returns:
+            tuple: A tuple containing:
+                - int: The index of the row being processed.
+                - float: The optimized recovery rate (\lambda_h).
+
+        Raises:
+            Exception: If an error occurs during the execution of `optimize_lambda`.
+        """
     index, row = opt_args
     try:
         res = optimize_lambda(
@@ -751,8 +1204,22 @@ def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
 
 def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6, num_cores=None):
     """
-    Optimize the lambda parameter for each row in the dataframe
-    """
+        Optimize the recovery rate (\lambda_h) for each row in the input DataFrame.
+
+        Args:
+            df_in (pd.DataFrame): Input DataFrame containing the parameters for the optimization process.
+            tolerance (float, optional): Tolerance for the optimization algorithm. Defaults to 1e-2.
+            min_lambda (float, optional): Minimum bound for the recovery rate (\lambda_h). Defaults to 0.05.
+            max_lambda (float, optional): Maximum bound for the recovery rate (\lambda_h). Defaults to 6.
+            num_cores (int, optional): Number of CPU cores to use for parallel processing. Defaults to None,
+                which uses all available cores.
+
+        Returns:
+            pd.Series: A pandas Series containing the optimized recovery rate (\lambda_h) for each row in the input DataFrame.
+
+        Raises:
+            Exception: If an error occurs during the optimization process for any row.
+        """
     df = df_in.copy()
     # map index to unique optimization values to improve performance
     df['mapping'] = df.fillna(0).groupby(df.columns.tolist()).ngroup()

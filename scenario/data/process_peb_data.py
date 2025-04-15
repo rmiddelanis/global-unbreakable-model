@@ -1,3 +1,19 @@
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
+
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
+
 import os
 import pandas as pd
 import numpy as np
@@ -7,6 +23,27 @@ def process_peb_data(root_dir="./", exposure_data_path="scenario/data/raw/PEB/ex
                      poverty_data_path="scenario/data/raw/PEB/poverty_data/",
                      wb_macro_path="scenario/data/raw/WB_socio_economic_data/wb_data_macro.csv", outpath=None,
                      exclude_povline=None):
+    """
+    Processes Poverty Exposure Bias (PEB) data by combining exposure and poverty data, calculating exposure bias,
+    and generating exposure bias per income quintile.
+
+    Args:
+        root_dir (str): Root directory of the project. Defaults to "./".
+        exposure_data_path (str): Path to the exposure data file (as per Doan et al. 2023). Defaults to "scenario/data/raw/PEB/exposure bias.dta".
+        poverty_data_path (str): Path to the directory containing poverty data files. Defaults to "scenario/data/raw/PEB/poverty_data/".
+        wb_macro_path (str): Path to the World Bank macroeconomic data file. Defaults to "scenario/data/raw/WB_socio_economic_data/wb_data_macro.csv".
+        outpath (str, optional): Directory to save the processed exposure bias per quintile. Defaults to None.
+        exclude_povline (float, optional): Poverty line to exclude from the analysis. Defaults to None.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing exposure bias per income quintile, indexed by country (iso3), hazard, and income category.
+
+    Notes:
+        - The function calculates relative exposure and exposure bias for different poverty lines.
+        - It interpolates missing poverty lines and adjusts population data for consistency.
+        - Exposure bias per quintile is stored in the specified `outpath` if provided.
+    """
+
     exposure_data_path = os.path.join(root_dir, exposure_data_path)
     poverty_data_path = os.path.join(root_dir, poverty_data_path)
 
@@ -90,7 +127,6 @@ def process_peb_data(root_dir="./", exposure_data_path="scenario/data/raw/PEB/ex
         axis=0
     ).sort_index()
 
-    # TODO: some categories have pov_headcount == 0 but pop_a > 0
     # drop data where pov_headcount == 0 (these don't contribute to any income quintile)
     exposure = exposure[exposure.pov_headcount > 0].copy()
 
@@ -109,7 +145,6 @@ def process_peb_data(root_dir="./", exposure_data_path="scenario/data/raw/PEB/ex
 
     # compute relative exposure
     exposure['f_a'] = exposure.pop_a / exposure['pop']
-    # exposure.loc[exposure.f_a > 1, 'f_a'] = 1
     exposure.loc[exposure.f_a < 0, 'f_a'] = np.nan  # some entries have f_a < 0 (only very small headcounts)
     exposure['f_a'] = exposure['f_a'].fillna(exposure.loc[pd.IndexSlice[:, :, 'tot'], 'f_a'].droplevel('pop_slice'))  # exposure for these entries with country avg
 
@@ -143,7 +178,6 @@ def process_peb_data(root_dir="./", exposure_data_path="scenario/data/raw/PEB/ex
     # store exposure bias per quintile
     if outpath is not None:
         exp_bias_q.to_csv(os.path.join(outpath, 'exposure_bias_per_quintile.csv'))
-        # pov_head.to_csv(os.path.join(outpath, 'pov_headcount.csv'))
         print(f"Exposure bias per quintile stored in {outpath}")
 
     return exp_bias_q

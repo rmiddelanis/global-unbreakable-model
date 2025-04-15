@@ -1,5 +1,20 @@
-import os
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
 
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
+
+import os
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -10,21 +25,24 @@ import xarray as xr
 
 def process_flopros_data(flopros_path, flopros_update_path, flopros_update_shapes_path, population_path, gadm_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
     """
-        This function processes flood protection data (flopros) and aggregates it to the country level.
+    Processes FLOPROS data to compute national-level flood protection levels for riverine and coastal areas.
 
-        Parameters:
-        flopros_path (str): Path to the original flopros data shapefile. Can be downloaded from https://doi.org/10.5194/nhess-16-1049-2016
-        flopros_update_path (str): Path to the updated flopros data file (Protection_constant_*.xlsx). Can be downloaded from https://doi.org/10.5281/zenodo.4275517
-        flopros_update_shapes_path (str): Path to the shapefile for the updated flopros data.
-        population_path (str): Path to the population data file.
-        wb_shapes_path (str): Path to the World Bank shapefiles.
-        chn_shape_path (str): Path to the China shapefile.
-        twn_shape_path (str): Path to the Taiwan shapefile.
-        outpath (str, optional): Path to store the output files. If None, the output files are not stored.
+    Args:
+        flopros_path (str): Path to the FLOPROS shapefile containing protection data.
+        flopros_update_path (str): Path to the Excel file with updated modeled coastal protection data.
+        flopros_update_shapes_path (str): Path to the shapefile containing geometries for the updated modeled data.
+        population_path (str): Path to the population raster file for the year 2020.
+        gadm_path (str): Path to the GADM geopackage file containing country boundaries.
+        outpath (str, optional): Directory to save the processed protection levels as shapefile and CSV. Defaults to None.
 
-        Returns:
-        None
-        """
+    Returns:
+        geopandas.GeoDataFrame: A GeoDataFrame containing national-level flood protection levels for riverine and coastal areas.
+
+    Notes:
+        - The function merges design and policy layers for FLOPROS data and incorporates updated modeled coastal protection levels.
+        - Population-weighted protection levels are calculated and aggregated to the country level.
+        - Outputs are saved to the specified directory if `outpath` is provided.
+    """
     # Load flopros data
     flopros = gpd.read_file(flopros_path)
     flopros = flopros[flopros.OBJECTID != 0]
@@ -33,7 +51,6 @@ def process_flopros_data(flopros_path, flopros_update_path, flopros_update_shape
     # need to replace 0 with nan first, otherwise inland regions would decrease a country's ntl. coastal protection
     flopros[['DL_Max_Co', 'DL_Min_Co', 'PL_Max_Co', 'PL_Min_Co']] = (
         flopros[['DL_Max_Co', 'DL_Min_Co', 'PL_Max_Co', 'PL_Min_Co']].replace({0: np.nan}))
-    # flopros['DL_PL_Co'] = flopros.DL_Max_Co.fillna(flopros.DL_Min_Co).fillna(flopros.PL_Max_Co).fillna(flopros.PL_Min_Co)
     flopros['DL_PL_Co'] = flopros[['DL_Max_Co', 'DL_Min_Co']].mean(axis=1).fillna(flopros[['PL_Max_Co', 'PL_Min_Co']].mean(axis=1))
 
     # Load flopros modeled layer data for coastal protection
@@ -89,7 +106,6 @@ def process_flopros_data(flopros_path, flopros_update_path, flopros_update_shape
         if '.' in outpath:
             outpath = ''.join(outpath.split('.')[:-1])
         print(f'Storing protection levels to {outpath + ".shp"} and {outpath + ".csv"}.')
-        # prot_ntl_aggregated.to_file(outpath + ".shp", driver='ESRI Shapefile')
         prot_ntl_aggregated.drop('geometry', axis=1).to_csv(os.path.join(outpath, "flopros_protection_processed.csv"))
 
     return prot_ntl_aggregated
@@ -104,4 +120,3 @@ if __name__ == '__main__':
         gadm_path='/Users/robin/data/GADM/gadm_410-levels.gpkg',
         outpath="./data/processed/"
     )
-

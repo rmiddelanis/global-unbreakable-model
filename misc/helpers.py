@@ -1,3 +1,18 @@
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
+
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
 import os
 import xarray as xr
 import numpy as np
@@ -6,6 +21,19 @@ import pycountry as pc
 
 
 def get_population_scope_indices(scope, df):
+    """
+        Get the indices of population scope based on the given scope and DataFrame.
+
+        Args:
+            scope (list of tuple): A list of tuples where each tuple contains two values representing the lower and upper bounds of the scope.
+            df (pd.DataFrame): Input DataFrame with a multi-index that includes 'income_cat'.
+
+        Returns:
+            list: A list of indices corresponding to the 'income_cat' levels within the specified scope.
+
+        Raises:
+            KeyError: If 'income_cat' is not found in the DataFrame index.
+        """
     income_cat_indices = np.sort(df.index.get_level_values('income_cat').unique())
     indices = []
     for a, b in scope:
@@ -15,37 +43,66 @@ def get_population_scope_indices(scope, df):
 
 
 def get_list_of_index_names(df):
-    """returns name of index in a data frame as a list. (single element list if the dataframe as a single index)""
+    """
+    Get the names of the index in a DataFrame as a list.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+
+    Returns:
+        list: A list containing the names of the index. If the DataFrame has a single index, the list will contain one element.
     """
     
     if df.index.name is None:
         return list(df.index.names)
     else:
-        return [df.index.name] #do not use list( ) as list breaks strings into list of chars
+        return [df.index.name]
 
  
-def concat_categories(p,np, index):
-    """works like pd.concat with keys but swaps the index so that the new index is innermost instead of outermost
-    http://pandas.pydata.org/pandas-docs/stable/merging.html#concatenating-objects
+def concat_categories(p, np, index):
+    """
+    Concatenate two pandas objects with keys, swapping the index so that the new index is innermost.
+
+    Args:
+        p (pd.DataFrame or pd.Series): First pandas object.
+        np (pd.DataFrame or pd.Series): Second pandas object.
+        index (pd.Index): Index to use as the innermost index.
+
+    Returns:
+        pd.DataFrame or pd.Series: Concatenated object with the new index as the innermost level.
+
+    Raises:
+        Exception: If the provided index is not named.
     """
     
     if index.name is None:
         raise Exception("index should be named")
         
-    
-    y= pd.concat([p, np], 
+    y = pd.concat([p, np],
         keys = index, 
-        names=[index.name]+get_list_of_index_names(p)
-            )#.sort_index()
+        names = [index.name]+get_list_of_index_names(p))
     
     #puts new index at the end            
-    y=y.reset_index(index.name).set_index(index.name, append=True).sort_index()
+    y = y.reset_index(index.name).set_index(index.name, append=True).sort_index()
     
     #makes sure a series is returned when possible
     return y.squeeze()
 
 
 def xr_average_over_rp(da, protection=None):
+    """
+    Compute the average of an xarray object over return periods, weighted by probabilities.
+
+    Args:
+        da (xr.DataArray or xr.Dataset): Input xarray object.
+        protection (optional): Protection levels to adjust probabilities. Can be a pandas Series, DataFrame, or xarray object.
+
+    Returns:
+        xr.DataArray or xr.Dataset: Averaged xarray object.
+
+    Raises:
+        ValueError: If the input is not an xarray object.
+    """
     if type(da) not in (xr.DataArray, xr.Dataset):
         raise ValueError("da should be an xarray data object. Use average_over_rp for pandas objects.")
     return_periods = da.coords['rp']
@@ -66,7 +123,16 @@ def xr_average_over_rp(da, protection=None):
 
 
 def average_over_rp(df, protection=None):
-    """Aggregation of the outputs over return periods"""
+    """
+    Aggregate outputs over return periods, weighted by probabilities.
+
+    Args:
+        df (pd.DataFrame or pd.Series): Input DataFrame or Series with a 'rp' level in the index.
+        protection (optional): Protection levels to adjust probabilities. Can be a pandas Series or DataFrame.
+
+    Returns:
+        pd.DataFrame or pd.Series: Aggregated object with probabilities applied.
+    """
 
     # compute probability of each return period
     return_periods = df.index.get_level_values('rp').unique()
@@ -90,6 +156,18 @@ def average_over_rp(df, protection=None):
 
 
 def get_country_name_dicts(root_dir):
+    """
+    Load country name mappings and return dictionaries for name conversions.
+
+    Args:
+        root_dir (str): Root directory containing the country name mapping files.
+
+    Returns:
+        tuple: A tuple containing:
+            - pd.Series: Mapping from any name to World Bank name.
+            - pd.Series: Mapping from ISO3 to World Bank name.
+            - pd.Series: Mapping from ISO2 to ISO3.
+    """
     # Country dictionaries
     any_to_wb = pd.read_csv(os.path.join(root_dir, "data/raw/country_name_mappings/any_name_to_wb_name.csv"), index_col="any").squeeze()
 
@@ -102,6 +180,18 @@ def get_country_name_dicts(root_dir):
 
 
 def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
+    """
+    Add an ISO3 column to a DataFrame based on a country name column.
+
+    Args:
+        df_ (pd.DataFrame): Input DataFrame.
+        column_name_ (str): Name of the column containing country names.
+        any_to_wb_ (pd.Series, optional): Mapping from any name to World Bank name. Defaults to None.
+        verbose_ (bool, optional): Whether to print warnings for unmatched names. Defaults to True.
+
+    Returns:
+        pd.DataFrame: DataFrame with an added 'iso3' column.
+    """
     if 'iso3' in df_:
         raise Exception("iso3 column already exists")
 
@@ -214,6 +304,15 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
 
 
 def load_income_groups(root_dir_):
+    """
+    Load income group classifications for countries.
+
+    Args:
+        root_dir_ (str): Root directory containing the income group classification file.
+
+    Returns:
+        pd.DataFrame: DataFrame with income group and region information for each country.
+    """
     income_groups_file = "WB_country_classification/country_classification.xlsx"
     income_groups = pd.read_excel(os.path.join(root_dir_, "data/raw/", income_groups_file), header=0)[["Code", "Region", "Income group"]]
     income_groups = income_groups.dropna().rename({'Code': 'iso3'}, axis=1)
@@ -239,6 +338,18 @@ def load_income_groups(root_dir_):
 
 
 def update_data_coverage(root_dir_, variable, available_countries, imputed_countries=None):
+    """
+    Update the data coverage file with availability and imputation information for a variable.
+
+    Args:
+        root_dir_ (str): Root directory containing the data coverage file.
+        variable (str): Name of the variable to update.
+        available_countries (list): List of countries where the variable is available.
+        imputed_countries (list, optional): List of countries where the variable is imputed. Defaults to None.
+
+    Returns:
+        None
+    """
     data_availability_path = os.path.join(root_dir_, "data/processed/data_coverage.csv")
     available_countries = list(available_countries)
     if imputed_countries is None:

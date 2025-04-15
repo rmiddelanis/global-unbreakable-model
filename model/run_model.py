@@ -1,6 +1,21 @@
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
+
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
+
 import sys
 import os
-
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import argparse
@@ -17,6 +32,22 @@ warnings.filterwarnings("always", category=UserWarning)
 
 
 def run_model(settings: dict):
+    """
+    Executes the global Unbreakable model using the provided settings.
+
+    Args:
+        settings (dict): Dictionary containing model and scenario parameters.
+
+    Returns:
+        None
+
+    Notes:
+        - The function generates scenario data, reshapes inputs, computes disaster impacts,
+          and calculates post-disaster responses.
+        - Results are saved to the specified output directory.
+    """
+
+
     print("Running global Unbreakable model\n")
 
     model_params, scenario_params = settings['model_params'], settings['scenario_params']
@@ -36,7 +67,6 @@ def run_model(settings: dict):
     # Generate scenario data
     macro, cat_info, hazard_ratios, hazard_protection = prepare_scenario(scenario_params=scenario_params)
 
-    # compute
     # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
     macro_event, cat_info_event = reshape_input(
         macro=macro,
@@ -46,7 +76,6 @@ def run_model(settings: dict):
     )
 
     # calculate the potential damage to capital, and consumption
-    # adds 'dk', 'dc', 'dc_npv_pre' to cat_info_event_ia, also adds aggregated 'dk' to macro_event
     macro_event, cat_info_event_ia = compute_dk(
         macro_event=macro_event,
         cat_info_event=cat_info_event,
@@ -76,9 +105,7 @@ def run_model(settings: dict):
         num_cores=num_cores,
     )
 
-    # aggregate to event-level (ie no more income_cat, helped_cat, affected_cat, n)
-    # Computes results
-    # results consists of all variables from macro, as well as 'aid' and 'dk' from macro_event
+    # aggregate to event-level, computes results
     results = prepare_output(
         macro=macro,
         macro_event=macro_event,

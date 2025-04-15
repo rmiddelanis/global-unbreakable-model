@@ -1,3 +1,19 @@
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
+
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
+
 import json
 import os
 import tqdm
@@ -8,6 +24,18 @@ HAZUS_COUNTRIES = ['VIR', 'PRI', 'CAN', 'USA']
 
 
 def load_mapping(gem_fields_path_, vuln_class_mapping_):
+    """
+    Loads the GEM (GLobal Exposure Model) taxonomy fields and vulnerability class mapping.
+
+    Args:
+        gem_fields_path_ (str): Path to the GEM taxonomy fields JSON file.
+        vuln_class_mapping_ (str): Path to the vulnerability class mapping Excel file.
+
+    Returns:
+        tuple: A tuple containing:
+            - pd.DataFrame: DataFrame with the vulnerability class mapping.
+            - dict: Dictionary mapping field values to their types.
+    """
     gem_fields = json.load(open(gem_fields_path_, 'r'))
     field_value_to_type_map = {v: k.lower() for k in gem_fields.keys() for l in gem_fields[k].keys() for v in
                                gem_fields[k][l]}
@@ -28,14 +56,20 @@ def load_mapping(gem_fields_path_, vuln_class_mapping_):
 
 def assign_vulnerability(material, resistance_system, height, mapping, verbose=True):
     """
-    This function assigns a vulnerability to a given GEM taxonomy.
+    Assigns a vulnerability class based on material, resistance system, and height.
 
-    Parameters:
-    gem_taxonomy (str): The GEM taxonomy.
-    mapping (dict): The mapping between GEM taxonomy and vulnerability.
+    Args:
+        material (str): Material type.
+        resistance_system (str): Lateral load resistance system.
+        height (str): Building height.
+        mapping (pd.DataFrame): DataFrame containing the vulnerability class mapping.
+        verbose (bool): Whether to print warnings. Defaults to True.
 
     Returns:
-    str: The vulnerability.
+        pd.Series: A Series containing the assigned vulnerability class.
+
+    Raises:
+        ValueError: If the material is unknown or cannot be mapped.
     """
     # if new_approach:
     if material in mapping.index:
@@ -68,24 +102,89 @@ def assign_vulnerability(material, resistance_system, height, mapping, verbose=T
         raise ValueError(f"Could not assign vulnerability for unknown material {material}.")
 
 
+def decode_taxonomy(taxonomy, field_value_to_type_map, keep_unknown=False, verbose=True):
+    """
+    Decodes a GEM taxonomy string into its components.
+
+    Args:
+        taxonomy (str): GEM taxonomy string.
+        field_value_to_type_map (dict): Mapping of field values to their types.
+        keep_unknown (bool): Whether to keep unknown attributes. Defaults to False.
+        verbose (bool): Whether to print warnings. Defaults to True.
+
+    Returns:
+        pd.DataFrame: DataFrame with decoded taxonomy components.
+    """
+    res = pd.DataFrame({col: [[]] for col in ['lat_load_mat', 'lat_load_sys', 'height', 'unknown']},
+                       index=[taxonomy])
+    res.index.name = 'taxonomy'
+    attribute_types = {attribute: identify_gem_attribute_type(attribute, field_value_to_type_map, verbose)
+                       for attribute in taxonomy.split('/')}
+    for attribute, attribute_type in attribute_types.items():
+        res.loc[[taxonomy], attribute_type] = (
+                res.loc[taxonomy, attribute_type] +
+                pd.DataFrame(index=[taxonomy], columns=attribute_type, data=[[[attribute]] * len(attribute_type)])
+        )
+    for col in res.columns:
+        if len(res.loc[taxonomy, col]) == 0:
+            res.loc[taxonomy, col] = np.nan
+        elif len(res.loc[taxonomy, col]) == 1:
+            res.loc[taxonomy, col] = res.loc[taxonomy, col][0]
+        elif len(res.loc[taxonomy, col]) > 1:
+            if res.loc[taxonomy, col][0] in ['MATO', 'UNK'] and 'UNK' in res.loc[taxonomy, col][0]:
+                res.loc[taxonomy, col] = res.loc[taxonomy, col][0]
+            elif verbose:
+                print(f"Warning: Multiple attributes have been mapped to the same type for taxonomy {taxonomy}.")
+    if keep_unknown:
+        return res
+    else:
+        return res.drop('unknown', axis=1)
+
+
+def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True):
+    """
+    Identifies the type of a GEM attribute.
+
+    Args:
+        attribute (str): GEM attribute string.
+        field_value_to_type_map (dict): Mapping of field values to their types.
+        verbose (bool): Whether to print warnings. Defaults to True.
+
+    Returns:
+        np.ndarray: Array of identified attribute types.
+    """
+    if len(attribute) == 0 and verbose:
+        print("Warning: Empty attribute.")
+    types = np.unique([field_value_to_type_map.get(field.split(':')[0], 'unknown') for field in attribute.split('+')])
+    if len(types) == 1 and 'unknown' in types and verbose:
+        print(f"Warning: Unknown type for attribute {attribute}.")
+    elif len(types) == 2 and 'unknown' in types:
+        types = types[types != 'unknown']
+    elif len(types) > 1 and verbose:
+        print(f"Warning: Multiple types {types} for attribute {attribute}.")
+    return types
+
+
+
 def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path_, vuln_class_mapping_,
                     vulnerability_class_output_=None, weight_by='total_replacement_cost', verbose=True):
     """
-        This function gathers GEM (Global Exposure Model) data from the GEM repository directory, decodes the taxonomy
-        strings, assigns vulnerabilities based on the decoded taxonomy, and optionally outputs the distribution of
-        vulnerabilities per country.
+    Gathers and processes GEM (Global Exposure Model) data.
 
-        Parameters:
-        gem_repo_root_dir (str): The root directory of the GEM repository.
-        hazus_gem_mapping_path (str): The path to the CSV file containing the mapping between HAZUS and GEM taxonomies.
-        vulnerability_class_output (str, optional): The path to the output CSV file containing the distribution of
-                                                    vulnerabilities per country. If None, no output is generated.
-        weight_by (str, optional): The column to use for weighting when computing the distribution of vulnerabilities.
-                                   Default is 'replacement_cost'.
+    Args:
+        gem_repo_root_dir_ (str): Root directory of the GEM repository.
+        hazus_gem_mapping_path_ (str): Path to the HAZUS-GEM mapping CSV file.
+        gem_fields_path_ (str): Path to the GEM taxonomy fields JSON file.
+        vuln_class_mapping_ (str): Path to the vulnerability class mapping Excel file.
+        vulnerability_class_output_ (str, optional): Path to save the vulnerability class distribution. Defaults to None.
+        weight_by (str): Column to use for weighting vulnerability distribution. Defaults to 'total_replacement_cost'.
+        verbose (bool): Whether to print warnings. Defaults to True.
 
-        Returns:
-        pandas.DataFrame: A DataFrame containing the GEM data with decoded taxonomy and assigned vulnerabilities.
-        """
+    Returns:
+        tuple: A tuple containing:
+            - pd.DataFrame: GEM data with decoded taxonomy and assigned vulnerabilities.
+            - pd.DataFrame: Vulnerability class shares by country and hazard.
+    """
 
     # Initialize an empty DataFrame
     gem = pd.DataFrame()
@@ -184,52 +283,11 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
     return res, v_class_shares
 
 
-def decode_taxonomy(taxonomy, field_value_to_type_map, keep_unknown=False, verbose=True):
-    res = pd.DataFrame({col: [[]] for col in ['lat_load_mat', 'lat_load_sys', 'height', 'unknown']},
-                       index=[taxonomy])
-    res.index.name = 'taxonomy'
-    attribute_types = {attribute: identify_gem_attribute_type(attribute, field_value_to_type_map, verbose)
-                       for attribute in taxonomy.split('/')}
-    for attribute, attribute_type in attribute_types.items():
-        res.loc[[taxonomy], attribute_type] = (
-                res.loc[taxonomy, attribute_type] +
-                pd.DataFrame(index=[taxonomy], columns=attribute_type, data=[[[attribute]] * len(attribute_type)])
-        )
-    for col in res.columns:
-        if len(res.loc[taxonomy, col]) == 0:
-            res.loc[taxonomy, col] = np.nan
-        elif len(res.loc[taxonomy, col]) == 1:
-            res.loc[taxonomy, col] = res.loc[taxonomy, col][0]
-        elif len(res.loc[taxonomy, col]) > 1:
-            if res.loc[taxonomy, col][0] in ['MATO', 'UNK'] and 'UNK' in res.loc[taxonomy, col][0]:
-                res.loc[taxonomy, col] = res.loc[taxonomy, col][0]
-            elif verbose:
-                print(f"Warning: Multiple attributes have been mapped to the same type for taxonomy {taxonomy}.")
-    if keep_unknown:
-        return res
-    else:
-        return res.drop('unknown', axis=1)
-
-
-def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True):
-    if len(attribute) == 0 and verbose:
-        print("Warning: Empty attribute.")
-    types = np.unique([field_value_to_type_map.get(field.split(':')[0], 'unknown') for field in attribute.split('+')])
-    if len(types) == 1 and 'unknown' in types and verbose:
-        print(f"Warning: Unknown type for attribute {attribute}.")
-    elif len(types) == 2 and 'unknown' in types:
-        types = types[types != 'unknown']
-    elif len(types) > 1 and verbose:
-        print(f"Warning: Multiple types {types} for attribute {attribute}.")
-    return types
-
-
 if __name__ == '__main__':
     gem_repo_root_dir = './data/raw/GEM_vulnerability/global_exposure_model/'
     vulnarebility_class_mapping = "./data/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx"
     hazus_gem_mapping_path = './data/raw/GEM_vulnerability/hazus-gem_mapping.csv'
     gem_fields_path = "./data/raw/GEM_vulnerability/gem_taxonomy_fields.json"
-    # vulnerability_class_output = './data/raw/GEM_vulnerability/country_vulnerability_classes.csv'
     gem_data, vuln_class_shares = gather_gem_data(
         gem_repo_root_dir_=gem_repo_root_dir,
         hazus_gem_mapping_path_=hazus_gem_mapping_path,

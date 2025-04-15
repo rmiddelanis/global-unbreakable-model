@@ -1,26 +1,50 @@
-import os
+"""
+  Copyright (C) 2023-2025 Robin Middelanis <rmiddelanis@worldbank.org>
 
+  This file is part of the global Unbreakable model.
+
+  Unbreakable is free software. You can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of
+  the License, or any later version.
+
+  Unbreakable is distributed without any warranty, the implied
+  warranty of merchantability, or fitness for a particular purpose
+  See the GNU Affero General Public License for more details.
+"""
+
+
+import os
 import numpy as np
 import pandas as pd
 
 from misc.helpers import average_over_rp
 
 
-def load_gir_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scenario='Existing climate', verbose=True):
+def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scenario='Existing climate', verbose=True):
     """
-    Load GIR hazard loss data, process the data, and return the fraction of value destroyed for each
-    country, hazard, and return period. GIR data contains data for hazards Tropical cyclone, Tsunami, Flood (riverine),
-    Landslide, Earthquake. In addition, subhazards are provided for all hazards; Tropical cyclone: (Wind, Storm surge),
-    Tsunami: (Tsunami), Flood: (Flood), Landslide: (Rain, Earthquake), Earthquake: (Earthquake).
+    Loads and processes GIRI (Global Infrastructure Risk Model and Resilience Index) hazard loss data.
 
-    Parameters:
-    root_dir (str): The root directory of the project repository.
-    gir_filepath (str): The relative path (from input_dir) to the data file.
-    default_rp (str): The default return period to use when no return period is provided in the data.
+    This function processes hazard loss data to compute the fraction of value destroyed for each country, hazard,
+    and return period. It supports extrapolation of return periods and filtering by climate scenarios.
+
+    Args:
+        gir_filepath_ (str): Path to the GIR hazard loss data file (compressed CSV).
+        extrapolate_rp_ (bool): Whether to extrapolate return periods. Defaults to True.
+        climate_scenario (str): Climate scenario to filter the data. Defaults to 'Existing climate'.
+        verbose (bool): Whether to print warnings and additional information. Defaults to True.
 
     Returns:
-    pandas.Series: A pandas Series with a MultiIndex of ['iso3', 'hazard', 'rp'] and values representing the
-    fraction of value destroyed for each country, hazard, and return period.
+        pd.Series: A pandas Series with a MultiIndex of ['iso3', 'hazard', 'rp'] and values representing the
+        fraction of value destroyed for each country, hazard, and return period.
+
+    Raises:
+        ValueError: If invalid return periods are provided during extrapolation.
+
+    Notes:
+        - The function handles disputed territories and merges data for specific regions into their respective countries.
+        - It supports adding new return periods for frequent and infrequent events.
+        - Zero values are dropped from the final result.
     """
     gir_data = pd.read_csv(gir_filepath_, compression='zip')
     gir_data.rename({'value_axis_1': 'loss', 'value_axis_2': 'rp', 'iso3cd': 'iso3',
@@ -140,11 +164,6 @@ def load_gir_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scenar
             )
             new_max_rp = 7500
             # add the remaining loss to the new maximum return period
-            # overflow_country_indexer = [i[0] + (i[1], ) for i in pd.MultiIndex.from_product(
-            #     (overflow_countries, frac_value_destroyed_complete.index.get_level_values(2).unique())
-            # ) if i[0] + (i[1], ) in frac_value_destroyed_complete.index]
-            # data_update = add_rp(frac_value_destroyed_aal.loc[overflow_country_indexer],
-            #                      frac_value_destroyed_complete[overflow_country_indexer], new_max_rp)  # TODO this is wrong, duplicate entries after indexing
             frac_value_destroyed_completed = add_rp(frac_value_destroyed_aal, frac_value_destroyed_completed, new_max_rp)
         frac_value_destroyed_result = frac_value_destroyed_completed
 
@@ -160,7 +179,7 @@ if __name__ == '__main__':
     gir_filepath = os.path.join(root_dir, "data/raw/GIR_hazard_loss_data/export_all_metrics.csv.zip")
     default_rp = "default_rp"
     extrapolate_rp = False
-    load_gir_hazard_loss_rel(
+    load_giri_hazard_loss_rel(
         gir_filepath_=gir_filepath,
         extrapolate_rp_=extrapolate_rp,
     )
