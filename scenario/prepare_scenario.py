@@ -378,7 +378,7 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         capital_shares['k_labor_share'] = 1 - capital_shares['k_pub_share'] - capital_shares['k_real_est_share'] * capital_shares['home_ownership_rate']
         capital_shares['owner_occupied_share_of_value_added'] = capital_shares['home_ownership_rate'] * capital_shares['real_estate_share_of_value_added']
 
-        capital_shares[['k_labor_share', 'self_employment', 'owner_occupied_share_of_value_added', 'real_est_k_to_va_shares_ratio']].to_csv(capital_shares_before_adjustment_path)
+        capital_shares.to_csv(capital_shares_before_adjustment_path)
 
     if scale_self_employment is not None:
         capital_shares['self_employment'] *= scale_self_employment['parameter']
