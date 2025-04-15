@@ -559,25 +559,25 @@ def solve_consumption_floor_xi(lambda_h_, sigma_h_, delta_k_h_eff_, productivity
                                delta_i_h_pds_, delta_tax_sp_, recovery_params_,
                                social_protection_share_gamma_h_):
     """
-        Solve for the consumption floor parameter (\xi).
+    Solve for the consumption floor parameter (xi).
 
-        Args:
-            lambda_h_ (float): Recovery rate.
-            sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
-            delta_k_h_eff_ (float): Initial effective capital loss.
-            productivity_pi_ (float): Capital productivity.
-            savings_s_h_ (float): Savings available for recovery.
-            delta_i_h_pds_ (float): Post-disaster support income.
-            delta_tax_sp_ (float): Tax rate.
-            recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
-                delta_k_h_eff_ (float) and lambda_h_ (float).
-            social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
+    Args:
+        lambda_h_ (float): Recovery rate.
+        sigma_h_ (float): Share of asset loss that households have to reconstruct at their own cost.
+        delta_k_h_eff_ (float): Initial effective capital loss.
+        productivity_pi_ (float): Capital productivity.
+        savings_s_h_ (float): Savings available for recovery.
+        delta_i_h_pds_ (float): Post-disaster support income.
+        delta_tax_sp_ (float): Tax rate.
+        recovery_params_ (list of tuples): Recovery parameters, where each tuple contains
+            delta_k_h_eff_ (float) and lambda_h_ (float).
+        social_protection_share_gamma_h_ (float): Share of total diversified income that goes to household h.
 
-        Returns:
-            tuple: A tuple containing:
-                - float: The solved consumption floor parameter (\xi).
-                - float: Time at which the consumption floor is reached (t\_hat).
-        """
+    Returns:
+        tuple: A tuple containing:
+            - float: The solved consumption floor parameter (xi).
+            - float: Time at which the consumption floor is reached (t_hat).
+    """
 
     # for the optimization problem, neglecting tax, social protection, and transfers
     if delta_tax_sp_ == 0:
