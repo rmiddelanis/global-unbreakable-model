@@ -279,7 +279,8 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
                   delta_i_h_pds_, recovery_params_, social_protection_share_gamma_h_, diversified_share_,
                   show_sp_losses=False, consumption_floor_xi_=None, t_hat_=None,
                   consumption_offset_=None, title=None, ylims=None, plot_legend=True, show_ylabel=True, fig=None, axs=None,
-                  plot_capital=True, linecolor='black', shading_color='red', show_liquidity_impact=True):
+                  plot_capital=True, linecolor='black', shading_color='red', show_liquidity_impact=True,
+                  return_data=False, num_timesteps=1000):
     """
     Make a plot of the consumption and capital losses over time
     """
@@ -290,7 +291,7 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
             fig, axs = plt.subplots(nrows=1, sharex=True, figsize=(7, 2.5))
             axs = [axs]
 
-    t_ = np.linspace(0, t_max, 1000)
+    t_ = np.linspace(0, t_max, num_timesteps)
     if t_hat_ is not None and t_hat_ not in t_:
         t_ = np.array(sorted(list(t_) + [t_hat_]))
     c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
@@ -349,6 +350,8 @@ def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_ef
         for ax in axs:
             ax.legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     plt.tight_layout()
+    if return_data:
+        return (c_baseline, di_h_lab, di_h_sp, dc_reco, dc_savings_pds), dk_eff
 
 
 def add_regression(ax_, data_, x_var_, y_var_, p_val_pos='above left'):
@@ -417,7 +420,7 @@ def add_regression(ax_, data_, x_var_, y_var_, p_val_pos='above left'):
 
 
 def plot_supfig_3(results_data_, data_coverage_, world_, show=True, outpath_=None, numbering_=True):
-    map_vars = data_coverage.columns[~(data_coverage == 'available').all(axis=0)]
+    map_vars = data_coverage_.columns[~(data_coverage_ == 'available').all(axis=0)]
     num_maps = len(map_vars)
     fig = plt.figure(figsize=(double_col_width * centimeter, 0.25 * np.ceil(num_maps / 2) * double_col_width * centimeter))
     proj = ccrs.Robinson(central_longitude=0, globe=None)
@@ -446,10 +449,11 @@ def plot_supfig_3(results_data_, data_coverage_, world_, show=True, outpath_=Non
     if show:
         plt.show(block=False)
     if outpath_:
-        plt.savefig(outpath_, dpi=300, bbox_inches='tight')
+        plt.savefig(outpath_ + '/supfig_3.pdf', dpi=300, bbox_inches='tight')
+        data_coverage_[map_vars].to_csv(outpath_ + '/supfig_3.csv')
 
 
-def plot_supfig_10(cat_info_data_, outfile=None, show=True, numbering=True):
+def plot_supfig_10(cat_info_data_, outpath_=None, show=True, numbering=True):
     # select rp=10 because liquidity and dk_reco are constant over rp
     plot_data = cat_info_data_.loc[pd.IndexSlice[:, :, 10, :, 'a', 'not_helped'], 'v_ew']
     plot_data = plot_data.droplevel(['affected_cat', 'helped_cat', 'rp'])
@@ -482,14 +486,14 @@ def plot_supfig_10(cat_info_data_, outfile=None, show=True, numbering=True):
             ax.text(-.05, 1.08, f'{chr(97 + i)}', ha='left', va='top', fontsize=8, fontweight='bold',
                     transform=ax.transAxes)
 
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
-
+    if outpath_:
+        plt.savefig(outpath_ + '/supfig_10.pdf', dpi=300, bbox_inches='tight')
+        v_rel.v_rel.rename('vulnerability').unstack('hazard').to_csv(outpath_ + '/supfig_10.csv')
     if show:
         plt.show(block=False)
 
 
-def plot_supfig_9(cat_info_data_, hazard_protection_, outfile=None, show=False, numbering=True, plot_rp=None):
+def plot_supfig_9(cat_info_data_, hazard_protection_, outpath_=None, show=False, numbering=True, plot_rp=None):
     fig_width = single_col_width * centimeter
     fig_heigt = .85 * fig_width
     fig, axs = plt.subplots(figsize=(fig_width, fig_heigt), nrows=1, sharex=True)
@@ -527,14 +531,14 @@ def plot_supfig_9(cat_info_data_, hazard_protection_, outfile=None, show=False, 
         fig.text(-.19, 1, 'a', ha='left', va='top', fontsize=8, fontweight='bold', transform=axs[0].transAxes)
         fig.text(-.19, 1, 'b', ha='left', va='top', fontsize=8, fontweight='bold', transform=axs[1].transAxes)
 
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if outpath_:
+        plt.savefig(outpath_ + '/supfig_9.pdf', dpi=300, bbox_inches='tight')
+        t_reco_no_funds.t_reco_avg.to_csv(outpath_ + '/supfig_9.csv')
     if show:
         plt.show(block=False)
 
 
-
-def plot_supfig_8(cat_info_data_, outfile=None, numbering=True, show=True):
+def plot_supfig_8(cat_info_data_, outpath_=None, numbering=True, show=True):
     # select rp=10 because liquidity and dk_reco are constant over rp
     plot_data = cat_info_data_.loc[pd.IndexSlice[:, :, 10, :, 'a', 'not_helped'], ['dk_reco', 'liquidity']]
     plot_data = plot_data.droplevel(['affected_cat', 'helped_cat', 'rp'])
@@ -562,14 +566,16 @@ def plot_supfig_8(cat_info_data_, outfile=None, numbering=True, show=True):
         for i, ax in enumerate(axs):
             ax.text(-.15, 1, f'{chr(97 + i)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax.transAxes)
 
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if outpath_:
+        plt.savefig(outpath_ + '/supfig_8.pdf', dpi=300, bbox_inches='tight')
+        liquidity_over_dk_reco.squeeze().to_csv(outpath_ + '/supfig_8a.csv')
+        liquidity_rel.squeeze().rename('rel_liquidity').to_csv(outpath_ + '/supfig_8b.csv')
 
     if show:
         plt.show(block=False)
 
 
-def plot_supfig_7(results_data_, cat_info_data_, hazard_protection_, plot_rp=None, outfile=None, show=False):
+def plot_supfig_7(results_data_, cat_info_data_, hazard_protection_, plot_rp=None, outpath_=None, show=False):
     fig_width = single_col_width * centimeter
     fig_heigt = fig_width
     fig, ax = plt.subplots(figsize=(fig_width, fig_heigt))
@@ -598,15 +604,16 @@ def plot_supfig_7(results_data_, cat_info_data_, hazard_protection_, plot_rp=Non
 
     plt.tight_layout(pad=0.2, w_pad=1.08)
 
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if outpath_:
+        plt.savefig(outpath_ + '/supfig_7.pdf', dpi=300, bbox_inches='tight')
+        plot_data[['resilience', 't_reco_avg']].to_csv(outpath_ + '/supfig_7.csv')
     if show:
         plt.show(block=False)
     else:
         plt.close()
 
 
-def plot_supfig_6(results_data_, outfile=None, show=False):
+def plot_supfig_6(results_data_, outpath_=None, show=False):
     fig, ax = plt.subplots(figsize=(single_col_width * centimeter, .85 * single_col_width * centimeter))
     sns.scatterplot(
         data=results_data_,
@@ -631,15 +638,16 @@ def plot_supfig_6(results_data_, outfile=None, show=False):
     ax.set_xlabel(NAME_DICT['risk_to_assets'])
     ax.set_ylabel(NAME_DICT['resilience'])
     plt.tight_layout(pad=.1)
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if outpath_:
+        plt.savefig(outpath_ + "/supfig_6.pdf", dpi=300, bbox_inches='tight')
+        results_data_[['risk_to_assets', 'resilience']].to_csv(outpath_ + '/supfig_6.csv')
     if show:
         plt.show(block=False)
     else:
         plt.close()
 
 
-def plot_supfig_5(results_data_, outfile=None, show=False):
+def plot_supfig_5(results_data_, outpath_=None, show=False):
     fig_width = 14.5 * centimeter
     fig_heigt = 7 * centimeter
     fig, axs = plt.subplots(ncols=2, figsize=(fig_width, fig_heigt))
@@ -677,8 +685,16 @@ def plot_supfig_5(results_data_, outfile=None, show=False):
     fig.text(-.2, 1, f'{chr(98)}', ha='left', va='top', fontsize=8, fontweight='bold',
              transform=axs[1].transAxes)
 
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if outpath_:
+        plt.savefig(outpath_ + '/supfig_5.pdf', dpi=300, bbox_inches='tight')
+        supfig_5_data = results_data_[['dk_tot', 'dWtot_currency', 'risk_to_assets', 'risk']]
+        supfig_5_data = supfig_5_data.rename(columns={
+            'dk_tot': 'risk_to_assets_abs',
+            'risk_to_assets': 'risk_to_assets_GDP',
+            'dWtot_currency': 'risk_to_wellbeing_abs',
+            'risk': 'risk_to_wellbeing_GDP',
+        })
+        supfig_5_data.to_csv(outpath_ + '/supfig_5.csv')
     if show:
         plt.show(block=False)
     else:
@@ -731,12 +747,15 @@ def plot_supfig_4(results_data_, outpath_=None, numbering=True):
                     transform=ax.transAxes)
 
     if outpath_ is not None:
-        fig.savefig(outpath_, dpi=300, bbox_inches='tight')
+        fig.savefig(outpath_ + '/supfig_4.pdf', dpi=300, bbox_inches='tight')
+        supfig_4_data = capital_shares[['k_pub_share', 'k_priv_share', 'k_household_share', 'gdp_pc_pp', 'self_employment', 'owner_occupied_share_of_value_added']]
+        supfig_4_data.gdp_pc_pp *= 1e3
+        supfig_4_data.to_csv(outpath_ + '/supfig_4.csv')
     plt.show(block=False)
 
 
 
-def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', plot_rp=100, show=False, outfile=None):
+def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', plot_rp=100, show=False, outpath_=None):
     if (cat_info_data_.help_received.unique() != 0).all():
         raise ValueError("Must pass a data set without PDS.")
     data = pd.merge(
@@ -1032,23 +1051,22 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
 
     plt.tight_layout()
 
-    if outfile:
-        plt.savefig(outfile, dpi=300)
-
+    if outpath_:
+        plt.savefig(outpath_ + '/supfig_2.pdf', dpi=300)
     if show:
         plt.show(block=False)
 
 
 
-def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None, outfile=None, show=True):
+def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None, outpath_=None, show=True):
     variables = {
         'risk_to_assets': 'Avoided risk to\nassets [%]',
         'risk': 'Avoided risk to\nwell-being [%]',
         'resilience': 'Socioeconomic resilience\nchange [pp]',
-        'recovery increase': 'Recovery time\nreduction [%]',
+        't_reco_reduction': 'Recovery time\nreduction [%]',
     }
 
-    policy_scenarios = {
+    policies = {
         'reduce_total_exposure_0.05': '1: Reduce total exposure by 5%',
         'reduce_poor_exposure_0.05': '2: Reduce total exposure by 5%\n    targeting the poor',
         'reduce_total_vulnerability_0.05': '3: Reduce total vulnerability by 5%',
@@ -1063,23 +1081,23 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
     ref_data = results_data_['baseline'].copy()
     ref_data['t_reco_95_avg'] = compute_average_recovery_duration(cat_info_data_['baseline'], 'iso3', hazard_protections_['baseline'], plot_rp)
     fig_width = double_col_width * centimeter
-    fig_height = 2 * centimeter * (len(policy_scenarios) - 1)
+    fig_height = 2 * centimeter * (len(policies) - 1)
     fig, axs = plt.subplots(nrows=1, ncols=len(variables), figsize=(fig_width, fig_height), sharex='col', sharey=True)
     differences = []
-    for data_idx, (scenario, scenario_name) in enumerate(policy_scenarios.items()):
-        difference = (1 - results_data_[scenario][['risk_to_assets', 'risk']].mul(results_data_[scenario].gdp_pc_pp, axis=0) / ref_data[['risk_to_assets', 'risk']].mul(ref_data.gdp_pc_pp, axis=0)) * 100
-        difference['resilience'] = results_data_[scenario]['resilience'] - ref_data['resilience']
-        t_reco_95_avg = compute_average_recovery_duration(cat_info_data_[scenario], 'iso3', hazard_protections_[scenario], plot_rp)
-        difference['recovery increase'] = (1 - t_reco_95_avg / ref_data.t_reco_95_avg) * 100
+    for data_idx, (policy, policy_name) in enumerate(policies.items()):
+        difference = (1 - results_data_[policy][['risk_to_assets', 'risk']].mul(results_data_[policy].gdp_pc_pp, axis=0) / ref_data[['risk_to_assets', 'risk']].mul(ref_data.gdp_pc_pp, axis=0)) * 100
+        difference['resilience'] = results_data_[policy]['resilience'] - ref_data['resilience']
+        t_reco_95_avg = compute_average_recovery_duration(cat_info_data_[policy], 'iso3', hazard_protections_[policy], plot_rp)
+        difference['t_reco_reduction'] = (1 - t_reco_95_avg / ref_data.t_reco_95_avg) * 100
         difference['Country income group'] = ref_data['Country income group']
-        difference = difference.assign(scenario=scenario_name)
+        difference = difference.assign(policy=policy_name)
         differences.append(difference)
     differences = pd.concat(differences).reset_index()
 
     # compute avoided well-being losses over avoided asset losses by country income group
-    reduced_assets_impact = differences[differences.scenario.isin(list(policy_scenarios.values())[:6])].copy()
+    reduced_assets_impact = differences[differences.policy.isin(list(policies.values())[:6])].copy()
     reduced_assets_impact['avoided_dw_over_avoided_dk'] = reduced_assets_impact['risk'] / reduced_assets_impact['risk_to_assets']
-    print(reduced_assets_impact.groupby(['scenario', 'Country income group']).avoided_dw_over_avoided_dk.describe())
+    print(reduced_assets_impact.groupby(['policy', 'Country income group']).avoided_dw_over_avoided_dk.describe())
 
     bc_ratios = []
     for asp_variant in ['pds40', 'insurance20']:
@@ -1091,11 +1109,11 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
 
     for ax, (var, var_name) in zip(axs, variables.items()):
         legend = False
-        if var == 'recovery increase':
+        if var == 't_reco_reduction':
             legend = True
         sns.boxplot(
             data=differences,
-            y='scenario',
+            y='policy',
             x=var,
             ax=ax,
             orient='h',
@@ -1141,11 +1159,20 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
 
     if show:
         plt.show(block=False)
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if outpath_:
+        plt.savefig(outpath_ + '/fig_5.pdf', dpi=300, bbox_inches='tight')
+        csv_outvars = {
+            'risk': 'avoided_risk_to_wellbeing_percent',
+            'risk_to_assets': 'avoided_risk_to_assets_percent',
+            't_reco_reduction': 'recovery_time_reduction_percent',
+            'resilience': 'resilience_increase_percent'
+        }
+        fig_5_data = differences
+        fig_5_data['policy'] = fig_5_data['policy'].apply(lambda x: ' '.join(x.split()).replace('\n', ' '))
+        fig_5_data.set_index(['iso3', 'policy'])[csv_outvars.keys()].rename(columns=csv_outvars).round(5).to_csv(outpath_ + '/fig_5.csv')
 
 
-def plot_fig_4(cat_info_data_, income_groups_, hazard_protection_, map_bins, world_, plot_rp, outfile=None, show=False, numbering=True):
+def plot_fig_4(cat_info_data_, income_groups_, hazard_protection_, map_bins, world_, plot_rp, outpath_=None, show=False, numbering=True):
     fig_width = single_col_width * centimeter
     fig_height = 2 * fig_width
     fig = plt.figure(figsize=(fig_width, fig_height))
@@ -1192,7 +1219,6 @@ def plot_fig_4(cat_info_data_, income_groups_, hazard_protection_, map_bins, wor
         right_index=True,
         how='inner'
     )
-    duration_ctry_hazard.groupby(['Country income group', 'hazard']).describe()
 
     sns.barplot(
         data=duration_ctry_hazard.reset_index(),
@@ -1264,15 +1290,21 @@ def plot_fig_4(cat_info_data_, income_groups_, hazard_protection_, map_bins, wor
         for idx, ax in enumerate([axs[0], axs[2], axs[3]]):
             fig.text(0, 1, f'{chr(97 + idx)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=blended_transform_factory(fig.transFigure, ax.transAxes))
 
-    if outfile:
-        plt.savefig(outfile, dpi=900, bbox_inches='tight')
+    if outpath_:
+        plt.savefig(outpath_ + '/fig_4.pdf', dpi=900, bbox_inches='tight')
+        duration_ctry.t_reco_avg.to_csv(outpath_ + '/fig_4a.csv')
+        panel_b_data = duration_ctry
+        panel_b_data['hazard'] = 'all'
+        panel_b_data = pd.concat([panel_b_data.set_index('hazard', append=True).t_reco_avg, duration_ctry_hazard.t_reco_avg])
+        panel_b_data.sort_index().to_csv(outpath_ + '/fig_4b.csv')
+        quintile_data_total.t_reco_avg.to_csv(outpath_ + '/fig_4c.csv')
     if show:
         plt.show(block=False)
 
     return fig, axs
 
 
-def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outfile=None, show=False, numbering=True):
+def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outpath_=None, show=False, numbering=True):
     fig_width = single_col_width * centimeter * 0.8
     fig_heigt = 2 * fig_width
     fig, axs = plt.subplots(nrows=4, ncols=1, figsize=(fig_width, fig_heigt),
@@ -1337,15 +1369,17 @@ def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outfile=None, 
         fig.text(-.27, 1, f'{chr(97)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax_scatter.transAxes)
         fig.text(-.28, 1, f'{chr(98)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax_boxplots.transAxes)
 
-    if outfile:
-        plt.savefig(outfile, dpi=300, bbox_inches='tight')
+    if outpath_ is not None:
+        plt.savefig(outpath_ + '/fig_3.pdf', dpi=300, bbox_inches='tight')
+        results_data_[['gini_index', 'resilience']].to_csv(outpath_ + '/fig_3a.csv')
+        boxplot_data.rename(columns={'Household income quintile': 'income_cat'}).set_index(['iso3', 'income_cat', 'loss_type']).unstack('loss_type').to_csv(outpath_ + '/fig_3b.csv')
     if show:
         plt.show(block=False)
     else:
         plt.close()
 
 
-def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='viridis', outfile=None,
+def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='viridis', outpath_=None,
                show=False, numbering=True, annotate=None, run_ols=False, log_xaxis=False):
     """
     Plots a map with the given data and variables.
@@ -1513,8 +1547,9 @@ def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='virid
             i += 2
 
     # Save or show the plot
-    if outfile:
-        plt.savefig(outfile, dpi=900, bbox_inches='tight', transparent=True, pad_inches=0)
+    if outpath_:
+        plt.savefig(outpath_ + '/fig_2.pdf', dpi=900, bbox_inches='tight', transparent=True, pad_inches=0)
+        data_[['log_gdp_pc_pp', 'risk_to_assets', 'risk', 'resilience']].rename(columns={'log_gdp_pc_pp': 'log_gdp_pc', 'risk': 'risk_to_wellbeing'}).to_csv(outpath_ + '/fig_2.csv')
     if show:
         plt.show(block=False)
         return
@@ -1523,11 +1558,11 @@ def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='virid
         return plt_axs
 
 
-def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Flood', plot_rp=100, outpath=None):
+def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Flood', plot_rp=100, outpath_=None):
     if type(countries) == str:
         countries = [countries]
     plot_data = pd.merge(
-        cat_info_data_.loc[pd.IndexSlice[countries, hazard, plot_rp, :, :, :], :],
+        cat_info_data_.loc[pd.IndexSlice[countries, hazard, plot_rp, :, :, 'not_helped'], :],
         macro_data_.drop(['fa'], axis=1),
         left_index=True,
         right_index=True,
@@ -1536,39 +1571,44 @@ def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Flood', plot_rp=1
     plot_data['dw_currency'] = plot_data.dw / (plot_data.gdp_pc_pp**(-plot_data.income_elasticity_eta))
     plot_data[['c', 'k', 'gdp_pc_pp', 'dk', 'dw_currency']] /= 1e3
     plot_data['k_non_hh'] = plot_data.k * (1 - plot_data.k_household_share)
+    plot_data['k_hh'] = plot_data.k - plot_data.k_non_hh
     plot_data['dk_non_hh'] = plot_data.dk * (1 - plot_data.k_household_share)
+    plot_data['dk_hh'] = plot_data.dk - plot_data.dk_non_hh
     plot_data['c_labor'] = plot_data.k * plot_data.avg_prod_k * (1 - plot_data.tau_tax)
+    plot_data['c_diversified'] = plot_data.c - plot_data.c_labor
     plot_data[['v_ew', 'fa']] *= 100
 
-    print("Characteristics:\n", plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped'], ['fa', 't_reco_95']])
+    print("Characteristics:\n", plot_data.loc[pd.IndexSlice[:, :, :, :, 'a'], ['fa', 't_reco_95']])
     print("Asset losses [bn USD]:\n", plot_data[['dk', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
     print("Well-being losses [bn USD]:\n", plot_data[['dw_currency', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
 
-    fig1_1 = plot_fig_1_1(plot_data)
-    fig1_2 = plot_fig_1_2(plot_data)
-    fig1_2.subplots_adjust(top=1 - .8 * centimeter / fig1_2.get_figheight())
-    fig1_2.text(0, 1, ' ', ha='left', va='top')
+    fig1_1 = plot_fig_1_1(plot_data, outpath_)
+    fig1_2 = plot_fig_1_2(plot_data, outpath_)
 
-    if outpath:
-        fig1_1.savefig(outpath + '/fig_1_1.pdf', dpi=300, bbox_inches='tight', transparent=True, pad_inches=0)
-        fig1_2.savefig(outpath + '/fig_1_2.pdf', dpi=300, bbox_inches='tight', transparent=True, pad_inches=0)
     plt.show(block=False)
 
 
-def plot_fig_1_2(plot_data):
+def plot_fig_1_2(plot_data, outpath_=None, t_max=3, num_timesteps=1000, plot_quintile='q5'):
     fig, axs = plt.subplots(ncols=2, figsize=(double_col_width * centimeter, 2), sharey=False, sharex=True)
 
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:2]
-    for country, ax, legend, c in zip(plot_data.index.get_level_values('iso3').unique(), axs, [False, True], colors):
-        country_data = plot_data.loc[pd.IndexSlice[country, :, :, 'q5', 'a', 'not_helped']].iloc[0]
+    countries = plot_data.index.get_level_values('iso3').unique()
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:len(countries)]
+    fig_1_2_data = pd.DataFrame(index=np.linspace(0, t_max, num_timesteps + 1))
+    fig_1_2_data.index.name = 'time_years'
+    for country, ax, legend, c in zip(countries, axs, [False, True], colors):
+        country_data = plot_data.loc[pd.IndexSlice[country, :, :, plot_quintile, 'a']].iloc[0]
         title = f"{country}-q5"
         recovery_params = [(k / 1e3, l) for (k, l) in country_data.recovery_params]
-        plot_recovery(3, country_data.avg_prod_k, country_data.tau_tax, country_data.k, country_data.dk,
+        country_data = plot_recovery(t_max, country_data.avg_prod_k, country_data.tau_tax, country_data.k, country_data.dk,
                       country_data.lambda_h, country_data.k_household_share, country_data.liquidity / 1e3,
                       0, recovery_params, country_data.gamma_SP,
                       country_data.diversified_share, axs=[ax], show_ylabel=not legend, plot_capital=False,
                       plot_legend=False, linecolor=c, shading_color='dimgrey', show_sp_losses=False,
-                      ylims=[(0, 10.000), None], title=title)
+                      ylims=[(0, 10.000), None], title=title, num_timesteps=num_timesteps, return_data=True)
+        (c_baseline, di_h_lab, di_h_sp, dc_reco, dc_savings_pds), _ = country_data
+        fig_1_2_data.loc[:, f'{country}-{plot_quintile}_income_loss'] = np.concatenate([[0], di_h_lab + di_h_sp])
+        fig_1_2_data.loc[:, f'{country}-{plot_quintile}_reconstruction_loss'] = np.concatenate([[0], dc_reco])
+        fig_1_2_data.loc[:, f'{country}-{plot_quintile}_consumption'] = np.concatenate([[c_baseline], c_baseline - dc_reco - di_h_lab - di_h_sp + dc_savings_pds])
     axs[0].set_ylabel('Consumption\n[$PPP 1,000 / yr]')
     legend = axs[-1].legend(frameon=False, bbox_to_anchor=(1, 1), loc='upper left')
     handles = legend.legend_handles
@@ -1577,29 +1617,35 @@ def plot_fig_1_2(plot_data):
         ax.text(0, 1, string.ascii_lowercase[i+8], transform=ax.transAxes, fontsize=8, fontweight='bold', ha='right',
                 va='bottom')
     plt.tight_layout()
+
+    fig.subplots_adjust(top=1 - .8 * centimeter / fig.get_figheight())
+    fig.text(0, 1, ' ', ha='left', va='top')
+    if outpath_ is not None:
+        fig.savefig(outpath_ + '/fig_1_2.pdf', dpi=300, bbox_inches='tight', transparent=True, pad_inches=0)
+        fig_1_2_data.to_csv(outpath_ + '/fig_1_2.csv')
     return fig
 
 
-def plot_fig_1_1(plot_data):
+def plot_fig_1_1(plot_data, outpath_=None):
     fig, axs = plt.subplots(ncols=4, nrows=2, figsize=(double_col_width * centimeter, 4), sharex=False)
 
     # plot pre-disaster effective capital
     ax = axs[0, 0]
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='k', alpha=.5, hue='iso3', ax=ax, legend=False
     )
     # plot pre-disaster non-hh-owned capital
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='k_non_hh', alpha=1, hue='iso3', ax=ax, legend=False
     )
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].assign(k=0),
+        data=plot_data.xs('a', level='affected_cat').assign(k=0),
         x='income_cat', y='k', alpha=.5, ax=ax, color='darkgrey', label='hh-owned', linewidth=0
     )
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].assign(k=0),
+        data=plot_data.xs('a', level='affected_cat').assign(k=0),
         x='income_cat', y='k', alpha=1, ax=ax, color='darkgrey', label='other', linewidth=0
     )
     ax.legend(frameon=False)
@@ -1609,20 +1655,20 @@ def plot_fig_1_1(plot_data):
     # plot pre-disaster total income
     ax = axs[0, 1]
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='c', ax=ax, hue='iso3', alpha=.5, legend=False
     )
     # plot pre-disaster labor income
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='c_labor', ax=ax, hue='iso3', legend=False
     )
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].assign(c_labor=0),
+        data=plot_data.xs('a', level='affected_cat').assign(c_labor=0),
         x='income_cat', y='c_labor', alpha=.5, ax=ax, color='darkgrey', label='diversified', linewidth=0
     )
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].assign(c_labor=0),
+        data=plot_data.xs('a', level='affected_cat').assign(c_labor=0),
         x='income_cat', y='c_labor', alpha=1, ax=ax, color='darkgrey', label='labor', linewidth=0
     )
     ax.legend(frameon=False)
@@ -1632,7 +1678,7 @@ def plot_fig_1_1(plot_data):
     # plot liquidity data
     ax = axs[0, 2]
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='liquidity', ax=ax, hue='iso3', legend=False
     )
     ax.set_ylabel(None)
@@ -1641,7 +1687,7 @@ def plot_fig_1_1(plot_data):
     # plot vulnerability
     ax = axs[0, 3]
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='v_ew', ax=ax, hue='iso3', legend=True
     )
     ax.set_ylabel(None)
@@ -1651,20 +1697,20 @@ def plot_fig_1_1(plot_data):
     # plot total asset losses
     ax = axs[1, 0]
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='dk', ax=ax, hue='iso3', legend=False, alpha=.5
     )
     # plot not hh-owned asset losses
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='dk_non_hh', ax=ax, hue='iso3', legend=False
     )
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].assign(dk_non_hh=0),
+        data=plot_data.xs('a', level='affected_cat').assign(dk_non_hh=0),
         x='income_cat', y='dk_non_hh', alpha=.5, ax=ax, color='darkgrey', label='hh-owned', linewidth=0
     )
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].assign(dk_non_hh=0),
+        data=plot_data.xs('a', level='affected_cat').assign(dk_non_hh=0),
         x='income_cat', y='dk_non_hh', alpha=1, ax=ax, color='darkgrey', label='other', linewidth=0
     )
     ax.legend(frameon=False)
@@ -1674,14 +1720,14 @@ def plot_fig_1_1(plot_data):
     # plot recovery time
     ax = axs[1, 1]
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].t_reco_95.unstack('iso3').assign(
+        data=plot_data.xs('a', level='affected_cat').t_reco_95.unstack('iso3').assign(
             TJK=0).stack().rename('t_reco_95').to_frame(),
         x='income_cat', y='t_reco_95', ax=ax, hue='iso3', legend=False
     )
     # plot recovery time
     reco_twnx = ax.twinx()
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']].t_reco_95.unstack('iso3').assign(
+        data=plot_data.xs('a', level='affected_cat').t_reco_95.unstack('iso3').assign(
             HTI=0).stack().rename('t_reco_95').to_frame(),
         x='income_cat', y='t_reco_95', ax=reco_twnx, hue='iso3', legend=False
     )
@@ -1692,7 +1738,7 @@ def plot_fig_1_1(plot_data):
     # plot well-being losses of exposed households
     ax = axs[1, 2]
     sns.barplot(
-        data=plot_data.loc[pd.IndexSlice[:, :, :, :, 'a', 'not_helped']],
+        data=plot_data.xs('a', level='affected_cat'),
         x='income_cat', y='dw_currency', ax=ax, hue='iso3', legend=False
     )
     ax.set_ylabel(None)
@@ -1720,6 +1766,25 @@ def plot_fig_1_1(plot_data):
         ax.set_xlabel(None)
     fig.text(0.5, 0.03, 'Household income quintile', ha='center', va='bottom')
 
+    if outpath_ is not None:
+        fig.savefig(outpath_ + '/fig_1_1.pdf', dpi=300, bbox_inches='tight', transparent=True, pad_inches=0)
+        out_vars = {
+            'k_hh': 'assets_household',
+            'k_non_hh': 'assets_other',
+            'c_labor': 'income_labor',
+            'c_diversified': 'income_diversified',
+            'liquidity': 'liquidity',
+            'v_ew': 'vulnerability',
+            'dk_hh': 'asset_loss_household',
+            'dk_non_hh': 'asset_loss_other',
+            't_reco_95':'recovery_time',
+            'dw_currency': 'wellbeing_loss'
+        }
+        pd.merge(
+            plot_data[out_vars.keys()].rename(columns=out_vars).xs('a', level='affected_cat'),
+            plot_data.rename(columns=out_vars)[['wellbeing_loss']].xs('na', level='affected_cat'), left_index=True,
+            right_index=True, suffixes=('_affected', '_non_affected')
+        ).to_csv(outpath_ + '/fig_1_1.csv')
     return fig
 
 
@@ -1765,7 +1830,7 @@ if __name__ == '__main__':
             countries=['HTI', 'TJK'],
             hazard='Earthquake',
             plot_rp=100,
-            outpath=outpath,
+            outpath_=outpath,
         )
 
         plot_fig_2(
@@ -1775,7 +1840,7 @@ if __name__ == '__main__':
                        'risk_to_assets': [0, .125, .25, .5, 1, 3]},
             cmap={'resilience': 'Reds_r', 'risk': 'Reds', 'risk_to_assets': 'Reds'},
             annotate=['HTI', 'TJK'],
-            outfile=f"{outpath}/fig_2.pdf",
+            outpath_=outpath,
             log_xaxis=True,
             run_ols=True,
             show=True,
@@ -1785,7 +1850,7 @@ if __name__ == '__main__':
             results_data_=results_data['baseline'],
             cat_info_data_=cat_info_data['baseline'],
             hazard_protection_=hazard_protection['baseline'],
-            outfile=f"{outpath}/fig_3.pdf",
+            outpath_=outpath,
             numbering=True,
             show=True,
         )
@@ -1797,7 +1862,7 @@ if __name__ == '__main__':
             map_bins=[.5, 1, 2, 4, 8, 16, 30],
             plot_rp=None,
             world_=gadm_world,
-            outfile=f"{outpath}/fig_4.pdf",
+            outpath_=outpath,
             show=True,
         )
 
@@ -1806,7 +1871,7 @@ if __name__ == '__main__':
             cat_info_data_=cat_info_data,
             hazard_protections_=hazard_protection,
             plot_rp=None,
-            outfile=f"{outpath}/fig_5.pdf",
+            outpath_=outpath,
         )
 
         plot_supfig_2(
@@ -1816,31 +1881,31 @@ if __name__ == '__main__':
             hazard='Earthquake',
             plot_rp=100,
             show=True,
-            outfile=f"{outpath}/supfig_2.pdf",
+            outpath_=outpath,
         )
 
         plot_supfig_3(
             results_data_=results_data['baseline'],
             world_=gadm_world,
             data_coverage_=data_coverage,
-            outpath_=f"{outpath}/supfig_3.pdf",
+            outpath_=outpath,
             show=True,
         )
 
         plot_supfig_4(
             results_data_=results_data['baseline'],
-            outpath_=f"{outpath}/supfig_4.pdf",
+            outpath_=outpath,
         )
 
         plot_supfig_5(
             results_data_=results_data['baseline'],
-            outfile=f"{outpath}/supfig_5.pdf",
+            outpath_=outpath,
             show=True,
         )
 
         plot_supfig_6(
             results_data_=results_data['baseline'],
-            outfile=f"{outpath}/supfig_6.pdf",
+            outpath_=outpath,
             show=True,
         )
 
@@ -1849,20 +1914,20 @@ if __name__ == '__main__':
             cat_info_data_=cat_info_data['baseline'],
             hazard_protection_=hazard_protection['baseline'],
             plot_rp=None,
-            outfile=f"{outpath}/supfig_7.pdf",
+            outpath_=outpath,
             show=True,
         )
 
         plot_supfig_8(
             cat_info_data_=cat_info_data['baseline'],
-            outfile=f"{outpath}/supfig_8.pdf",
+            outpath_=outpath,
             numbering=True,
             show=True,
         )
 
         plot_supfig_9(
             cat_info_data_=cat_info_data['noLiquidity'],
-            outfile=f"{outpath}/supfig_9.pdf",
+            outpath_=outpath,
             hazard_protection_=hazard_protection['noLiquidity'],
             show=True,
             numbering=False,
@@ -1871,7 +1936,7 @@ if __name__ == '__main__':
 
         plot_supfig_10(
             cat_info_data_=cat_info_data['baseline'],
-            outfile=f"{outpath}/supfig_10.pdf",
+            outpath_=outpath,
             show=True,
         )
 
