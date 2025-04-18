@@ -361,22 +361,24 @@ def update_data_coverage(root_dir_, variable, available_countries, imputed_count
     Returns:
         None
     """
-    data_availability_path = os.path.join(root_dir_, "data/processed/data_coverage.csv")
     available_countries = list(available_countries)
-    if imputed_countries is None:
-        imputed_countries = []
-    else:
-        imputed_countries = list(imputed_countries)
-    if os.path.exists(data_availability_path):
-        data_coverage = pd.read_csv(data_availability_path, index_col='iso3')
-    else:
+    data_availability_path = os.path.join(root_dir_, "data/processed/data_coverage.csv")
+    if not os.path.exists(data_availability_path) or (variable == '__purge__' and available_countries == []):
         data_coverage = pd.DataFrame()
         data_coverage.index.name = 'iso3'
-    if variable in data_coverage.columns:
-        data_coverage.drop(variable, axis=1, inplace=True)
-    v_coverage = pd.Series(index=available_countries + imputed_countries, dtype=str)
-    v_coverage.index.name = 'iso3'
-    v_coverage.loc[available_countries] = 'available'
-    v_coverage.loc[imputed_countries] = 'imputed'
-    data_coverage = pd.concat([data_coverage, v_coverage.rename(variable)], axis=1)
+    else:
+        data_coverage = pd.read_csv(data_availability_path, index_col='iso3')
+
+    if variable != '__purge__' and len(available_countries) > 0:
+        if imputed_countries is None:
+            imputed_countries = []
+        else:
+            imputed_countries = list(imputed_countries)
+        if variable in data_coverage.columns:
+            data_coverage.drop(variable, axis=1, inplace=True)
+        v_coverage = pd.Series(index=available_countries + imputed_countries, dtype=str)
+        v_coverage.index.name = 'iso3'
+        v_coverage.loc[available_countries] = 'available'
+        v_coverage.loc[imputed_countries] = 'imputed'
+        data_coverage = pd.concat([data_coverage, v_coverage.rename(variable)], axis=1)
     data_coverage.to_csv(data_availability_path)

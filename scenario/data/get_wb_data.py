@@ -409,6 +409,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     transfers = get_most_recent_value(transfers.dropna())
 
     # store data coverage
+    update_data_coverage(root_dir, '__purge__', [], None)
     for v in macro_df.columns:
         update_data_coverage(root_dir, v, macro_df.dropna(subset=v).index.unique(), None)
     update_data_coverage(root_dir, 'income_shares', income_shares.unstack('income_cat').dropna().index.unique(), None)
