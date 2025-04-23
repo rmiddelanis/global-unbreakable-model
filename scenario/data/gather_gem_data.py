@@ -201,8 +201,8 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
     vars_to_keep = {
         'ID_0': 'iso3', 'NAME_0': 'country', 'OCCUPANCY': 'building_type', 'MACRO_TAXO': 'macro_taxonomy',
         'TAXONOMY': 'taxonomy', 'BUILDINGS': 'n_buildings',  # 'DWELLINGS': 'n_dwellings',
-        # 'OCCUPANTS_PER_ASSET': 'occupants_per_asset', 'TOTAL_AREA_SQM': 'total_area_sqm',
-        'TOTAL_REPL_COST_USD': 'total_replacement_cost',
+        # 'OCCUPANTS_PER_ASSET': 'occupants_per_asset',
+        'TOTAL_AREA_SQM': 'total_area_sqm', 'TOTAL_REPL_COST_USD': 'total_replacement_cost',
         'COST_CONTENTS_USD': 'contents_cost', 'COST_STRUCTURAL_USD': 'structural_cost',
         'COST_NONSTRUCTURAL_USD': 'nonstructural_cost',
 
@@ -289,7 +289,7 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
     v_class_shares = pd.concat(v_class_shares, axis=1)
     if vulnerability_class_output_:
         v_class_shares.to_csv(vulnerability_class_output_)
-    return res, v_class_shares
+    return merged, v_class_shares
 
 
 if __name__ == '__main__':
