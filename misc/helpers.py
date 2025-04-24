@@ -25,10 +25,43 @@
 """
 
 import os
+
+import requests
 import xarray as xr
 import numpy as np
 import pandas as pd
 import pycountry as pc
+
+
+def get_world_bank_countries():
+    url = "https://api.worldbank.org/v2/country"
+    params = {
+        "format": "json",
+        "per_page": 500  # ensures all countries are retrieved in one page
+    }
+
+    response = requests.get(url, params=params)
+    if response.status_code != 200:
+        raise Exception(f"Failed to retrieve data: {response.status_code}")
+
+    data = response.json()
+
+    if not data or len(data) < 2:
+        raise Exception("Unexpected API response format.")
+
+    countries = data[1]
+    country_data = {country['id']: (str.strip(country['name']), str.strip(country['region']['value']), str.strip(country['incomeLevel']['id'] + 's')) for country in countries if 'id' in country}
+    country_df = pd.DataFrame.from_dict(country_data, orient='index', columns=['name', 'region', 'income_group'])
+    country_df.index.name = 'iso3'
+    country_df = country_df[country_df.region != 'Aggregates']
+    country_df['region'] = country_df.region.replace(
+        {'East Asia & Pacific': 'EAP', 'Europe & Central Asia': 'ECA', 'Latin America & Caribbean': 'LAC',
+         'Middle East & North Africa': 'MNA', 'North America': 'NMA', 'South Asia': 'SAR', 'Sub-Saharan Africa': 'SSA'}
+    )
+    country_df['income_group'] = country_df.income_group.replace({'LMCs': 'LMICs', 'UMCs': 'UMICs'})
+    if country_df.loc['VEN', 'income_group'] == 'INXs': # use most recent available value for VEN
+        country_df.loc['VEN', 'income_group'] = 'UMICs'
+    return country_df
 
 
 def get_population_scope_indices(scope, df):

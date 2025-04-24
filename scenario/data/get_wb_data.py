@@ -29,7 +29,7 @@ import os
 import pandas as pd
 from pandas_datareader import wb
 import statsmodels.api as sm
-from misc.helpers import get_country_name_dicts, df_to_iso3, load_income_groups, update_data_coverage
+from misc.helpers import get_country_name_dicts, df_to_iso3, update_data_coverage, get_world_bank_countries
 import numpy as np
 
 from datetime import date
@@ -59,7 +59,7 @@ def get_wb_series(wb_name, colname):
 
     Args:
         wb_name (str): World Bank indicator name.
-        colname (str): Column name for the data.
+        colname (str or float): Column name for the data.
 
     Returns:
         pd.DataFrame: DataFrame containing the World Bank series.
@@ -146,7 +146,8 @@ def broadcast_to_population_resolution(data, resolution):
     return data_
 
 
-def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=True, reg_data_outpath=None):
+def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classification_, any_to_wb, verbose=True,
+                                   reg_data_outpath=None):
     """
     Predicts missing transfer shares using regression models. Regression specification is hard-coded.
 
@@ -178,11 +179,10 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, any_to_wb, verbose=T
     fsy_countries = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/fsy_countries.csv'), header=None)
     fsy_countries = df_to_iso3(fsy_countries, 0, any_to_wb, verbose).iso3.values
 
-    income_groups = load_income_groups(root_dir_)
     ilo_sp_exp = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/ILO_WSPR_SP_exp.csv'),
                              index_col='iso3', na_values=['...', '…']).drop('country', axis=1)
     x = pd.concat([remittances, ilo_sp_exp,
-                   pd.get_dummies(income_groups['Region']), pd.get_dummies(income_groups['Country income group']),
+                   pd.get_dummies(country_classification_['region']), pd.get_dummies(country_classification_['income_group']),
                    unemployment], axis=1)
     x['FSY'] = False
     x.loc[fsy_countries, 'FSY'] = True
@@ -322,6 +322,8 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
     pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
+    country_classification = get_world_bank_countries()
+
     # if include_spl, make sure that years of macro data points match
     if include_spl:
         pip_data = pd.read_csv(os.path.join(root_dir, "data/raw/WB_socio_economic_data/2025-03-07_pip_data.csv"))
@@ -336,10 +338,10 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         )
         spl = spl.spl_x.fillna(spl.spl_y).rename('spl').to_frame()
 
-        macro_df = pd.concat([gdp_pc_pp, gni_pc_pp, pop, spl], axis=1).dropna()
+        macro_df = pd.concat([gdp_pc_pp, gni_pc_pp, pop, spl, country_classification], axis=1).dropna()
         macro_df = get_most_recent_value(macro_df)
     else:
-        macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop)], axis=1)
+        macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop), country_classification], axis=1)
 
     # income shares (source: Poverty and Inequality Platform)
     if resolution == .2:
@@ -416,7 +418,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     update_data_coverage(root_dir, 'transfers', transfers.unstack('income_cat').dropna().index.unique(), None)
 
     if impute_missing_data:
-        transfers = guess_missing_transfers_shares(transfers.to_frame(), root_dir, any_to_wb, verbose, transfers_regr_data_path).squeeze()
+        transfers = guess_missing_transfers_shares(transfers.to_frame(), root_dir, country_classification, any_to_wb, verbose, transfers_regr_data_path).squeeze()
 
     transfers = broadcast_to_population_resolution(transfers, resolution)
 
