@@ -646,7 +646,7 @@ def calc_leftover_savings(lambda_h_, sigma_h_, delta_k_h_eff_, productivity_pi_,
 def objective_func(lambda_h_, capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savings_s_h_,
                    delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_):
     """
-        Objective function to be minimized for optimizing the recovery rate (\lambda_h).
+        Objective function to be minimized for optimizing the recovery rate (lambda_h).
 
         Args:
             lambda_h_ (float): Recovery rate to be optimized.
@@ -1034,7 +1034,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
                                         delta_i_h_pds_, eta_, discount_rate_rho_, k_h_eff_,
                                         delta_tax_sp_, diversified_share_, min_lambda_, max_lambda_):
     """
-        Compute the bounds for the recovery rate (\lambda_h) optimization.
+        Compute the bounds for the recovery rate (lambda_h) optimization.
 
         Args:
             capital_t_ (float): Time horizon for the welfare computation.
@@ -1053,12 +1053,12 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
 
         Returns:
             tuple: A tuple containing:
-                - float: Minimum bound for the recovery rate (\lambda_h).
-                - float: Maximum bound for the recovery rate (\lambda_h).
-                - float: Initial guess for the recovery rate (\lambda_h) for optimization.
+                - float: Minimum bound for the recovery rate (lambda_h).
+                - float: Maximum bound for the recovery rate (lambda_h).
+                - float: Initial guess for the recovery rate (lambda_h) for optimization.
 
         Raises:
-            ValueError: If no valid bounds for \lambda_h exist that maintain positive consumption.
+            ValueError: If no valid bounds for lambda_h exist that maintain positive consumption.
         """
 
     assert min_lambda_ >= 0
@@ -1122,7 +1122,7 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
                     discount_rate_rho_, k_h_eff_, delta_tax_sp_, diversified_share_,
                     tolerance=1e-10, min_lambda=0.05, max_lambda=100):
     """
-        Optimize the recovery rate (\lambda_h) for a given set of parameters.
+        Optimize the recovery rate (lambda_h) for a given set of parameters.
 
         Args:
             capital_t_ (float): Time horizon for the welfare computation.
@@ -1141,10 +1141,10 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
             max_lambda (float, optional): Maximum bound for the recovery rate. Defaults to 100.
 
         Returns:
-            float: The optimized recovery rate (\lambda_h).
+            float: The optimized recovery rate (lambda_h).
 
         Raises:
-            ValueError: If no valid bounds for \lambda_h exist that maintain positive consumption.
+            ValueError: If no valid bounds for lambda_h exist that maintain positive consumption.
         """
 
     min_lambda, max_lambda, lambda_h_init = calc_lambda_bounds_for_optimization(
@@ -1176,13 +1176,13 @@ def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
             opt_args (tuple): A tuple containing:
                 - index (int): The index of the row being processed.
                 - row (pd.Series): A pandas Series containing the input parameters for the `optimize_lambda` function.
-            min_lambda (float): Minimum bound for the recovery rate (\lambda_h).
-            max_lambda (float): Maximum bound for the recovery rate (\lambda_h).
+            min_lambda (float): Minimum bound for the recovery rate (lambda_h).
+            max_lambda (float): Maximum bound for the recovery rate (lambda_h).
 
         Returns:
             tuple: A tuple containing:
                 - int: The index of the row being processed.
-                - float: The optimized recovery rate (\lambda_h).
+                - float: The optimized recovery rate (lambda_h).
 
         Raises:
             Exception: If an error occurs during the execution of `optimize_lambda`.
@@ -1213,18 +1213,18 @@ def optimize_lambda_wrapper(opt_args, min_lambda, max_lambda):
 
 def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6, num_cores=None):
     """
-        Optimize the recovery rate (\lambda_h) for each row in the input DataFrame.
+        Optimize the recovery rate (lambda_h) for each row in the input DataFrame.
 
         Args:
             df_in (pd.DataFrame): Input DataFrame containing the parameters for the optimization process.
             tolerance (float, optional): Tolerance for the optimization algorithm. Defaults to 1e-2.
-            min_lambda (float, optional): Minimum bound for the recovery rate (\lambda_h). Defaults to 0.05.
-            max_lambda (float, optional): Maximum bound for the recovery rate (\lambda_h). Defaults to 6.
+            min_lambda (float, optional): Minimum bound for the recovery rate (lambda_h). Defaults to 0.05.
+            max_lambda (float, optional): Maximum bound for the recovery rate (lambda_h). Defaults to 6.
             num_cores (int, optional): Number of CPU cores to use for parallel processing. Defaults to None,
                 which uses all available cores.
 
         Returns:
-            pd.Series: A pandas Series containing the optimized recovery rate (\lambda_h) for each row in the input DataFrame.
+            pd.Series: A pandas Series containing the optimized recovery rate (lambda_h) for each row in the input DataFrame.
 
         Raises:
             Exception: If an error occurs during the optimization process for any row.

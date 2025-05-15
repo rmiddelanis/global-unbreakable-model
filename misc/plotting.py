@@ -42,7 +42,8 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import cartopy.crs as ccrs
-from misc.helpers import average_over_rp, get_country_name_dicts, load_income_groups, df_to_iso3
+from misc.helpers import average_over_rp, get_country_name_dicts, load_income_groups, df_to_iso3, \
+    calculate_average_recovery_duration
 from model.recovery_optimizer import baseline_consumption_c_h, delta_c_h_of_t, delta_k_h_eff_of_t
 import seaborn as sns
 
@@ -99,59 +100,7 @@ def compute_total_consumption_loss(cat_info_data_, macro_data_):
         cat_info_data_[key] = pd.merge(cat_info_data_[key], consumption_loss.rename('dc'), left_index=True, right_index=True, how='left')
 
 
-def compute_average_recovery_duration(df, aggregation_level, hazard_protection_=None, agg_rp=None):
-    df = df[['n', 't_reco_95']].xs('a', level='affected_cat').copy()
-
-    if agg_rp is not None:
-        if hazard_protection_ is not None:
-            df['rp'] = df.reset_index().rp.values
-            df = pd.merge(df, hazard_protection_, left_index=True, right_index=True, how='left')
-            df.loc[df[df.rp <= df.protection].index, 'n'] = 0
-            df = df.drop(columns=['protection', 'rp'])
-        return df.xs(agg_rp, level='rp').groupby(aggregation_level).apply(lambda x: np.average(x.t_reco_95, weights=x.n) if np.sum(x.n) > 0 else 0).squeeze().rename('t_reco_avg')
-
-    if type(aggregation_level) is str:
-        aggregation_level = [aggregation_level]
-
-    # compute population-weighted average recovery duration of affected households
-    df = df.groupby(aggregation_level + ['rp']).apply(lambda x: np.average(x.t_reco_95, weights=x.n) if np.sum(x.n) > 0 else 0).squeeze().rename('t_reco_avg')
-
-    if 1 not in df.index.get_level_values('rp'):
-        # for aggregation, assume that all events with rp < 10 have the same recovery duration as the event with rp = 10
-        rp_1 = df.xs(df.index.get_level_values('rp').min(), level='rp').copy().to_frame()
-        rp_1['rp'] = 1
-        rp_1 = rp_1.set_index('rp', append=True).reorder_levels(df.index.names).squeeze()
-        df = pd.concat([df, rp_1]).sort_index()
-
-    # compute probability of each return period
-    return_periods = df.index.get_level_values('rp').unique()
-
-    rp_probabilities = pd.Series(1 / return_periods - np.append(1 / return_periods, 0)[1:], index=return_periods)
-    # match return periods and their frequency
-    probabilities = pd.Series(data=df.reset_index('rp').rp.replace(rp_probabilities).values, index=df.index,
-                              name='probability').to_frame()
-    if hazard_protection_ is not None:
-        probabilities['rp'] = probabilities.reset_index().rp.values
-        probabilities = pd.merge(probabilities, hazard_protection_, left_index=True, right_index=True, how='left')
-        probabilities.loc[probabilities[probabilities.rp <= probabilities.protection].index, 'probability'] = 0
-        probabilities = probabilities.drop(columns=['protection', 'rp'])
-
-    # average weighted by probability
-    res = pd.merge(df, probabilities, left_index=True, right_index=True, how='left')
-    res = res.groupby(aggregation_level).apply(lambda x: np.average(x.t_reco_avg, weights=x.probability)).rename('t_reco_avg')
-    # res = df.mul(probabilities, axis=0).reset_index('rp', drop=True)
-    # res = res.groupby(level=list(range(res.index.nlevels))).sum() / probabilities.groupby('iso3')
-    if type(df) is pd.Series:
-        res.name = df.name
-    return res
-
-
 def load_data(simulation_paths_, model_root_dir_):
-    gini_index_ = df_to_iso3(get_wb_mrv('SI.POV.GINI', 'gini_index').reset_index(), 'country')
-    gini_index_ = gini_index_.set_index('iso3').drop('country', axis=1).squeeze()
-
-    income_groups_ = load_income_groups(os.path.join(model_root_dir_, 'scenario'))
-
     macro_data_ = {
         k: pd.read_csv(os.path.join(v, "macro.csv"), index_col=[0, 1, 2]) for k, v in
         simulation_paths_.items()
@@ -174,9 +123,8 @@ def load_data(simulation_paths_, model_root_dir_):
 
     for k in results_data_.keys():
         results_data_[k][['resilience', 'risk', 'risk_to_assets']] *= 100
-        results_data_[k] = results_data_[k].join(gini_index_, on='iso3')
         results_data_[k]['log_gdp_pc_pp'] = np.log(results_data_[k]['gdp_pc_pp'])
-        results_data_[k] = pd.merge(results_data_[k], income_groups_, left_on='iso3', right_index=True, how='left')
+        results_data_[k] = results_data_[k].rename(columns={'income_group': 'Country income group', 'region': 'Region'})
         if 'THA' in results_data_[k].index:
             results_data_[k].drop('THA', inplace=True)
 
@@ -217,6 +165,8 @@ def load_data(simulation_paths_, model_root_dir_):
             'exposure_bias': 'Number of exposed people by hazard type and poverty line',
             'flopros': 'Flood protection levels',
         }, axis=1, inplace=True)
+
+    income_groups_ = results_data_['baseline'][['Country income group', 'Region']]
 
     return income_groups_, gini_index_, cat_info_data_, macro_data_, results_data_, hazard_protection_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_, data_coverage_
 
@@ -500,7 +450,7 @@ def plot_supfig_9(cat_info_data_, hazard_protection_, outpath_=None, show=False,
     axs = [axs]
 
     t_reco_no_funds = pd.merge(
-        compute_average_recovery_duration(cat_info_data_, ['iso3', 'income_cat'], hazard_protection_, plot_rp),
+        calculate_average_recovery_duration(cat_info_data_, ['iso3', 'income_cat'], hazard_protection_, plot_rp),
         income_groups['Country income group'],
         left_index=True,
         right_index=True,
@@ -581,7 +531,7 @@ def plot_supfig_7(results_data_, cat_info_data_, hazard_protection_, plot_rp=Non
     fig, ax = plt.subplots(figsize=(fig_width, fig_heigt))
 
     duration_ctry = pd.merge(
-        compute_average_recovery_duration(cat_info_data_, 'iso3', hazard_protection_, plot_rp),
+        calculate_average_recovery_duration(cat_info_data_, 'iso3', hazard_protection_, plot_rp),
         income_groups['Country income group'],
         left_index=True,
         right_index=True
@@ -1079,7 +1029,7 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
         'insurance20': '10: National insurance covering\n      20% of all asset losses',
     }
     ref_data = results_data_['baseline'].copy()
-    ref_data['t_reco_95_avg'] = compute_average_recovery_duration(cat_info_data_['baseline'], 'iso3', hazard_protections_['baseline'], plot_rp)
+    ref_data['t_reco_95_avg'] = calculate_average_recovery_duration(cat_info_data_['baseline'], 'iso3', hazard_protections_['baseline'], plot_rp)
     fig_width = double_col_width * centimeter
     fig_height = 2 * centimeter * (len(policies) - 1)
     fig, axs = plt.subplots(nrows=1, ncols=len(variables), figsize=(fig_width, fig_height), sharex='col', sharey=True)
@@ -1087,7 +1037,7 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
     for data_idx, (policy, policy_name) in enumerate(policies.items()):
         difference = (1 - results_data_[policy][['risk_to_assets', 'risk']].mul(results_data_[policy].gdp_pc_pp, axis=0) / ref_data[['risk_to_assets', 'risk']].mul(ref_data.gdp_pc_pp, axis=0)) * 100
         difference['resilience'] = results_data_[policy]['resilience'] - ref_data['resilience']
-        t_reco_95_avg = compute_average_recovery_duration(cat_info_data_[policy], 'iso3', hazard_protections_[policy], plot_rp)
+        t_reco_95_avg = calculate_average_recovery_duration(cat_info_data_[policy], 'iso3', hazard_protections_[policy], plot_rp)
         difference['t_reco_reduction'] = (1 - t_reco_95_avg / ref_data.t_reco_95_avg) * 100
         difference['Country income group'] = ref_data['Country income group']
         difference = difference.assign(policy=policy_name)
@@ -1190,7 +1140,7 @@ def plot_fig_4(cat_info_data_, income_groups_, hazard_protection_, map_bins, wor
 
     # plot median country recovery duration map
     duration_ctry = pd.merge(
-        compute_average_recovery_duration(cat_info_data_, 'iso3', hazard_protection_, plot_rp),
+        calculate_average_recovery_duration(cat_info_data_, 'iso3', hazard_protection_, plot_rp),
         income_groups['Country income group'],
         left_index=True,
         right_index=True,
@@ -1213,7 +1163,7 @@ def plot_fig_4(cat_info_data_, income_groups_, hazard_protection_, map_bins, wor
 
     # plot median country recovery duration by hazard for each Country income group
     duration_ctry_hazard = pd.merge(
-        compute_average_recovery_duration(cat_info_data_, ['iso3', 'hazard'], hazard_protection_, plot_rp),
+        calculate_average_recovery_duration(cat_info_data_, ['iso3', 'hazard'], hazard_protection_, plot_rp),
         income_groups_['Country income group'],
         left_index=True,
         right_index=True,
@@ -1242,7 +1192,7 @@ def plot_fig_4(cat_info_data_, income_groups_, hazard_protection_, map_bins, wor
     axs[2].legend(frameon=False, title=None, bbox_to_anchor=(1, 1), loc='upper left')
 
     quintile_data_total = pd.merge(
-        compute_average_recovery_duration(cat_info_data_, ['iso3', 'income_cat'], hazard_protection_, plot_rp),
+        calculate_average_recovery_duration(cat_info_data_, ['iso3', 'income_cat'], hazard_protection_, plot_rp),
         income_groups_['Country income group'],
         left_index=True,
         right_index=True,
@@ -1308,12 +1258,12 @@ def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outpath_=None,
     fig_width = single_col_width * centimeter * 0.8
     fig_heigt = 2 * fig_width
     fig, axs = plt.subplots(nrows=4, ncols=1, figsize=(fig_width, fig_heigt),
-                            gridspec_kw={'height_ratios': [.75, 4, .75, 4], 'hspace': 0},
+                            gridspec_kw={'height_ratios': [4, .75, .75, 4], 'hspace': 0},
                             )
-    ax_kde = axs[0]
-    ax_scatter = axs[1]
-    ax_boxplots = axs[3]
-    axs[2].set_visible(False)
+    ax_kde = axs[2]
+    ax_scatter = axs[3]
+    ax_boxplots = axs[0]
+    axs[1].set_visible(False)
     # Scatter plot
     sns_scatter = sns.scatterplot(data=results_data_, x='gini_index', y='resilience', hue='Country income group', style='Country income group',
                                   palette=INCOME_GROUP_COLORS, ax=ax_scatter, legend=True, markers=INCOME_GROUP_MARKERS, alpha=.5, s=10,
@@ -1366,8 +1316,8 @@ def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outpath_=None,
     plt.tight_layout(pad=0, w_pad=1.08)
 
     if numbering:
-        fig.text(-.27, 1, f'{chr(97)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax_scatter.transAxes)
-        fig.text(-.28, 1, f'{chr(98)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=ax_boxplots.transAxes)
+        for idx, ax in enumerate([ax_boxplots, ax_scatter]):
+            fig.text(0, 1, f'{chr(97 + idx)}', ha='left', va='top', fontsize=8, fontweight='bold', transform=blended_transform_factory(fig.transFigure, ax.transAxes))
 
     if outpath_ is not None:
         plt.savefig(outpath_ + '/fig_3.pdf', dpi=300, bbox_inches='tight')
@@ -1579,8 +1529,9 @@ def plot_fig_1(cat_info_data_, macro_data_, countries, hazard='Flood', plot_rp=1
     plot_data[['v_ew', 'fa']] *= 100
 
     print("Characteristics:\n", plot_data.loc[pd.IndexSlice[:, :, :, :, 'a'], ['fa', 't_reco_95']])
-    print("Asset losses [bn USD]:\n", plot_data[['dk', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
-    print("Well-being losses [bn USD]:\n", plot_data[['dw_currency', 'n', 'pop']].prod(axis=1).groupby('iso3').sum() * 1e3 / 1e9)
+    print("Asset losses [bn USD]:\n",(cat_info_data_[['dk', 'n']].prod(axis=1) * macro_data_['pop']).loc[(countries, hazard, plot_rp)].groupby('iso3').sum() / 1e9)
+    print("Well-being losses [bn USD]:\n", (cat_info_data_[['dw', 'n']].prod(axis=1) * macro_data_['pop'] / macro_data_.gdp_pc_pp ** (-macro_data_.income_elasticity_eta)).loc[(countries, hazard, plot_rp)].groupby('iso3').sum() / 1e9)
+
 
     fig1_1 = plot_fig_1_1(plot_data, outpath_)
     fig1_2 = plot_fig_1_2(plot_data, outpath_)

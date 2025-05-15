@@ -448,12 +448,13 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):#, long_term_ho
     df["dWtot_currency"] = df["dWpc_currency"] * df["pop"]
 
     # Risk to welfare as percentage of local GDP
-    df["risk"] = df["dWpc_currency"] / df["gdp_pc_pp"]
+    df["risk_to_wellbeing"] = df["dWpc_currency"] / df["gdp_pc_pp"]
+    df["risk_to_consumption"] = df["dc"] / df["gdp_pc_pp"]
 
     # socio-economic resilience
     df["resilience"] = d_w_ref / df["dw"]
 
     # risk to assets
-    df["risk_to_assets"] = df.resilience * df.risk
+    df["risk_to_assets"] = df.resilience * df.risk_to_wellbeing
 
     return df

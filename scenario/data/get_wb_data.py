@@ -322,6 +322,10 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
     pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
+    gini_index = get_wb_series('SI.POV.GINI', 'gini_index')
+    gini_index = gini_index.drop(np.intersect1d(gini_index.index.get_level_values('country').unique(), AGG_REGIONS), level='country').dropna()
+    gini_index = df_to_iso3(gini_index.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
+
     country_classification = get_world_bank_countries()
 
     # if include_spl, make sure that years of macro data points match
@@ -341,7 +345,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         macro_df = pd.concat([gdp_pc_pp, gni_pc_pp, pop, spl, country_classification], axis=1).dropna()
         macro_df = get_most_recent_value(macro_df)
     else:
-        macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop), country_classification], axis=1)
+        macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop), get_most_recent_value(gini_index), country_classification], axis=1)
 
     # income shares (source: Poverty and Inequality Platform)
     if resolution == .2:

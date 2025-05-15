@@ -25,6 +25,7 @@
 """
 
 import os
+import time
 
 import requests
 import xarray as xr
@@ -415,3 +416,52 @@ def update_data_coverage(root_dir_, variable, available_countries, imputed_count
         v_coverage.loc[imputed_countries] = 'imputed'
         data_coverage = pd.concat([data_coverage, v_coverage.rename(variable)], axis=1)
     data_coverage.to_csv(data_availability_path)
+
+
+def calculate_average_recovery_duration(df, aggregation_level, hazard_protection_=None, agg_rp=None):
+    df = df[['n', 't_reco_95']].xs('a', level='affected_cat').copy()
+
+    if agg_rp is not None:
+        if hazard_protection_ is not None:
+            df['rp'] = df.reset_index().rp.values
+            df = pd.merge(df, hazard_protection_, left_index=True, right_index=True, how='left')
+            df.loc[df[df.rp <= df.protection].index, 'n'] = 0
+            df = df.drop(columns=['protection', 'rp'])
+        return df.xs(agg_rp, level='rp').groupby(aggregation_level).apply(lambda x: np.average(x.t_reco_95, weights=x.n) if np.sum(x.n) > 0 else 0).squeeze().rename('t_reco_avg')
+
+    if type(aggregation_level) is str:
+        aggregation_level = [aggregation_level]
+
+    # compute population-weighted average recovery duration of affected households
+
+    df_ = (df.t_reco_95 * df.n).groupby(aggregation_level + ['rp']).sum() / df.n.groupby(aggregation_level + ['rp']).sum()
+    df_[df.n.groupby(aggregation_level + ['rp']).sum() == 0] = 0
+    df = df_.rename('t_reco_avg')
+    if 1 not in df.index.get_level_values('rp'):
+        # for aggregation, assume that all events with rp < 10 have the same recovery duration as the event with rp = 10
+        rp_1 = df.xs(df.index.get_level_values('rp').min(), level='rp').copy().to_frame()
+        rp_1['rp'] = 1
+        rp_1 = rp_1.set_index('rp', append=True).reorder_levels(df.index.names).squeeze()
+        df = pd.concat([df, rp_1]).sort_index()
+
+    # compute probability of each return period
+    return_periods = df.index.get_level_values('rp').unique()
+
+    rp_probabilities = pd.Series(1 / return_periods - np.append(1 / return_periods, 0)[1:], index=return_periods)
+    # match return periods and their frequency
+    probabilities = pd.Series(data=df.reset_index('rp').rp.replace(rp_probabilities).values, index=df.index,
+                              name='probability').to_frame()
+
+    if hazard_protection_ is not None:
+        probabilities['rp'] = probabilities.reset_index().rp.values
+        probabilities = pd.merge(probabilities, hazard_protection_, left_index=True, right_index=True, how='left')
+        probabilities.loc[probabilities[probabilities.rp <= probabilities.protection].index, 'probability'] = 0
+        probabilities = probabilities.drop(columns=['protection', 'rp'])
+
+    # average weighted by probability
+    res = pd.merge(df, probabilities, left_index=True, right_index=True, how='left')
+    res = ((res.t_reco_avg * res.probability).groupby(aggregation_level).sum() / res.probability.groupby(aggregation_level).sum()).rename('t_reco_avg')
+    if type(df) is pd.Series:
+        res.name = df.name
+
+    return res
