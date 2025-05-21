@@ -28,8 +28,6 @@ import os
 from pathlib import Path
 
 import tqdm
-import textwrap
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import argparse
 import os
@@ -554,10 +552,10 @@ def plot_fig_6(cat_info_inputs_, macro_inputs_, country_, outpath=None):
     unit = f", {unit}" if unit != '' else ''
     sns.barplot(data=plot_data[['liquidity']] / factor, x='income_cat', y='liquidity', ax=axs[0, 2],
                 color='darkturquoise', dodge=True, width=0.6)
-    axs[0, 2].set_ylabel(f"per capita [$PPP{unit}]")
+    axs[0, 2].set_ylabel(f"per capita\n[$PPP{unit}]")
     axs[0, 2].set_xlabel('')
     axs[0, 2].set_title('Savings', fontsize=7, ha='center', va='bottom')
-    twinx02 = add_percentage_twinx(axs[0, 2], plot_data['liquidity'].sum())
+    twinx02 = add_percentage_twinx(axs[0, 2], plot_data['liquidity'].sum() / factor)
     twinx02.set_ylabel('share of\ncountry total [%]')
 
     sns.barplot(data=plot_data[['axfin']], x='income_cat', y='axfin', ax=axs[1, 0], color='darkturquoise',
@@ -608,7 +606,8 @@ def plot_fig_7(hazard_inputs_quintile_, country, outpath=None):
         plot_protection_difference = False
 
     for i, hazard in enumerate(hazards):
-        hazard_data = plot_data.loc[hazard]
+        hazard_data = plot_data.loc[hazard].drop('total', level='income_cat')
+        hazard_data_total = plot_data.loc[hazard].xs('total', level='income_cat')
         legend = plot_protection_difference and i == len(hazards) - 1
         if plot_protection_difference:
             sns.barplot(hazard_data.xs(False, level='protection'), x='income_cat', y='fa_avg', label='without',
@@ -622,16 +621,18 @@ def plot_fig_7(hazard_inputs_quintile_, country, outpath=None):
                         palette=['darkturquoise', 'darkturquoise'], dodge=True, width=0.6, legend=False)
             sns.barplot(helper_unprotected.to_frame(), x='income_cat', y='v_ew', hue='protection', ax=axs[1, i],
                         palette=['darkturquoise', 'darkturquoise'], dodge=True, width=0.6, alpha=0.5, legend=False)
+            axs[1, i].axhline(hazard_data_total.loc[False, 'v_ew'], color='darkturquoise', lw=0.5,
+                              ls='--', label=None, alpha=0.5)
         else:
             sns.barplot(hazard_data.xs(True, level='protection'), x='income_cat', y='v_ew', ax=axs[1, i],
                         color='darkturquoise', dodge=True, width=0.6, legend=False)
+        axs[1, i].axhline(hazard_data_total.loc[True, 'v_ew'], color='darkturquoise', lw=0.5,
+                          ls='--', label=None)
         axs[0, i].set_title(hazard, fontsize=7, ha='center', va='bottom')
         axs[1, i].set_xlabel(' ')
 
     axs[0, 0].set_ylabel('Annual average\nasset exposure [%]')
     axs[1, 0].set_ylabel('Asset vulnerability [%]')
-    fig.text((axs[0, 0].get_position().x0 + axs[0, -1].get_position().x1) / 2, 0.03, 'Household income quintile',
-             fontsize=7, ha='center', va='bottom')
 
     fa_ymax = axs[0, 0].get_ylim()[1]
     fa_decimals = 1
@@ -648,6 +649,10 @@ def plot_fig_7(hazard_inputs_quintile_, country, outpath=None):
         axs[0, -1].legend(loc='upper left', fontsize=6, frameon=False, title="hazard protection", bbox_to_anchor=(1, 1))
 
     plt.tight_layout()
+
+    rightmost_ax_edge = fig.transFigure.inverted().transform(axs[0, -1].transData.transform((axs[0, -1].get_xlim()[1], 0)))[0]
+    fig.text((axs[0, 0].get_position().x0 + rightmost_ax_edge) / 2, 0.03, 'Household income quintile',
+             fontsize=7, ha='center', va='bottom')
 
     if outpath is not None:
         plt.savefig(outpath, dpi=300, bbox_inches='tight', transparent=True, pad_inches=0.1)
@@ -1202,8 +1207,6 @@ def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=
 
 
 def prepare_data(cat_info_res_, macro_res_, hazard_prot_sc_, cat_info_sc_, macro_sc_, hazard_ratios_sc_, capital_shares_, gini_index_, data_coverage_, excel_outpath=None):
-    policy_dims = ['policy']
-
     policy_name_lookup_ = get_policy_name_lookup(cat_info_res_)
 
     policy_dims = ['policy']
@@ -1233,20 +1236,27 @@ def prepare_data(cat_info_res_, macro_res_, hazard_prot_sc_, cat_info_sc_, macro
     fa_avg_prot = fa_avg_prot.set_index('protection', append=True)
     fa_avg = pd.concat([fa_avg_unprot, fa_avg_prot], axis=0)
 
-    hazard_inputs_quintile_ = pd.merge(fa_avg, hazard_ratios_sc_.to_dataframe().v_ew.unstack('rp').ffill(axis=1).iloc[:, -1].rename('v_ew'),
+    # vulnerability is independent of return period
+    hazard_inputs_quintile_ = pd.merge(fa_avg, hazard_ratios_sc_.to_dataframe()[['v', 'v_ew']].dropna().groupby(policy_dims + ['iso3', 'hazard', 'income_cat']).max(),
                                       left_index=True, right_index=True)
 
-    fa_v_avg_all_hazards = pd.concat(
-        [hazard_inputs_quintile_.fa_avg.groupby(policy_dims + ['iso3', 'income_cat', 'protection']).sum(),
-         (hazard_inputs_quintile_.prod(axis=1).groupby(policy_dims + ['iso3', 'income_cat', 'protection']).sum() / hazard_inputs_quintile_.fa_avg.groupby(policy_dims + ['iso3', 'income_cat', 'protection']).sum()).rename('v_ew'),
-         ],
-        axis=1
-    )
+    fa_all_hazards = hazard_inputs_quintile_.fa_avg.groupby(policy_dims + ['iso3', 'income_cat', 'protection']).sum()
+    v_all_hazards = pd.merge(hazard_inputs_quintile_, cat_info_sc_df_.k, left_index=True, right_index=True, how='left').groupby(policy_dims + ['iso3', 'income_cat', 'protection']).apply(lambda x: np.average(x['v'], weights=x[['fa_avg', 'k']].prod(axis=1))).rename('v')
+    v_ew_all_hazards = pd.merge(hazard_inputs_quintile_, cat_info_sc_df_.k, left_index=True, right_index=True, how='left').groupby(policy_dims + ['iso3', 'income_cat', 'protection']).apply(lambda x: np.average(x['v_ew'], weights=x[['fa_avg', 'k']].prod(axis=1))).rename('v_ew')
+    fa_v_avg_all_hazards = pd.concat([fa_all_hazards, v_all_hazards, v_ew_all_hazards], axis=1)
     fa_v_avg_all_hazards['hazard'] = 'all hazards'
     fa_v_avg_all_hazards = fa_v_avg_all_hazards.set_index('hazard', append=True).reorder_levels(policy_dims + ['iso3', 'hazard', 'income_cat', 'protection'])
     hazard_inputs_quintile_ = pd.concat([hazard_inputs_quintile_, fa_v_avg_all_hazards], axis=0)
-    hazard_inputs_quintile_ = hazard_inputs_quintile_.dropna()
 
+    fa_total_population = hazard_inputs_quintile_.fa_avg.groupby(policy_dims + ['iso3', 'hazard', 'protection']).mean()
+    v_total_population = pd.merge(hazard_inputs_quintile_, cat_info_sc_df_.k, left_index=True, right_index=True, how='left').groupby(policy_dims + ['iso3', 'hazard', 'protection']).apply(lambda x: np.average(x.v, weights=x[['fa_avg', 'k']].prod(axis=1))).rename('v')
+    v_ew_total_population = pd.merge(hazard_inputs_quintile_, cat_info_sc_df_.k, left_index=True, right_index=True, how='left').groupby(policy_dims + ['iso3', 'hazard', 'protection']).apply(lambda x: np.average(x.v_ew, weights=x[['fa_avg', 'k']].prod(axis=1))).rename('v_ew')
+    fa_v_avg_total_population = pd.concat([fa_total_population, v_total_population, v_ew_total_population], axis=1)
+    fa_v_avg_total_population['income_cat'] = 'total'
+    fa_v_avg_total_population = fa_v_avg_total_population.set_index('income_cat', append=True).reorder_levels(policy_dims + ['iso3', 'hazard', 'income_cat', 'protection'])
+    hazard_inputs_quintile_ = pd.concat([hazard_inputs_quintile_, fa_v_avg_total_population], axis=0)
+
+    hazard_inputs_quintile_ = hazard_inputs_quintile_.dropna()
     hazard_inputs_quintile_ = hazard_inputs_quintile_.rename(index={.2: 'q1', .4: 'q2', .6: 'q3', .8: 'q4', 1: 'q5'}, level='income_cat').sort_index()
     hazard_inputs_quintile_['policy-iso3-hazrd-income_cat-protection'] = hazard_inputs_quintile_.reset_index()[['policy', 'iso3', 'hazard', 'income_cat', 'protection']].astype(str).sum(axis=1).values
 
@@ -1268,6 +1278,7 @@ def prepare_data(cat_info_res_, macro_res_, hazard_prot_sc_, cat_info_sc_, macro
     model_results_ = pd.concat([model_results_, all_hazards_results], axis=0).sort_index()
     model_results_['dw'] = model_results_['dw'] / (macro_res_.gdp_pc_pp**(-macro_res_.income_elasticity_eta)).to_dataframe(name='currency').currency
 
+    # per capita values are relative to *total* population, not population quintiles
     model_results_.columns = [f"{col}_pc" for col in model_results_.columns]
     model_results_gdp_share = model_results_.div(macro_inputs_.gdp_pc_pp, axis=0)
     model_results_gdp_share.columns = [ f"{col.split('_')[0]}_risk" for col in model_results_gdp_share.columns]
