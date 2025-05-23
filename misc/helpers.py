@@ -344,7 +344,7 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
     df = df_.copy()
     df['iso3'] = df[column_name_].apply(lambda x: get_iso3(x))
     if df.iso3.isna().any() and verbose_:
-        print(f"Warning: ISO3 could not be found for {len(df[df.iso3.isna()].country.unique())} countries.")
+        print(f"Warning: ISO3 could not be found for {len(df[df.iso3.isna()][column_name_].unique())} countries.")
     return df
 
 
