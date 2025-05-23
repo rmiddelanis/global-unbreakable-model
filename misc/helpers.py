@@ -293,6 +293,7 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
         'lao pdr': 'LAO',
         'turkiye': 'TUR',
         'turkey (turkiye)': 'TUR',
+        'turkey': 'TUR',
         'türkiye': 'TUR',
         'west bank and gaza': 'PSE',
         'gaza strip': 'PSE',
