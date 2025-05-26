@@ -34,34 +34,40 @@ import pandas as pd
 import pycountry as pc
 
 
-def get_world_bank_countries():
-    url = "https://api.worldbank.org/v2/country"
-    params = {
-        "format": "json",
-        "per_page": 500  # ensures all countries are retrieved in one page
-    }
+def get_world_bank_countries(wb_raw_data_path, download):
+    wb_raw_path = os.path.join(wb_raw_data_path, "world_bank_countries.csv")
+    if download or not os.path.exists(wb_raw_path):
+        url = "https://api.worldbank.org/v2/country"
+        params = {
+            "format": "json",
+            "per_page": 500  # ensures all countries are retrieved in one page
+        }
 
-    response = requests.get(url, params=params)
-    if response.status_code != 200:
-        raise Exception(f"Failed to retrieve data: {response.status_code}")
+        response = requests.get(url, params=params)
+        if response.status_code != 200:
+            raise Exception(f"Failed to retrieve data: {response.status_code}")
 
-    data = response.json()
+        data = response.json()
 
-    if not data or len(data) < 2:
-        raise Exception("Unexpected API response format.")
+        if not data or len(data) < 2:
+            raise Exception("Unexpected API response format.")
 
-    countries = data[1]
-    country_data = {country['id']: (str.strip(country['name']), str.strip(country['region']['value']), str.strip(country['incomeLevel']['id'] + 's')) for country in countries if 'id' in country}
-    country_df = pd.DataFrame.from_dict(country_data, orient='index', columns=['name', 'region', 'income_group'])
-    country_df.index.name = 'iso3'
-    country_df = country_df[country_df.region != 'Aggregates']
-    country_df['region'] = country_df.region.replace(
-        {'East Asia & Pacific': 'EAP', 'Europe & Central Asia': 'ECA', 'Latin America & Caribbean': 'LAC',
-         'Middle East & North Africa': 'MNA', 'North America': 'NMA', 'South Asia': 'SAR', 'Sub-Saharan Africa': 'SSA'}
-    )
-    country_df['income_group'] = country_df.income_group.replace({'LMCs': 'LMICs', 'UMCs': 'UMICs'})
-    if country_df.loc['VEN', 'income_group'] == 'INXs': # use most recent available value for VEN
-        country_df.loc['VEN', 'income_group'] = 'UMICs'
+        countries = data[1]
+        country_data = {country['id']: (str.strip(country['name']), str.strip(country['region']['value']), str.strip(country['incomeLevel']['id'] + 's')) for country in countries if 'id' in country}
+        country_df = pd.DataFrame.from_dict(country_data, orient='index', columns=['name', 'region', 'income_group'])
+        country_df.index.name = 'iso3'
+        country_df = country_df[country_df.region != 'Aggregates']
+        country_df['region'] = country_df.region.replace(
+            {'East Asia & Pacific': 'EAP', 'Europe & Central Asia': 'ECA', 'Latin America & Caribbean': 'LAC',
+             'Middle East & North Africa': 'MNA', 'North America': 'NMA', 'South Asia': 'SAR', 'Sub-Saharan Africa': 'SSA'}
+        )
+        country_df['income_group'] = country_df.income_group.replace({'LMCs': 'LMICs', 'UMCs': 'UMICs'})
+        if country_df.loc['VEN', 'income_group'] == 'INXs': # use most recent available value for VEN
+            country_df.loc['VEN', 'income_group'] = 'UMICs'
+        country_df.to_csv(wb_raw_path)
+        return country_df
+    else:
+        country_df = pd.read_csv(wb_raw_path, index_col='iso3')
     return country_df
 
 

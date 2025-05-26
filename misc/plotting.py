@@ -168,7 +168,7 @@ def load_data(simulation_paths_, model_root_dir_):
 
     income_groups_ = results_data_['baseline'][['Country income group', 'Region']]
 
-    return income_groups_, gini_index_, cat_info_data_, macro_data_, results_data_, hazard_protection_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_, data_coverage_
+    return income_groups_, cat_info_data_, macro_data_, results_data_, hazard_protection_, name_dict_, any_to_wb_, iso3_to_wb_, iso2_iso3_, data_coverage_
 
 
 def print_stats(results_data_, macro_data_, cat_info_data_, hazard_protection_):
@@ -1767,7 +1767,7 @@ if __name__ == '__main__':
     }
     simulation_paths = {k: os.path.join(args.simulation_outputs_dir, v) for k, v in simulation_paths.items()}
 
-    income_groups, gini_index, cat_info_data, macro_data, results_data, hazard_protection, name_dict, any_to_wb, iso3_to_wb, iso2_iso3, data_coverage = load_data(simulation_paths, model_root_dir)
+    income_groups, cat_info_data, macro_data, results_data, hazard_protection, name_dict, any_to_wb, iso3_to_wb, iso2_iso3, data_coverage = load_data(simulation_paths, model_root_dir)
 
     gadm_world = gpd.read_file(args.gadm_path, layer='ADM_0').set_crs(4326).to_crs('World_Robinson')
     gadm_world = gadm_world[~gadm_world.COUNTRY.isin(['Antarctica', 'Caspian Sea'])]

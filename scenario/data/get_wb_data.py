@@ -53,7 +53,7 @@ AGG_REGIONS = ['Africa Eastern and Southern', 'Africa Western and Central', 'Ara
                'Upper middle income', 'World']
 
 
-def get_wb_series(wb_name, colname):
+def get_wb_series(wb_name, colname, wb_raw_data_path, download):
     """
     Retrieves a World Bank series and renames its column.
 
@@ -64,10 +64,10 @@ def get_wb_series(wb_name, colname):
     Returns:
         pd.DataFrame: DataFrame containing the World Bank series.
     """
-    return get_wb_df(wb_name, colname)[colname]
+    return get_wb_df(wb_name, colname, wb_raw_data_path, download)[colname]
 
 
-def get_wb_mrv(wb_name, colname):
+def get_wb_mrv(wb_name, colname, wb_raw_data_path, download):
     """
     Retrieves the most recent value of a World Bank series.
 
@@ -78,7 +78,7 @@ def get_wb_mrv(wb_name, colname):
     Returns:
         pd.Series: Series containing the most recent values of the World Bank series.
     """
-    return get_most_recent_value(get_wb_df(wb_name, colname))
+    return get_most_recent_value(get_wb_df(wb_name, colname, wb_raw_data_path, download))
 
 
 def get_most_recent_value(data, drop_year=True):
@@ -101,7 +101,7 @@ def get_most_recent_value(data, drop_year=True):
     return res
 
 
-def get_wb_df(wb_name, colname):
+def get_wb_df(wb_name, colname, wb_raw_data_path, download):
     """
     Downloads a World Bank dataset and renames its column.
 
@@ -112,8 +112,14 @@ def get_wb_df(wb_name, colname):
     Returns:
         pd.DataFrame: DataFrame containing the World Bank dataset.
     """
-    # return all values
-    wb_raw = (wb.download(indicator=wb_name, start=2000, end=YEAR_TODAY, country="all"))
+    wb_raw_path = os.path.join(wb_raw_data_path, f"{wb_name}.csv")
+    if download or not os.path.exists(wb_raw_path):
+        # return all values
+        wb_raw = wb.download(indicator=wb_name, start=2000, end=YEAR_TODAY, country="all")
+        wb_raw.to_csv(wb_raw_path)
+    else:
+        wb_raw = pd.read_csv(wb_raw_path)
+        wb_raw = wb_raw.set_index(list(np.intersect1d(wb_raw.columns, ['country', 'year'])))
     # sensible name for the column
     return wb_raw.rename(columns={wb_raw.columns[0]: colname})
 
@@ -146,8 +152,8 @@ def broadcast_to_population_resolution(data, resolution):
     return data_
 
 
-def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classification_, any_to_wb, verbose=True,
-                                   reg_data_outpath=None):
+def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classification_, any_to_wb, wb_raw_data_path,
+                                   download, verbose=True, reg_data_outpath=None):
     """
     Predicts missing transfer shares using regression models. Regression specification is hard-coded.
 
@@ -169,11 +175,11 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classificati
         1: 'transfers ~ exp_SP_GDP + remittances_GDP + UMICs + EAP',  # R2=0.328
     }
 
-    remittances = get_wb_mrv('BX.TRF.PWKR.DT.GD.ZS', 'remittances_GDP').dropna().astype(float)
+    remittances = get_wb_mrv('BX.TRF.PWKR.DT.GD.ZS', 'remittances_GDP', wb_raw_data_path, download).dropna().astype(float)
     remittances = df_to_iso3(remittances.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
     remittances = remittances.set_index('iso3', drop=True).drop('country', axis=1)
 
-    unemployment = df_to_iso3(get_wb_mrv('SL.UEM.TOTL.ZS', 'unemployment').reset_index(), 'country', any_to_wb, verbose)
+    unemployment = df_to_iso3(get_wb_mrv('SL.UEM.TOTL.ZS', 'unemployment', wb_raw_data_path, download).reset_index(), 'country', any_to_wb, verbose)
     unemployment = unemployment.dropna(subset='iso3').set_index('iso3').drop('country', axis=1).squeeze()
 
     fsy_countries = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/fsy_countries.csv'), header=None)
@@ -223,8 +229,8 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classificati
     return cat_info_df_
 
 
-def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_value=True, upper_bound=None,
-                           lower_bound=None):
+def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, wb_raw_data_path, download, most_recent_value=True,
+                           upper_bound=None, lower_bound=None):
     """
     Downloads World Bank quintile data and processes it.
 
@@ -242,12 +248,12 @@ def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_
     Returns:
         pd.Series: Processed quintile data indexed by country, year, and income category.
     """
-    data_q1 = get_wb_series(id_q1, .2)
-    data_q2 = get_wb_series(id_q2,.4)
-    data_q3 = get_wb_series(id_q3, .6)
-    data_q4 = get_wb_series(id_q4, .8)
-    data_q5 = get_wb_series(id_q5, 1)
-    data = pd.concat([data_q1, data_q2, data_q3, data_q4, data_q5], axis=1).dropna().stack().rename(name)
+    data_q1 = get_wb_series(id_q1, .2, wb_raw_data_path, download)
+    data_q2 = get_wb_series(id_q2,.4, wb_raw_data_path, download)
+    data_q3 = get_wb_series(id_q3, .6, wb_raw_data_path, download)
+    data_q4 = get_wb_series(id_q4, .8, wb_raw_data_path, download)
+    data_q5 = get_wb_series(id_q5, 1, wb_raw_data_path, download)
+    data = pd.concat([data_q1, data_q2, data_q3, data_q4, data_q5], axis=1).stack().rename(name)
     data.index.names = ['country', 'year', 'income_cat']
     # note: setting upper and lower bounds to nan s.th. the more recent available value is used
     if upper_bound is not None:
@@ -259,8 +265,9 @@ def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, most_recent_
     return data
 
 
-def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False, drop_incomplete=True,
-                force_recompute=True, verbose=True, save=True, include_spl=False, resolution=.2):
+def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False,
+                drop_incomplete=True, force_recompute=True, verbose=True, save=True, include_spl=False, resolution=.2,
+                download=False):
     """
     Downloads and processes World Bank socio-economic data, including macroeconomic and income-level data.
 
@@ -285,6 +292,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
     rem_ade_path = os.path.join(root_dir, "data/processed/adequacy_remittances.csv")
     transfers_regr_data_path = os.path.join(root_dir, "data/processed/social_shares_regressors.csv")
+    wb_raw_data_path = os.path.join(root_dir, "data/raw/WB_socio_economic_data/API")
     if not force_recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
         print("Loading World Bank data from file...")
         macro_df = pd.read_csv(macro_path, index_col='iso3')
@@ -296,8 +304,8 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     # World Development Indicators
     if ppp_reference_year == 2021:
         # gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
-        gdp_pc_pp = get_wb_series('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
-        gni_pc_pp = get_wb_series('NY.GNP.PCAP.PP.KD', 'gni_pc_pp')
+        gdp_pc_pp = get_wb_series('NY.GDP.PCAP.pp.kd', "gdp_pc_pp", wb_raw_data_path, download)  # Gdp per capita ppp (source: International Comparison Program)
+        gni_pc_pp = get_wb_series('NY.GNP.PCAP.PP.KD', 'gni_pc_pp', wb_raw_data_path, download)
     elif ppp_reference_year == 2017:
         wb_wdi = pd.read_excel(os.path.join(root_dir, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
         wb_wdi = wb_wdi.rename({'Economy Name': 'country'}, axis=1)
@@ -318,15 +326,15 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     gni_pc_pp = gni_pc_pp.drop(np.intersect1d(gni_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
     gni_pc_pp = df_to_iso3(gni_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
-    pop = get_wb_series('SP.POP.TOTL', "pop")  # population (source: World Development Indicators)
+    pop = get_wb_series('SP.POP.TOTL', "pop", wb_raw_data_path, download)  # population (source: World Development Indicators)
     pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
     pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
-    gini_index = get_wb_series('SI.POV.GINI', 'gini_index')
+    gini_index = get_wb_series('SI.POV.GINI', 'gini_index', wb_raw_data_path, download)
     gini_index = gini_index.drop(np.intersect1d(gini_index.index.get_level_values('country').unique(), AGG_REGIONS), level='country').dropna()
     gini_index = df_to_iso3(gini_index.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
 
-    country_classification = get_world_bank_countries()
+    country_classification = get_world_bank_countries(wb_raw_data_path, download)
 
     # if include_spl, make sure that years of macro data points match
     if include_spl:
@@ -351,7 +359,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     if resolution == .2:
         income_shares = download_quintile_data(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
                                                id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
-                                               # most_recent_value=True, upper_bound=100, lower_bound=0) / 100
+                                               wb_raw_data_path=wb_raw_data_path, download=download,
                                                most_recent_value=False, upper_bound=100, lower_bound=0) / 100
         # make sure income shares add up to 1
         income_shares /= income_shares.unstack('income_cat').sum(axis=1)
@@ -384,6 +392,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     adequacy_remittances = download_quintile_data(name='adequacy_remittances', id_q1='per_pr_allpr.adq_q1_tot',
                                                   id_q2='per_pr_allpr.adq_q2_tot', id_q3='per_pr_allpr.adq_q3_tot',
                                                   id_q4='per_pr_allpr.adq_q4_tot', id_q5='per_pr_allpr.adq_q5_tot',
+                                                  wb_raw_data_path=wb_raw_data_path, download=download,
                                                   most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
     # Total transfer amount received by all beneficiaries in a population group as a share of the total welfare of
@@ -391,17 +400,20 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     adequacy_all_prot_lab = download_quintile_data(name='adequacy_all_prot_lab', id_q1='per_allsp.adq_q1_tot',
                                                    id_q2='per_allsp.adq_q2_tot', id_q3='per_allsp.adq_q3_tot',
                                                    id_q4='per_allsp.adq_q4_tot', id_q5='per_allsp.adq_q5_tot',
+                                                   wb_raw_data_path=wb_raw_data_path, download=download,
                                                    most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
     # Coverage
     coverage_remittances = download_quintile_data(name='coverage_remittances', id_q1='per_pr_allpr.cov_q1_tot',
                                                   id_q2='per_pr_allpr.cov_q2_tot', id_q3='per_pr_allpr.cov_q3_tot',
                                                   id_q4='per_pr_allpr.cov_q4_tot', id_q5='per_pr_allpr.cov_q5_tot',
+                                                  wb_raw_data_path=wb_raw_data_path, download=download,
                                                   most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
     coverage_all_prot_lab = download_quintile_data(name='coverage_all_prot_lab', id_q1='per_allsp.cov_q1_tot',
                                                    id_q2='per_allsp.cov_q2_tot', id_q3='per_allsp.cov_q3_tot',
                                                    id_q4='per_allsp.cov_q4_tot', id_q5='per_allsp.cov_q5_tot',
+                                                   wb_raw_data_path=wb_raw_data_path, download=download,
                                                    most_recent_value=False, upper_bound=100, lower_bound=0) / 100
 
     if include_remittances:
@@ -422,11 +434,11 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     update_data_coverage(root_dir, 'transfers', transfers.unstack('income_cat').dropna().index.unique(), None)
 
     if impute_missing_data:
-        transfers = guess_missing_transfers_shares(transfers.to_frame(), root_dir, country_classification, any_to_wb, verbose, transfers_regr_data_path).squeeze()
+        transfers = guess_missing_transfers_shares(transfers.to_frame(), root_dir, country_classification, any_to_wb, wb_raw_data_path, download, verbose, transfers_regr_data_path).squeeze()
 
     transfers = broadcast_to_population_resolution(transfers, resolution)
 
-    cat_info_df = pd.concat([income_shares, transfers], axis=1).sort_index()  # .groupby('iso3').apply(lambda x: x.bfill()).reset_index(0, drop=True)
+    cat_info_df = pd.concat([income_shares, transfers], axis=1).sort_index()
 
     complete_macro = macro_df.dropna().index.get_level_values('iso3').unique()
     complete_cat_info = cat_info_df.isna().any(axis=1).replace(True, np.nan).unstack('income_cat').dropna(how='any').index.unique()

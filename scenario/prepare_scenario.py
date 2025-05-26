@@ -375,7 +375,7 @@ def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb, verbose):
 
 
 def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
-                      verbose=True, force_recompute=True,
+                      verbose=True, force_recompute=True, download=True,
                       guess_missing_countries=False):
     """
     Calculates asset shares, including private, household, and owner-occupied shares.
@@ -411,7 +411,7 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         k_pub_share = k_pub_share[0].fillna(k_pub_share[1]).rename('k_pub_share')
         k_pub_share = k_pub_share.reset_index().loc[k_pub_share.reset_index().groupby('iso3').year.idxmax()].set_index('iso3')['k_pub_share']
 
-        self_employment = get_wb_mrv('SL.EMP.SELF.ZS', 'self_employment') / 100
+        self_employment = get_wb_mrv('SL.EMP.SELF.ZS', 'self_employment', os.path.join(root_dir_, "data/raw/WB_socio_economic_data/API"), download=download) / 100
         self_employment = df_to_iso3(self_employment.reset_index(), 'country', any_to_wb_, verbose_=verbose).dropna(subset='iso3')
         self_employment = self_employment.set_index('iso3').drop('country', axis=1).squeeze()
 
@@ -588,7 +588,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
             resolution=resolution,
             guess_missing_countries=True,
             population_data_=population_data,
-        ).clip(lower=0, upper=fa_threshold_)
+        ).clip(lower=0, upper=fa_threshold_).values
 
     for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
         if policy_dict is not None:
@@ -1211,6 +1211,7 @@ def prepare_scenario(scenario_params):
     # Set defaults
     run_params['outpath'] = run_params.get('outpath', None)
     run_params['force_recompute'] = run_params.get('force_recompute', False)
+    run_params['download'] = run_params.get('download', False)
     run_params['verbose'] = run_params.get('verbose', True)
     run_params['countries'] = run_params.get('countries', 'all')
     run_params['hazards'] = run_params.get('hazards', 'all')
@@ -1236,6 +1237,7 @@ def prepare_scenario(scenario_params):
         impute_missing_data=True,
         drop_incomplete=True,
         force_recompute=run_params['force_recompute'],
+        download=run_params['download'],
         verbose=run_params['verbose'],
         include_spl=run_params['include_spl'],
         resolution=run_params['resolution'],
@@ -1304,6 +1306,7 @@ def prepare_scenario(scenario_params):
         scale_self_employment=policy_params.pop('scale_self_employment', None),
         verbose=run_params['verbose'],
         force_recompute=run_params['force_recompute'],
+        download=run_params['download'],
         guess_missing_countries=True,
     )
     if run_params['force_recompute']:
@@ -1374,7 +1377,7 @@ def prepare_scenario(scenario_params):
 
     # keep track of imputed data
     data_coverage = pd.read_csv(os.path.join(scenario_root_dir, "data/processed/data_coverage.csv"), index_col='iso3')
-    data_coverage = data_coverage.loc[np.intersect1d(countries, data_coverage.index)]
+    data_coverage = data_coverage.loc[np.intersect1d(countries, list(data_coverage.index))]
     data_coverage.to_csv(os.path.join(scenario_root_dir, "data/processed/data_coverage.csv"))
 
     if run_params['countries'] != 'all':

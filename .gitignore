@@ -9,3 +9,4 @@ __pycache__
 scenario/data/processed/*
 !scenario/data/processed/exposure_bias_per_quintile.csv
 !scenario/data/processed/flopros_protection_processed.csv
+scenario/data/raw/WB_socio_economic_data/API
