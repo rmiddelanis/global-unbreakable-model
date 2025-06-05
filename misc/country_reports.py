@@ -1170,7 +1170,7 @@ def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=
                     get_optimal_trajectory(heatmap_data, ax)
                 ax.set_ylim(0, len(heatmap_data))
                 if row_idx == 0:
-                    ax.set_title(f"{metric_names[metric]} [{units[metric]}]")
+                    ax.set_title(f"{metric_names[metric]} [{get_value_with_unit(metric)}]")
                 if row_idx != len(policies) - 2:
                     ax.set_xticklabels([])
                 ax.set_xlabel(' \n')
@@ -1377,8 +1377,8 @@ def generate_pdf_report(macro_inputs_, countries, ppp_reference_year, tex_templa
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate country report')
     parser.add_argument('simulation_outputs_dir', type=str, help='Directory containing simulation outputs')
-    parser.add_argument('tex_template_path', type=str, help='Path to LaTeX template file.')
-    parser.add_argument('ppp_year', type=int, default=2021, help='The PPP reference year.')
+    parser.add_argument('--tex_template_path', type=str, help='Path to LaTeX template file.')
+    parser.add_argument('--ppp_year', type=int, default=2021, help='The PPP reference year.')
     parser.add_argument('--report_outpath', type=str, help='Directory for country report generation.')
     parser.add_argument('--concat_policy_params', action='store_true', help='Whether to concatenate policy parameters to the policy string or keep them as separate variables')
     parser.add_argument('--store_preprocessed', action='store_true', help='Whether to save the preprocessed simulation output to disk.')
