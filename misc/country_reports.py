@@ -21,8 +21,10 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 """
+import copy
 import glob
 import itertools
+import shutil
 import sys
 import os
 from pathlib import Path
@@ -50,7 +52,7 @@ plt.rcParams['axes.labelsize'] = 7  # Font size for x and y labels
 plt.rcParams['xtick.labelsize'] = 6  # Font size for x tick labels
 plt.rcParams['ytick.labelsize'] = 6  # Font size for y tick labels
 plt.rcParams['legend.fontsize'] = 6  # Font size for legend
-plt.rcParams['axes.titlesize'] = 7  # Font size for axis title
+plt.rcParams['axes.titlesize'] = 8  # Font size for axis title
 plt.rcParams['font.size'] = 7  # Font size for text
 
 # figure widths
@@ -61,6 +63,16 @@ centimeter = 1 / inch
 double_col_width = 19.4 * centimeter # cm
 single_col_width = 9.5 * centimeter  # cm
 max_fig_height = 24.7 * centimeter  # cm
+
+WORLD_REGION_NAMES = {
+    'ECA': 'Europe and Central Asia',
+    'EAP': 'East Asia and Pacific',
+    'LAC': 'Latin America and Caribbean',
+    'MNA': 'Middle East and North Africa',
+    'NAM': 'North America',
+    'SAR': 'South Asia',
+    'SSA': 'Sub-Saharan Africa',
+}
 
 
 def format_dollar_value(val, abbreviations=True):
@@ -131,12 +143,12 @@ def get_policy_name_lookup(df_):
     return policy_name_lookup_
 
 
-def plot_fig_1(ensemble_results_data_, variables, country=None, outpath=None):
-    if 'hs' in ensemble_results_data_.coords:
-        baseline_results = ensemble_results_data_.loc[dict(policy='baseline', hs=0, vs=0)].to_dataframe()
+def plot_fig_1(macro_res_, variables, country=None, outpath=None):
+    if 'hs' in macro_res_.coords:
+        baseline_results = macro_res_.loc[dict(policy='baseline', hs=0, vs=0)].to_dataframe()
         baseline_results = baseline_results.drop(columns=['policy', 'hs', 'vs']).dropna(how='all')
     else:
-        baseline_results = ensemble_results_data_.loc[dict(policy='baseline/0/+0')].to_dataframe()
+        baseline_results = macro_res_.loc[dict(policy='baseline/0/+0')].to_dataframe()
         baseline_results = baseline_results.drop(columns=['policy']).dropna(how='all')
 
     ncols = len(variables)
@@ -146,7 +158,7 @@ def plot_fig_1(ensemble_results_data_, variables, country=None, outpath=None):
         'risk_to_assets': '%',
         'risk_to_consumption': '%',
         'risk_to_wellbeing': '%',
-        't_reco_95': 'years',
+        't_reco_95': ' years',
         'risk_to_all_poverty': '%',
         'risk_to_societal_poverty': '%',
         'risk_to_extreme_poverty': '%',
@@ -156,27 +168,35 @@ def plot_fig_1(ensemble_results_data_, variables, country=None, outpath=None):
         'default': '',
         't_reco_95': '\n'
     }
-    var_names = {
-        'resilience': 'Socio-economic\nresilience',
-        'risk': 'Risk to\nwell-being',
-        'risk_to_wellbeing': 'Risk to\nwell-being',
-        'risk_to_consumption': 'Risk to\nconsumption',
-        'risk_to_assets': 'Risk to\nassets',
-        't_reco_95': 'Average recovery\ntime',
-        'risk_to_extreme_poverty': 'Risk to extreme\npoverty',
-        'risk_to_societal_poverty': 'Risk to societal\npoverty',
-        'risk_to_all_poverty': 'Risk to all\npoverty',
+    ax_titles = {
+        'resilience': 'Socio-economic\nresilience [%]',
+        'risk': 'Risk to\nwell-being [% GDP]',
+        'risk_to_wellbeing': 'Risk to\nwell-being [% GDP]',
+        'risk_to_consumption': 'Risk to\nconsumption [% GDP]',
+        'risk_to_assets': 'Risk to\nassets [% GDP]',
+        't_reco_95': 'Average recovery\ntime [years]',
+        'risk_to_extreme_poverty': 'Risk to extreme\npoverty [% population]',
+        'risk_to_societal_poverty': 'Risk to societal\npoverty [% population]',
+        'risk_to_all_poverty': 'Risk to all\npoverty [% population]',
     }
 
     percent_units = [u for u in units.keys() if units[u] == '%']
     baseline_results.loc[:, np.intersect1d(percent_units, baseline_results.columns)] *= 100
 
+    legend=True
     for ax, var in zip(axs, variables):
         ax.axhline(0, color='black', lw=0.5, alpha=.5)
-        sns.scatterplot(data=baseline_results, x=var, y=0, ax=ax, color='lightgrey', edgecolor='none', alpha=0.1, s=100)
+        sns.scatterplot(data=baseline_results, x=var, y=0, ax=ax, color='lightgrey', edgecolor='none', alpha=0.1, s=100,
+                        label='all countries', legend=legend)
+        sns.scatterplot(x=[baseline_results[var].median()], y=[0], ax=ax, edgecolor='k', facecolor='none', s=100,
+                        label='global median', legend=legend)
+        sns.scatterplot(
+            x=[baseline_results[baseline_results.region == baseline_results.loc[country, 'region']][var].median()],
+            y=[0], ax=ax, edgecolor='k', facecolor='none', s=100, label='region median',
+            linestyle='--', legend=legend, alpha=.5)
         if country is not None:
             sns.scatterplot(data=baseline_results.loc[[country]], x=var, y=0, ax=ax, edgecolor='darkturquoise',
-                            facecolor='none', s=100, label=baseline_results.loc[country, 'name'], legend=ax==axs[0],
+                            facecolor='none', s=100, label=baseline_results.loc[country, 'name'], legend=legend,
                             zorder=10)
             ctry_val = baseline_results.loc[country, var]
             abs_val = ''
@@ -189,20 +209,23 @@ def plot_fig_1(ensemble_results_data_, variables, country=None, outpath=None):
                     abs_val = baseline_results.loc[country, 'pop'] * ctry_val / 100
                     abs_val_unit = ''
 
-                dollar_factor, dollar_unit_multiplier, decimals = format_dollar_value(abs_val)
-                abs_val = f"\n({abs_val_unit}{abs_val / dollar_factor:.{decimals}f}{dollar_unit_multiplier})"
+                dollar_factor, dollar_unit_multiplier, abs_decimals = format_dollar_value(abs_val)
+                abs_val = f"\n({abs_val_unit}{abs_val / dollar_factor:.{abs_decimals}f}{dollar_unit_multiplier})"
 
-            ax.text(ctry_val, 0.02, f"{prefixes.get(var, prefixes['default'])}{round(baseline_results.loc[country, var], 2)}{units[var]}" + abs_val, ha='center',
-                    va='bottom', fontsize=8, color='darkturquoise')
-        sns.scatterplot(x=[baseline_results[var].median()], y=[0], ax=ax, edgecolor='k', facecolor='none', s=100,
-                        label='global median', legend=ax==axs[0])
+            rel_decimals = 2 if var in ['risk_to_assets', 'risk_to_consumption', 'risk_to_wellbeing'] else 1
+            ax.text(ctry_val, 0.02, f"{prefixes.get(var, prefixes['default'])}{round(baseline_results.loc[country, var], rel_decimals)}{units[var]}" + abs_val, ha='center',
+                    va='bottom', fontsize=7, color='darkturquoise')
         ax.text(baseline_results[var].median(), -.02, f"{np.round(baseline_results[var].median(), 2)}{units[var]}", ha='center',
-                va='top', fontsize=8, color='k')
-        ax.text(.5, 1, f"{var_names.get(var, var)} [{units[var]}]", fontsize=8, ha='center', va='bottom', transform=ax.transAxes)
+                va='top', fontsize=7, color='k')
+        ax.text(.5, 1, f"{ax_titles.get(var, var)}", fontsize=8, ha='center', va='bottom', transform=ax.transAxes)
         ax.set_xlim(min(ax.get_xlim()[0], -.1 * (baseline_results[var].max() - baseline_results[var].min())), ax.get_xlim()[1])
         ax.axis('off')
+        legend=False
 
-    axs[0].legend(loc='center right', fontsize=8, frameon=False, bbox_to_anchor=(-.2, 0.5))
+    handles, labels = axs[0].get_legend_handles_labels()
+    handles[0] = copy.copy(handles[0])
+    handles[0].set_alpha(.5)
+    axs[0].legend(handles, labels, loc='center right', fontsize=7, frameon=False, bbox_to_anchor=(-.2, .5))
     plt.tight_layout()
     plt.draw()
 
@@ -228,11 +251,11 @@ def plot_fig_1(ensemble_results_data_, variables, country=None, outpath=None):
 
 
 def plot_fig_2(macro_inputs_, model_results_, t_reco_, country, outpath=None):
-    fig, axs = plt.subplots(ncols=3, nrows=1, figsize=(double_col_width, 6 * centimeter))
+    fig, axs = plt.subplots(ncols=3, nrows=1, figsize=(double_col_width, 6.1 * centimeter))
 
     plot_data = model_results_.loc[pd.IndexSlice['baseline/0/+0', country, 'all hazards', 'annual average', :]]
-    plot_data = plot_data[['dk_pc', 'dc_pc', 'dw_pc', 'dk_risk', 'dc_risk', 'dw_risk', 'resilience']]
-    plot_data[['dk_tot', 'dc_tot', 'dw_tot']] = plot_data[['dk_pc', 'dc_pc', 'dw_pc']] * macro_inputs_.loc[('baseline/0/+0', country), 'pop']
+    plot_data = plot_data[['dk_pc', 'dc_pc', 'dw_pc_currency', 'resilience', 'n']]
+    plot_data[['dk_tot', 'dc_tot', 'dw_tot']] = plot_data[['dk_pc', 'dc_pc', 'dw_pc_currency']].mul(plot_data.n, axis=0) * macro_inputs_.loc[('baseline/0/+0', country), 'pop']
     plot_data['resilience'] *= 100
 
     plot_data = pd.concat([plot_data, t_reco_.loc[pd.IndexSlice['baseline/0/+0', country, 'all hazards', :]].t_reco_avg],
@@ -241,22 +264,22 @@ def plot_fig_2(macro_inputs_, model_results_, t_reco_, country, outpath=None):
     dollar_factor, dollar_unit_multiplier, _ = format_dollar_value(plot_data.dk_tot.min())
     plot_data[['dk_tot', 'dc_tot', 'dw_tot']] /= dollar_factor
 
-    loss_data = plot_data.drop('total')[['dk_tot', 'dc_tot', 'dw_tot']].rename(columns={'dk_tot': 'assets', 'dc_tot': 'consumption', 'dw_tot': 'well-being'}).stack().rename('loss')
+    loss_data = plot_data.drop('total')[['dk_pc', 'dc_pc', 'dw_pc_currency']].rename(columns={'dk_pc': 'assets', 'dc_pc': 'consumption', 'dw_pc_currency': 'well-being'}).stack().rename('loss')
     loss_data.index.names = ['income_cat', 'loss_type']
     losses_color_palette = [tuple((1 - amount) * channel + amount for channel in to_rgb('darkturquoise')) for amount in [0, 0.3, .6]]
     sns.barplot(data=loss_data.to_frame(), x='income_cat', y='loss', hue='loss_type', ax=axs[0], palette=losses_color_palette,
                 dodge=True, width=0.4)
     # Secondary axis: % of GDP
     twinx0 = axs[0].twinx()
-    twinx0.set_ylabel('[% GDP]')
+    twinx0.set_ylabel('[% avg. per capita income]')
     # Set the secondary y-axis limits to match the % of GDP range
-    gdp = macro_inputs_.loc[('baseline/0/+0', country), ['gdp_pc_pp', 'pop']].prod(axis=0)
-    twinx0.plot('q1', axs[0].get_ylim()[1] * dollar_factor / gdp * 100, alpha=0)
-    twinx0.set_ylim((axs[0].get_ylim()[0] * dollar_factor / gdp * 100, (axs[0].get_ylim()[1] * dollar_factor / gdp * 100)))
+    gdp_pc = macro_inputs_.loc[('baseline/0/+0', country), 'gdp_pc_pp']
+    twinx0.plot('q1', axs[0].get_ylim()[1] / gdp_pc * 100, alpha=0)
+    twinx0.set_ylim((axs[0].get_ylim()[0] / gdp_pc * 100, (axs[0].get_ylim()[1] / gdp_pc * 100)))
     twinx0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax=100))
-    axs[0].set_title('Annual average losses by income quintile\n', fontsize=7, ha='center', va='bottom')
+    axs[0].set_title('Annual average losses per capita\n', ha='center', va='bottom', fontsize=8)
     axs[0].set_xlabel('Household income quintile')
-    axs[0].set_ylabel(f'[$PPP {dollar_unit_multiplier}]')
+    axs[0].set_ylabel(f'[$PPP]')
     axs[0].legend(loc='lower center', bbox_to_anchor=(0.5, .98), ncol=3, frameon=False, title=None, handlelength=1,
                   handletextpad=.5, labelspacing=0.)
 
@@ -267,7 +290,7 @@ def plot_fig_2(macro_inputs_, model_results_, t_reco_, country, outpath=None):
     # axs[1].legend(ncol=1, frameon=False, title=None, handlelength=1, handletextpad=.5)
     axs[1].legend(loc='lower center', bbox_to_anchor=(0.5, .98), ncol=3, frameon=False, title=None, handlelength=1,
                   handletextpad=.5, labelspacing=0.)
-    axs[1].set_title('Socio-economic resilience [%]\n', fontsize=7, ha='center', va='bottom')
+    axs[1].set_title('Socio-economic resilience [%]\n', ha='center', va='bottom', fontsize=8)
     axs[1].set_xlabel('Household income quintile')
 
     sns.barplot(plot_data.drop('total'), x='income_cat', y='t_reco_avg', ax=axs[2], color='darkturquoise', dodge=True,
@@ -277,7 +300,7 @@ def plot_fig_2(macro_inputs_, model_results_, t_reco_, country, outpath=None):
     # axs[2].legend(ncol=1, frameon=False, title=None, handlelength=1, handletextpad=.5)
     axs[2].legend(loc='lower center', bbox_to_anchor=(0.5, .98), ncol=3, frameon=False, title=None, handlelength=1,
                   handletextpad=.5, labelspacing=0.)
-    axs[2].set_title('Average recovery time [years]\n', fontsize=7, ha='center', va='bottom')
+    axs[2].set_title('Average recovery time [years]\n', ha='center', va='bottom', fontsize=8)
     axs[2].set_xlabel('Household income quintile')
 
     plt.tight_layout(w_pad=2)
@@ -289,10 +312,10 @@ def plot_fig_2(macro_inputs_, model_results_, t_reco_, country, outpath=None):
 
 
 def plot_fig_3(macro_inputs_, model_results_, country, outpath=None):
-    fig, axs = plt.subplots(ncols=3, nrows=1, figsize=(double_col_width, 6 * centimeter))
+    fig, axs = plt.subplots(ncols=3, nrows=1, figsize=(double_col_width, 6.1 * centimeter))
 
     plot_data = model_results_.loc[pd.IndexSlice['baseline/0/+0', country, :, :, 'total', :]]
-    plot_data.loc[:, ['dk_tot', 'dc_tot', 'dw_tot']] = (plot_data[['dk_pc', 'dc_pc', 'dw_pc']] * macro_inputs_.loc[('baseline/0/+0', country), 'pop']).values
+    plot_data.loc[:, ['dk_tot', 'dc_tot', 'dw_tot']] = (plot_data[['dk_pc', 'dc_pc', 'dw_pc_currency']] * macro_inputs_.loc[('baseline/0/+0', country), 'pop']).values
     dollar_factor, dollar_unit_multiplier, _ = format_dollar_value(plot_data.loc['all hazards'].drop('annual average').dw_tot.max())
     plot_data.loc[:, ['dk_tot', 'dc_tot', 'dw_tot']] = plot_data.loc[:, ['dk_tot', 'dc_tot', 'dw_tot']] / dollar_factor
 
@@ -311,7 +334,7 @@ def plot_fig_3(macro_inputs_, model_results_, country, outpath=None):
     twinx0.plot(axs[0].get_xlim()[0], axs[0].get_ylim()[1] * dollar_factor / gdp * 100, alpha=0)
     twinx0.set_ylim((axs[0].get_ylim()[0] * dollar_factor / gdp * 100, (axs[0].get_ylim()[1] * dollar_factor / gdp * 100)))
     twinx0.yaxis.set_major_formatter(mtick.PercentFormatter(xmax=100, decimals=0))
-    axs[0].set_title('Expected losses by\nreturn period', fontsize=7, ha='center', va='bottom')
+    axs[0].set_title('Expected losses by\nreturn period', ha='center', va='bottom')
     axs[0].set_xlabel('Return period [years]')
     axs[0].set_ylabel(f'[$PPP {dollar_unit_multiplier}]')
 
@@ -325,7 +348,7 @@ def plot_fig_3(macro_inputs_, model_results_, country, outpath=None):
     aal_rp_shares.index = aal_rp_shares.index.set_levels(aal_rp_shares.index.levels[0].astype(int), level=0)
     sns.barplot(aal_rp_shares.to_frame(), x='rp', y='loss', hue='loss_type', ax=axs[1], dodge=True,
                 width=0.8, palette=losses_color_palette, legend=False)
-    axs[1].set_title('Share of annual avgerage\nlosses by return period', fontsize=7, ha='center', va='bottom')
+    axs[1].set_title('Share of annual average\nlosses by return period', ha='center', va='bottom')
     axs[1].set_xlabel('Return period [years]')
     axs[1].set_ylabel('[% AAL]')
 
@@ -333,10 +356,10 @@ def plot_fig_3(macro_inputs_, model_results_, country, outpath=None):
     aal_hazard_shares.index.names = ['hazard', 'loss_type']
     sns.barplot(aal_hazard_shares.to_frame(), x='hazard', y='loss', hue='loss_type', ax=axs[2], dodge=True,
                 width=0.8, palette=losses_color_palette)
-    axs[2].set_title('Share of annual average\nlosses by hazard', fontsize=7, ha='center', va='bottom')
+    axs[2].set_title('Share of annual average\nlosses by hazard', ha='center', va='bottom')
     axs[2].set_xlabel('Hazard')
     axs[2].set_ylabel('[% AAL]')
-    axs[2].legend(frameon=False, title="Loss type", title_fontsize=6, handlelength=1,
+    axs[2].legend(frameon=False, title="Loss type", title_fontsize=7, handlelength=1,
                   handletextpad=.5, bbox_to_anchor=(1.05, 1), loc='upper left')
 
     for ax, rotation in zip(axs, [40, 40, 25]):
@@ -366,7 +389,7 @@ def plot_fig_2_old(ensemble_cat_info_, country=None, outpath=None):
     transfers_spending = (plot_data.transfers * plot_data.c).groupby('iso3').sum() / plot_data.c.groupby('iso3').sum() * 100
     transfers_spending = transfers_spending.rename('transfers_spending')
     axs[0].axhline(0, color='black', lw=0.5, alpha=.5)
-    sns.scatterplot(data=transfers_spending.to_frame(), x='transfers_spending', y=0, ax=axs[0], color='lightgrey', edgecolor='none', alpha=0.05, s=100)
+    sns.scatterplot(data=transfers_spending.to_frame(), x='transfers_spending', y=0, ax=axs[0], color='lightgrey', edgecolor='none', alpha=0.1, s=100)
     if country is not None:
         sns.scatterplot(data=transfers_spending.loc[[country]].to_frame(), x='transfers_spending', y=0, ax=axs[0],
                         edgecolor='darkturquoise', facecolor='none', s=100)
@@ -377,7 +400,7 @@ def plot_fig_2_old(ensemble_cat_info_, country=None, outpath=None):
     sns.scatterplot(x=[transfers_spending.median()], y=[0], ax=axs[0], edgecolor='k', facecolor='none', s=100)
     axs[0].text(transfers_spending.median(), -.02, f"{np.round(transfers_spending.median(), 2)}%", ha='center',
             va='top', fontsize=8, color='k')
-    axs[0].set_title('Total transfer\namount [% GDP]', fontsize=7, ha='center', va='bottom',
+    axs[0].set_title('Total transfer\namount [% GDP]', ha='center', va='bottom',
                 transform=axs[0].transAxes)
     axs[0].set_xlim(min(axs[0].get_xlim()[0], -.1 * (transfers_spending.max() - transfers_spending.min())),
                 axs[0].get_xlim()[1])
@@ -411,7 +434,7 @@ def plot_fig_2_old(ensemble_cat_info_, country=None, outpath=None):
 
     ctry_global = pd.concat([transfers_distribution.loc[[country]], global_median], axis=0)
     sns.barplot(data=ctry_global.reset_index(), x='income_cat', y='transfers', hue='iso3', ax=axs[1], palette=['darkturquoise', 'k'], dodge=True, width=0.4, alpha=0.75, legend=False)
-    # sns.scatterplot(transfers_distribution, x='income_cat', y='transfers', ax=axs[1], color='lightgrey', edgecolor='none', alpha=0.05, s=100)
+    # sns.scatterplot(transfers_distribution, x='income_cat', y='transfers', ax=axs[1], color='lightgrey', edgecolor='none', alpha=0.1, s=100)
     # sns.scatterplot(transfers_distribution.groupby('income_cat').median(), x='income_cat',
     #                 y='transfers', ax=axs[1], edgecolor='k', facecolor='none', s=100)
     # if country is not None:
@@ -420,7 +443,7 @@ def plot_fig_2_old(ensemble_cat_info_, country=None, outpath=None):
     #     # ctry_vals = transfers_distribution.loc[country].values.flatten()
     #     # for x_pos, y_pos, text in zip(['q1', 'q2', 'q3', 'q4', 'q5'], ctry_vals, [f"{int(np.round(cv))}" for cv in ctry_vals]):
     #     #     axs[1].text(x_pos, y_pos, text, ha='center', va='center', fontsize=6, color='darkturquoise')
-    axs[1].set_title('Share of total transfers\nreceived by each quintile [%]', fontsize=7, ha='center', va='bottom',)
+    axs[1].set_title('Share of total transfers\nreceived by each quintile [%]', ha='center', va='bottom',)
     axs[1].set_xlabel('Household income quintile')
     axs[1].set_ylabel(None)
 
@@ -442,29 +465,36 @@ def plot_fig_5(macro_inputs_, country_, outpath=None):
 
     plot_data = macro_inputs_.loc['baseline/0/+0'].copy()
 
-    plot_data[['gini_index', 'self_employment', 'avg_prod_k', 'ew', 'home_ownership_rate', 'transfers_share_GDP', 'k_household_share', 'k_pub_share']] *= 100
+    plot_data[['gini_index', 'self_employment', 'avg_prod_k', 'ew', 'home_ownership_rate', 'transfers_share_GDP', 'k_household_share', 'k_pub_share', 'region']] *= 100
     plot_data['k_priv_share'] = 100 - plot_data['k_pub_share'] - plot_data['k_household_share']
 
     plot_vars = {
         'gdp_pc_pp': ['GDP per capita', '$PPP'],
-        'gini_index': ['Inequality (Gini index)', '%'],
-        'self_employment': ['Self-employment rate', '%'],
-        'avg_prod_k': ['Avgerage capital productivity', '%'],
-        'ew': ['Early warning coverage', '%'],
-        'home_ownership_rate': ['Home ownership rate', '%'],
+        'gini_index': ['Inequality\n(Gini index)', '%'],
+        'self_employment': ['Self-employment\nrate', '%'],
+        'avg_prod_k': ['Avgerage capital\nproductivity', '%'],
+        'ew': ['Early warning\ncoverage', '%'],
+        'home_ownership_rate': ['Home ownership\nrate', '%'],
         'transfers_share_GDP': ['Social protection and\nprivate remittances', '% of GDP'],
         'k_household_share': ['Capital share,\nhouseholds', '%'],
         'k_priv_share': ['Capital share,\nother private assets', '%'],
         'k_pub_share': ['Capital share,\npublic assets', '%'],
     }
 
+    legend = True
     for ax, (var, (display_name, unit)) in zip(axs.flatten(), plot_vars.items()):
         ax.axhline(0, color='black', lw=0.5, alpha=.5)
-        sns.scatterplot(data=plot_data, x=var, y=0, ax=ax, color='lightgrey', edgecolor='none', alpha=0.05,
-                        s=100)
+        sns.scatterplot(data=plot_data, x=var, y=0, ax=ax, color='lightgrey', edgecolor='none', alpha=0.1,
+                        s=100, legend=legend, label='all countries')
+        sns.scatterplot(x=[plot_data[var].median()], y=[0], ax=ax, edgecolor='k', facecolor='none', s=100,
+                        legend=legend, label='global median')
+        sns.scatterplot(x=[plot_data[plot_data.region == plot_data.loc[country_, 'region']][var].median()], y=[0],
+                        ax=ax, edgecolor='k', facecolor='none', s=100, alpha=.5, linestyle='--', label='region median',
+                        legend=legend)
         sns.scatterplot(data=plot_data.loc[[country_]], x=var, y=0, ax=ax, edgecolor='darkturquoise',
-                        facecolor='none', s=100)
-        sns.scatterplot(x=[plot_data[var].median()], y=[0], ax=ax, edgecolor='k', facecolor='none', s=100)
+                        facecolor='none', s=100, legend=legend, label=plot_data.loc[country_, 'name'])
+        legend = False
+
         ctry_val = plot_data.loc[country_, var]
         if unit == '$PPP':
             ax.text(ctry_val, .4, f"{unit} {ctry_val:,.0f}", ha='center', va='bottom', fontsize=6,
@@ -476,13 +506,18 @@ def plot_fig_5(macro_inputs_, country_, outpath=None):
                     color='darkturquoise')
             ax.text(plot_data[var].median(), -.4, f"{int(np.round(plot_data[var].median(), 1))}%", ha='center',
                     va='top', fontsize=6, color='k')
-        ax.set_title(display_name, fontsize=7, ha='center', va='bottom', transform=ax.transAxes)
+        ax.set_title(display_name, ha='center', va='bottom', transform=ax.transAxes)
         ax.set_xlim(min(ax.get_xlim()[0], -.1 * (plot_data[var].max() - plot_data[var].min())), ax.get_xlim()[1])
         ax.axis('off')
 
         ax.set_ylim(-1, 1)
 
-    plt.tight_layout(w_pad=3, h_pad=2)
+    handles, labels = axs.flatten()[0].get_legend_handles_labels()
+    handles[0] = copy.copy(handles[0])
+    handles[0].set_alpha(.5)
+    axs.flatten()[0].legend(handles, labels, loc='upper right', fontsize=7, frameon=False, bbox_to_anchor=(-.1, 0.4),
+                            title=None)
+    plt.tight_layout(w_pad=3, h_pad=-1)
     plt.draw()
 
     for ax, var in zip(axs.flatten(), plot_vars.keys()):
@@ -530,7 +565,7 @@ def plot_fig_6(cat_info_inputs_, macro_inputs_, country_, outpath=None):
                 dodge=True, width=0.6, label='labor')
     axs[0, 0].set_ylabel(f"per capita\n[$PPP{unit}]")
     axs[0, 0].set_xlabel('')
-    axs[0, 0].set_title('Income', fontsize=7, ha='center', va='bottom')
+    axs[0, 0].set_title('Income', ha='center', va='bottom')
     axs[0, 0].legend(loc='upper left', fontsize=6, frameon=False, title=None, handlelength=1, handletextpad=.5)
     twinx00 = add_percentage_twinx(axs[0, 0], plot_data['c'].sum() / factor)
     twinx00.set_ylabel('share of\ncountry total [%]')
@@ -543,7 +578,7 @@ def plot_fig_6(cat_info_inputs_, macro_inputs_, country_, outpath=None):
                 dodge=True, width=0.6, label='other')
     axs[0, 1].set_ylabel(f"per capita\n[$PPP{unit}]")
     axs[0, 1].set_xlabel('')
-    axs[0, 1].set_title('Assets', fontsize=7, ha='center', va='bottom')
+    axs[0, 1].set_title('Assets', ha='center', va='bottom')
     axs[0, 1].legend(loc='upper left', fontsize=6, frameon=False, title=None, handlelength=1, handletextpad=.5)
     twinx01 = add_percentage_twinx(axs[0, 1], plot_data['k'].sum() / factor)
     twinx01.set_ylabel('share of\ncountry total [%]')
@@ -554,7 +589,7 @@ def plot_fig_6(cat_info_inputs_, macro_inputs_, country_, outpath=None):
                 color='darkturquoise', dodge=True, width=0.6)
     axs[0, 2].set_ylabel(f"per capita\n[$PPP{unit}]")
     axs[0, 2].set_xlabel('')
-    axs[0, 2].set_title('Savings', fontsize=7, ha='center', va='bottom')
+    axs[0, 2].set_title('Savings', ha='center', va='bottom')
     twinx02 = add_percentage_twinx(axs[0, 2], plot_data['liquidity'].sum() / factor)
     twinx02.set_ylabel('share of\ncountry total [%]')
 
@@ -562,14 +597,14 @@ def plot_fig_6(cat_info_inputs_, macro_inputs_, country_, outpath=None):
                 dodge=True, width=0.6)
     axs[1, 0].set_ylabel(f"coverage [%]")
     axs[1, 0].set_xlabel(' ')
-    axs[1, 0].set_title('Financial inclusion', fontsize=7, ha='center', va='bottom')
+    axs[1, 0].set_title('Financial inclusion', ha='center', va='bottom')
     axs[1, 0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
 
     sns.barplot(data=plot_data[['diversified_share']], x='income_cat', y='diversified_share', ax=axs[1, 1],
                 color='darkturquoise', dodge=True, width=0.6)
     axs[1, 1].set_ylabel(f"share of\nhousehold income [%]")
     axs[1, 1].set_xlabel(' ')
-    axs[1, 1].set_title('Diversified income adequacy', fontsize=7, ha='center', va='bottom')
+    axs[1, 1].set_title('Diversified income adequacy', ha='center', va='bottom')
     axs[1, 1].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
 
     factor, unit, _ = format_dollar_value(plot_data.c_diversified.max(), abbreviations=False)
@@ -578,7 +613,7 @@ def plot_fig_6(cat_info_inputs_, macro_inputs_, country_, outpath=None):
                 color='darkturquoise', dodge=True, width=0.6)
     axs[1, 2].set_ylabel(f"per capita\n[$PPP{unit}]")
     axs[1, 2].set_xlabel(' ')
-    axs[1, 2].set_title('Diversified income distribution', fontsize=7, ha='center', va='bottom')
+    axs[1, 2].set_title('Diversified income distribution', ha='center', va='bottom')
     twinx10 = add_percentage_twinx(axs[1, 2], plot_data.c_diversified.sum() / factor)
     twinx10.set_ylabel('share of\ncountry total [%]')
 
@@ -611,7 +646,7 @@ def plot_fig_7(hazard_inputs_quintile_, country, outpath=None):
         legend = plot_protection_difference and i == len(hazards) - 1
         if plot_protection_difference:
             sns.barplot(hazard_data.xs(False, level='protection'), x='income_cat', y='fa_avg', label='without',
-                        ax=axs[0, i], color='darkturquoise', dodge=True, width=0.6, alpha=0.5, legend=legend)
+                        ax=axs[0, i], color='darkturquoise', dodge=True, width=0.6, alpha=0.4, legend=legend)
         sns.barplot(hazard_data.xs(True, level='protection'), x='income_cat', y='fa_avg', label='with',
                     ax=axs[0, i], color='darkturquoise', dodge=True, width=0.6, legend=legend)
         if hazard == 'all hazards' and plot_protection_difference:
@@ -620,18 +655,18 @@ def plot_fig_7(hazard_inputs_quintile_, country, outpath=None):
             sns.barplot(helper_protected.to_frame(), x='income_cat', y='v_ew', hue='protection', ax=axs[1, i],
                         palette=['darkturquoise', 'darkturquoise'], dodge=True, width=0.6, legend=False)
             sns.barplot(helper_unprotected.to_frame(), x='income_cat', y='v_ew', hue='protection', ax=axs[1, i],
-                        palette=['darkturquoise', 'darkturquoise'], dodge=True, width=0.6, alpha=0.5, legend=False)
+                        palette=['darkturquoise', 'darkturquoise'], dodge=True, width=0.6, alpha=0.4, legend=False)
             axs[1, i].axhline(hazard_data_total.loc[False, 'v_ew'], color='darkturquoise', lw=0.5,
-                              ls='--', label=None, alpha=0.5)
+                              ls='--', label=None, alpha=0.4)
         else:
             sns.barplot(hazard_data.xs(True, level='protection'), x='income_cat', y='v_ew', ax=axs[1, i],
                         color='darkturquoise', dodge=True, width=0.6, legend=False)
         axs[1, i].axhline(hazard_data_total.loc[True, 'v_ew'], color='darkturquoise', lw=0.5,
                           ls='--', label=None)
-        axs[0, i].set_title(hazard, fontsize=7, ha='center', va='bottom')
+        axs[0, i].set_title(hazard, ha='center', va='bottom')
         axs[1, i].set_xlabel(' ')
 
-    axs[0, 0].set_ylabel('Annual average\nasset exposure [%]')
+    axs[0, 0].set_ylabel('Annual average exposure\n[% total assets]')
     axs[1, 0].set_ylabel('Asset vulnerability [%]')
 
     fa_ymax = axs[0, 0].get_ylim()[1]
@@ -689,7 +724,7 @@ def plot_fig_3_old(ensemble_results_, ensemble_cat_info_, country=None, outpath=
                 label='other')
     axs[0].set_xlabel(None)
     axs[0].set_ylabel(None)
-    axs[0].set_title('Assets\n[$PPP 1,000]', fontsize=7, ha='center', va='bottom')
+    axs[0].set_title('Assets\n[$PPP 1,000]', ha='center', va='bottom')
     axs[0].set_xlabel(' ')
     axs[0].legend(loc='upper left', fontsize=6, frameon=False, title=None, handlelength=1, handletextpad=.5)
 
@@ -698,7 +733,7 @@ def plot_fig_3_old(ensemble_results_, ensemble_cat_info_, country=None, outpath=
     sns.barplot(data=plot_data, x='income_cat', y='c_labor', ax=axs[1], color='darkturquoise', dodge=True, width=0.6,
                 label='labor')
     axs[1].set_ylabel(None)
-    axs[1].set_title('Income\n[$PPP 1,000]', fontsize=7, ha='center', va='bottom')
+    axs[1].set_title('Income\n[$PPP 1,000]', ha='center', va='bottom')
     axs[1].set_xlabel(None)
     axs[1].legend(loc='upper left', fontsize=6, frameon=False, title=None, handlelength=1, handletextpad=.5)
 
@@ -708,12 +743,12 @@ def plot_fig_3_old(ensemble_results_, ensemble_cat_info_, country=None, outpath=
         plot_data['liquidity'] /= 1000
     sns.barplot(data=plot_data, x='income_cat', y='liquidity', ax=axs[2], color='darkturquoise', dodge=True, width=0.6)
     axs[2].set_ylabel(None)
-    axs[2].set_title(f'Savings\n{liquidity_unit}', fontsize=7, ha='center', va='bottom')
+    axs[2].set_title(f'Savings\n{liquidity_unit}', ha='center', va='bottom')
     axs[2].set_xlabel(None)
 
     sns.barplot(data=plot_data, x='income_cat', y='axfin', ax=axs[3], color='darkturquoise', dodge=True, width=0.6)
     axs[3].set_ylabel(None)
-    axs[3].set_title('Financial\ninclusion [%]', fontsize=7, ha='center', va='bottom')
+    axs[3].set_title('Financial\ninclusion [%]', ha='center', va='bottom')
     axs[3].set_xlabel(None)
 
     fig.text(0.5, 0, 'Household income quintile', fontsize=7, ha='center', va='bottom', transform=fig.transFigure)
@@ -731,7 +766,7 @@ def plot_fig_3_old(ensemble_results_, ensemble_cat_info_, country=None, outpath=
 #
 #     plot_data = ensemble_results_.loc[dict(policy='baseline', vs=0, hs=0)][['ew']].to_dataframe()['ew'].dropna(how='all') * 100
 #     ax.axhline(0, color='black', lw=0.5, alpha=.5)
-#     sns.scatterplot(data=plot_data.to_frame(), x='ew', y=0, ax=ax, color='lightgrey', edgecolor='none', alpha=0.05, s=100)
+#     sns.scatterplot(data=plot_data.to_frame(), x='ew', y=0, ax=ax, color='lightgrey', edgecolor='none', alpha=0.1, s=100)
 #     if country is not None:
 #         sns.scatterplot(data=plot_data.loc[[country]].to_frame(), x='ew', y=0, ax=ax, edgecolor='darkturquoise',
 #                         facecolor='none', s=100)
@@ -972,7 +1007,7 @@ def get_optimal_trajectory(data, ax=None, interpolate_path=True, linestyle='soli
         return path_x, path_y
 
 
-def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=None):
+def plot_fig_4(macro_results_, country, metrics, scaling_selection=None, outpath=None):
     metric_names = {
         'risk_to_assets': 'Avoided risk to\nassets',
         'risk_to_consumption': 'Avoided risk to\nconsumption',
@@ -998,27 +1033,27 @@ def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=
     policy_names = {
         'insurance/100/+20': 'Insurance covering\n20% of losses',
         'post_disaster_support/100/+40': 'Post-disaster support\nequal to 40% of the\nlosses of the poor',
-        'reduce_total_exposure/100/-5': 'reduce total exposure\nby 5% targeting the\nentire population',
-        'reduce_total_exposure/20/-5': 'reduce total exposure\nby 5% targeting the\npoorest 20%',
-        'reduce_total_vulnerability/100/-5': 'reduce total vulnerability\nby 5% targeting the\nentire population',
-        'reduce_total_vulnerability/20/-5': 'reduce total vulnerability\nby 5% targeting the\npoorest 20%',
-        'scale_gini_index/100/-10': 'reduce inequality by 10%',
-        'scale_income_and_liquidity/100/+5': 'increase income and\nliquidity by 5%',
-        'scale_non_diversified_income/100/-10': 'reduce non-diversified\nincome share by 10%',
-        'scale_self_employment/100/-10': 'reduce self-employment\nrate by 10%',
+        'reduce_total_exposure/100/-5': 'Reduce total exposure\nby 5% targeting the\nentire population',
+        'reduce_total_exposure/20/-5': 'Reduce total exposure\nby 5% targeting the\npoorest 20%',
+        'reduce_total_vulnerability/100/-5': 'Reduce total vulnerability\nby 5% targeting the\nentire population',
+        'reduce_total_vulnerability/20/-5': 'Reduce total vulnerability\nby 5% targeting the\npoorest 20%',
+        'scale_gini_index/100/-10': 'Reduce inequality by 10%',
+        'scale_income_and_liquidity/100/+5': 'Increase income and\nliquidity by 5%',
+        'scale_non_diversified_income/100/-10': 'Reduce non-diversified\nincome share by 10%',
+        'scale_self_employment/100/-10': 'Reduce self-employment\nrate by 10%',
     }
 
     baseline_selector = dict(policy='baseline/0/+0')
-    if 'hs' in results_data_.coords:
+    if 'hs' in macro_results_.coords:
         baseline_selector = dict(policy='baseline', hs=0, vs=0)
     else:
-        scaling_selection = {p: {'policy': p} for p in results_data_.policy.values if 'baseline' not in p}
+        scaling_selection = {p: {'policy': p} for p in macro_results_.policy.values if 'baseline' not in p}
 
 
-    policies = results_data_.policy.values
+    policies = macro_results_.policy.values
     dollar_metrics = np.intersect1d(['risk_to_assets', 'risk_to_consumption', 'risk_to_wellbeing'], metrics)
     population_metrics = np.intersect1d(['risk_to_all_poverty', 'risk_to_extreme_poverty', 'risk_to_societal_poverty'], metrics)
-    plot_data = results_data_[metrics]
+    plot_data = macro_results_[metrics]
 
     if scaling_selection is not None:
         mask = xr.zeros_like(plot_data, dtype=bool)
@@ -1028,9 +1063,9 @@ def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=
         plot_data = plot_data.where(mask)
 
     if len(population_metrics) > 0:
-        plot_data[population_metrics] = plot_data[population_metrics] * results_data_['pop']
+        plot_data[population_metrics] = plot_data[population_metrics] * macro_results_['pop']
     if len(dollar_metrics) > 0:
-        plot_data[dollar_metrics] = plot_data[dollar_metrics] * results_data_['gdp_pc_pp'] * results_data_['pop']
+        plot_data[dollar_metrics] = plot_data[dollar_metrics] * macro_results_['gdp_pc_pp'] * macro_results_['pop']
 
     diff_abs = plot_data.sel(baseline_selector) - plot_data
     diff_abs = diff_abs.where((np.abs(diff_abs) >= 1e-10) | np.isnan(diff_abs), 0)
@@ -1059,7 +1094,6 @@ def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=
         else:
             raise ValueError(f"Unknown metric: {metric}")
 
-
     if scaling_selection is not None:
         fig_height = min(2 * (len(scaling_selection) - 1) + 2, 25) * centimeter
         fig, axs = plt.subplots(figsize=(double_col_width, fig_height), nrows=1, ncols=len(metrics) + 1, sharex='col',
@@ -1068,20 +1102,28 @@ def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=
         # twin_axs = [ax.twiny() for ax in axs]
         for row_idx, (policy, policy_dict) in enumerate(scaling_selection.items()):
             for col_idx, (ax, metric) in enumerate(zip(axs[1:], metrics)):
+                legend = row_idx == 0 and col_idx == len(metrics) - 1
                 scenario_diff_rel = diff_rel.sel(policy_dict)[metric].to_dataframe()[[metric]]
                 scenario_diff_abs = diff_abs.sel(policy_dict)[metric].to_dataframe()[[metric]]
                 country_diff_rel = scenario_diff_rel.loc[country].item()
                 sns.scatterplot(data=scenario_diff_rel, x=metric, y=row_idx, ax=ax, color='lightgrey', edgecolor='none',
-                                alpha=0.1, s=100, legend=False)
+                                alpha=0.05, s=100, legend=legend, label='all countries')
+                sns.scatterplot(x=[scenario_diff_rel.median().item()], y=[row_idx], ax=ax, edgecolor='k',
+                                facecolor='none', s=100, legend=legend, label='global median')
+                region_countries = macro_res.where(macro_res.region == macro_res.sel(iso3=country).region.values[0],
+                                                   drop=True).iso3.values
+                sns.scatterplot(x=[scenario_diff_rel.loc[region_countries].median().item()], y=[row_idx], ax=ax,
+                                edgecolor='k', facecolor='none', s=100, legend=legend, label='region median', alpha=.5,
+                                linestyle='--')
                 sns.scatterplot(x=[country_diff_rel], y=[row_idx], ax=ax, edgecolor='darkturquoise',
-                                label=results_data_.name.sel(baseline_selector).sel(iso3=country).item(),
-                                legend=False, facecolor='none', s=100, zorder=10)
-                sns.scatterplot(x=[scenario_diff_rel.median().item()], y=[row_idx], ax=ax, edgecolor='k', facecolor='none', s=100,
-                                legend=False)
+                                label=macro_results_.name.sel(baseline_selector).sel(iso3=country).item(),
+                                legend=legend, facecolor='none', s=100, zorder=10)
+                if legend:
+                    handles, labels = ax.get_legend_handles_labels()
 
                 country_diff_abs = scenario_diff_abs.loc[country].item()
                 ax.text(country_diff_rel, row_idx + .15, f"{get_value_with_unit(country_diff_abs, metric)}",
-                        ha='center', va='bottom', fontsize=8, color='darkturquoise')
+                        ha='center', va='bottom', fontsize=7, color='darkturquoise')
                 # twiny.plot(country_diff_abs, row_idx, alpha=0)
 
                 if row_idx == len(scaling_selection) - 1:
@@ -1099,17 +1141,9 @@ def plot_fig_4(results_data_, country, metrics, scaling_selection=None, outpath=
                     ax.spines['right'].set_visible(False)
                     ax.spines['left'].set_visible(False)
 
-                    # baseline_val = plot_data.sel(baseline_selector).sel(iso3=country)[metric]
-                    # twiny.set_xlim((ax.get_xlim()[0] / 100 * baseline_val, ax.get_xlim()[1] / 100 * baseline_val))
-                    # twiny.set_xlabel(f"absolute change [{units[metric]}]\n(only {country})")
-                    #
-                    # twiny.spines['right'].set_visible(False)
-                    # twiny.spines['left'].set_visible(False)
-                    # twiny.spines['bottom'].set_visible(False)
-                    #
-                    # twiny.tick_params(axis='x', colors='darkturquoise')
-                    # twiny.xaxis.label.set_color('darkturquoise')
-                    # twiny.spines['top'].set_color('darkturquoise')
+        handles[0] = copy.copy(handles[0])
+        handles[0].set_alpha(.5)
+        axs[-1].legend(handles, labels, loc='lower right', fontsize=7, frameon=False, bbox_to_anchor=(1, 1.01))
 
         plt.tight_layout()
         plt.subplots_adjust(wspace=.25)
@@ -1260,31 +1294,32 @@ def prepare_data(cat_info_res_, macro_res_, hazard_prot_sc_, cat_info_sc_, macro
     hazard_inputs_quintile_ = hazard_inputs_quintile_.rename(index={.2: 'q1', .4: 'q2', .6: 'q3', .8: 'q4', 1: 'q5'}, level='income_cat').sort_index()
     hazard_inputs_quintile_['policy-iso3-hazrd-income_cat-protection'] = hazard_inputs_quintile_.reset_index()[['policy', 'iso3', 'hazard', 'income_cat', 'protection']].astype(str).sum(axis=1).values
 
-    model_results_ = (cat_info_res_[['dk', 'dc', 'dw']] * cat_info_res_.n).to_dataframe().groupby(policy_dims + ['iso3', 'hazard', 'rp', 'income_cat']).sum()
+    model_results_ = cat_info_res_df[['dk', 'dc', 'dw', 'n']].dropna(how='all')
+    model_results_ = model_results_.rename(index={.2: 'q1', .4: 'q2', .6: 'q3', .8: 'q4', 1: 'q5'}, level='income_cat')
+    model_results_[['dk', 'dc', 'dw']] = model_results_[['dk', 'dc', 'dw']].mul(model_results_.n, axis=0)
+    model_results_ = model_results_.groupby(policy_dims + ['iso3', 'hazard', 'rp', 'income_cat']).sum()
+    model_results_[['dk', 'dc', 'dw']] = model_results_[['dk', 'dc', 'dw']].div(model_results_.n, axis=0)
     model_results_ = pd.merge(model_results_, hazard_prot_sc_df, left_index=True, right_index=True, how='left')
     model_results_['protection'] = model_results_.protection.values >= model_results_.reset_index().rp.values
-    model_results_ = model_results_.drop(columns='protection').mul(~model_results_.protection, axis=0)
-    event_results = model_results_.groupby(policy_dims + ['iso3', 'hazard', 'rp']).sum()
+    model_results_ = pd.concat([model_results_.drop(columns=['protection', 'n']).mul(~model_results_.protection, axis=0), model_results_.n], axis=1)
+    event_results = model_results_[['dk', 'dc', 'dw']].mul(model_results_.n, axis=0).groupby(policy_dims + ['iso3', 'hazard', 'rp']).sum()
     event_results['income_cat'] = 'total'
+    event_results['n'] = 1
     event_results = event_results.set_index('income_cat', append=True)
     model_results_ = pd.concat([model_results_, event_results], axis=0).sort_index()
-    annual_average_results = average_over_rp(model_results_, hazard_prot_sc_df)
+    annual_average_results = pd.concat([average_over_rp(model_results_.drop(columns='n'), hazard_prot_sc_df), model_results_.n.groupby(policy_dims + ['iso3', 'hazard', 'income_cat']).mean()], axis=1)
     annual_average_results['rp'] = 'annual average'
     annual_average_results = annual_average_results.reset_index().set_index(policy_dims + ['iso3', 'hazard', 'rp', 'income_cat'])
     model_results_ = pd.concat([model_results_, annual_average_results], axis=0).sort_index()
-    all_hazards_results = model_results_.groupby(policy_dims + ['iso3', 'rp', 'income_cat']).sum()
+    all_hazards_results = model_results_.groupby(policy_dims + ['iso3', 'rp', 'income_cat']).agg({'dk': 'sum', 'dc': 'sum', 'dw': 'sum', 'n': 'mean'})
     all_hazards_results['hazard'] = 'all hazards'
     all_hazards_results = all_hazards_results.reset_index().set_index(policy_dims + ['iso3', 'hazard', 'rp', 'income_cat'])
     model_results_ = pd.concat([model_results_, all_hazards_results], axis=0).sort_index()
-    model_results_['dw'] = model_results_['dw'] / (macro_res_.gdp_pc_pp**(-macro_res_.income_elasticity_eta)).to_dataframe(name='currency').currency
+    model_results_['dw_currency'] = model_results_['dw'] / (macro_res_.gdp_pc_pp**(-macro_res_.income_elasticity_eta)).to_dataframe(name='currency').currency
 
-    # per capita values are relative to *total* population, not population quintiles
-    model_results_.columns = [f"{col}_pc" for col in model_results_.columns]
-    model_results_gdp_share = model_results_.div(macro_inputs_.gdp_pc_pp, axis=0)
-    model_results_gdp_share.columns = [ f"{col.split('_')[0]}_risk" for col in model_results_gdp_share.columns]
-    model_results_ = pd.concat([model_results_, model_results_gdp_share], axis=1)
+    model_results_ = model_results_.rename(columns={'dk': 'dk_pc', 'dc': 'dc_pc', 'dw': 'dw_pc', 'dw_currency': 'dw_pc_currency'})
 
-    model_results_['resilience'] = model_results_.dk_risk / model_results_.dw_risk
+    model_results_['resilience'] = model_results_.dk_pc / model_results_.dw_pc_currency
     model_results_ = model_results_.dropna()
 
     model_results_ = model_results_.rename(index={.2: 'q1', .4: 'q2', .6: 'q3', .8: 'q4', 1: 'q5'}, level='income_cat')
@@ -1314,7 +1349,10 @@ def prepare_data(cat_info_res_, macro_res_, hazard_prot_sc_, cat_info_sc_, macro
             workbook = writer.book
             pd.DataFrame().to_excel(writer, sheet_name='Country report', index=False)
             for df_, name in tqdm.tqdm(zip([cat_info_sc_df_, macro_inputs_, hazard_inputs_quintile_, model_results_, t_reco_, data_coverage_.reset_index(), policy_name_lookup_], ['cat_info_inputs', 'macro_inputs', 'hazard_inputs', 'model_results', 't_reco', 'data_coverage', 'policy_name_lookup'])):
-                df_.reset_index(inplace=True)
+                if isinstance(df_, pd.DataFrame):
+                    df_ = df_.reset_index()
+                else:
+                    df_ = df_.to_frame().reset_index()
                 df_.to_excel(writer, sheet_name=name, index=False, header=True)
                 worksheet = writer.sheets[name]
                 worksheet.add_table(0, 0, df_.shape[0], df_.shape[1] - 1, {'name': name, 'columns': [{'header': col} for col in df_.columns], 'style': None})
@@ -1329,43 +1367,55 @@ def load_model_data(preprocessed_inputs_dir_, raw_data_dir_):
     return capital_shares_, data_coverage_, gini_index_
 
 
-def generate_pdf_report(macro_inputs_, countries, ppp_reference_year, tex_template_path, outpath):
-    baseline_macro_data = macro_inputs_.loc['baseline/0/+0']
+def generate_pdf_report(ppp_reference_year, tex_template_path, outpath, countries=None):
+    bl_macro_inputs = macro_inputs.loc['baseline/0/+0']
+    bl_model_results = model_results.loc['baseline/0/+0']
+
+    if countries is None:
+        countries = macro_inputs.index.unique('iso3').values
     for country in tqdm.tqdm(countries, desc="Generating PDF reports"):
         with open(tex_template_path, "r", encoding="utf-8") as f:
             tex_template = f.read()
 
+        tex_template = tex_template.replace("_input/", os.path.join(outpath, f"_input/"))
         tex_template = tex_template.replace("+++iso3+++", country)
-        tex_template = tex_template.replace("+++ctry+++", baseline_macro_data.loc[country, 'name'])
-        tex_template = tex_template.replace("+++gdp-per-capita+++", f"\$PPP {baseline_macro_data.loc[country, 'gdp_pc_pp']:,.2f}")
-        tex_template = tex_template.replace("+++country-income-group+++", f"{baseline_macro_data.loc[country, 'income_group']}")
-        tex_template = tex_template.replace("+++world-region+++", f"{baseline_macro_data.loc[country, 'region']}")
-        tex_template = tex_template.replace("+++population+++", f"{int(baseline_macro_data.loc[country, 'pop']):,.0f}")
+        tex_template = tex_template.replace("+++ctry+++", bl_macro_inputs.loc[country, 'name'])
+        tex_template = tex_template.replace("+++gdp-per-capita+++", f"\$PPP {bl_macro_inputs.loc[country, 'gdp_pc_pp']:,.2f}")
+        tex_template = tex_template.replace("+++country-income-group+++", f"{bl_macro_inputs.loc[country, 'income_group']}")
+        tex_template = tex_template.replace("+++world-region+++", f"{WORLD_REGION_NAMES[bl_macro_inputs.loc[country, 'region']]}")
+        tex_template = tex_template.replace("+++population+++", f"{int(bl_macro_inputs.loc[country, 'pop']):,.0f}")
         tex_template = tex_template.replace("+++currency-year+++", f"{ppp_reference_year}")
+        tex_template = tex_template.replace("+++resilience+++", f"{bl_model_results.loc[(country, 'all hazards', 'annual average', 'total'), 'resilience'] * 100:,.1f}")
+        tex_template = tex_template.replace("+++well-being-loss+++", f"{1 / bl_model_results.loc[(country, 'all hazards', 'annual average', 'total'), 'resilience']:,.2f} (= \$1/{bl_model_results.loc[(country, 'all hazards', 'annual average', 'total'), 'resilience']:,.3f})")
+
+
+        os.makedirs(os.path.join(outpath, f"_input/{country}"), exist_ok=True)
+
+        for f in ['gfdrr_logo.png', 'world_bank_logo.png', 'lib.bib']:
+            if not os.path.exists(os.path.join(outpath, f"_input/{country}", f)):
+                shutil.copy(os.path.join(Path(tex_template_path).parent, '_input', f), os.path.join(outpath, "_input", f))
 
         tex_outpath = os.path.join(outpath, f"{country}.tex")
         with open(tex_outpath, "w", encoding="utf-8") as f:
             f.write(tex_template)
 
-        os.makedirs(os.path.join(outpath, f"_figures/{country}"), exist_ok=True)
-
         plot_fig_1(macro_res, ['risk_to_assets', 'risk_to_consumption', 'risk_to_wellbeing', 't_reco_95', 'resilience'],
-                   country=country, outpath=os.path.join(outpath, f"_figures/{country}/{country}_fig_1.png"))
-        plot_fig_2(macro_inputs, model_results, t_reco, country=country, outpath=os.path.join(outpath, f"_figures/{country}/{country}_fig_2.png"))
-        plot_fig_3(macro_inputs, model_results, country=country, outpath=os.path.join(outpath, f"_figures/{country}/{country}_fig_3.png"))
+                   country=country, outpath=os.path.join(outpath, f"_input/{country}/{country}_fig_1.pdf"))
+        plot_fig_2(macro_inputs, model_results, t_reco, country=country, outpath=os.path.join(outpath, f"_input/{country}/{country}_fig_2.pdf"))
+        plot_fig_3(macro_inputs, model_results, country=country, outpath=os.path.join(outpath, f"_input/{country}/{country}_fig_3.pdf"))
         plot_fig_4(macro_res.drop_sel(dict(policy='scale_liquidity/100/-100')), country=country,
                    metrics=['risk_to_assets', 'risk_to_consumption', 'risk_to_wellbeing', 'resilience', 't_reco_95'],
-                   scaling_selection=None, outpath=os.path.join(outpath, f"_figures/{country}/{country}_fig_4.png"))
-        plot_fig_5(macro_inputs, country_=country, outpath=os.path.join(outpath, f"_figures/{country}/{country}_fig_5.png"))
-        plot_fig_6(cat_info_inputs, macro_inputs, country_=country, outpath=os.path.join(outpath, f"_figures/{country}/{country}_fig_6.png"))
-        plot_fig_7(hazard_inputs_quintile, country=country, outpath=os.path.join(outpath, f"_figures/{country}/{country}_fig_7.png"))
+                   scaling_selection=None, outpath=os.path.join(outpath, f"_input/{country}/{country}_fig_4.pdf"))
+        plot_fig_5(macro_inputs, country_=country, outpath=os.path.join(outpath, f"_input/{country}/{country}_fig_5.pdf"))
+        plot_fig_6(cat_info_inputs, macro_inputs, country_=country, outpath=os.path.join(outpath, f"_input/{country}/{country}_fig_6.pdf"))
+        plot_fig_7(hazard_inputs_quintile, country=country, outpath=os.path.join(outpath, f"_input/{country}/{country}_fig_7.pdf"))
         plt.close('all')
 
-        execute = f"cd \"{outpath}\" && pdflatex \"{tex_outpath}\""
+        execute = f"cd \"{outpath}\" && latexmk -pdf \"{tex_outpath}\""
         execute_res = os.system(execute)
 
     #cleanup
-    filetypes = ["*.log", "*.aux", "*.out"]
+    filetypes = ["*.log", "*.aux", "*.out", "*.bcf", "*.blg", "*.bbl", "*.fdb_latexmk", "*.fls", "*.run.xml"]
 
     for pattern in filetypes:
         for file_path in glob.glob(os.path.join(outpath, pattern)):
@@ -1414,8 +1464,6 @@ if __name__ == '__main__':
     # Generate PDF reports
     if report_outpath is not None:
         generate_pdf_report(
-            macro_inputs_=macro_inputs,
-            countries=macro_inputs.index.unique('iso3').values,
             ppp_reference_year=args.ppp_year,
             tex_template_path=args.tex_template_path,
             outpath=report_outpath
