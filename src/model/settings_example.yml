@@ -26,8 +26,6 @@ scenario_params:
     income_elasticity_eta: 1.5
     discount_rate_rho: .06
     axfin_impact: .1
-    ew_year: 2018
-    ew_decade: null
     reduction_vul: .2
   hazard_params:
     hazard_protection: 'FLOPROS'

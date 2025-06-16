@@ -1041,8 +1041,7 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         # merge HFA and WRP data: mean of the two data sets where both are available
         disaster_preparedness_['ew'] = pd.concat((hfa_data['ew'], disaster_preparedness_['ew']), axis=1).mean(axis=1)
         disaster_preparedness_['prepare_scaleup'] = pd.concat(
-            (hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1
-        ).mean(axis=1)
+            (hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1).mean(axis=1)
         disaster_preparedness_ = pd.merge(disaster_preparedness_, hfa_data.finance_pre, left_index=True, right_index=True, how='outer')
 
     for v in ['ew', 'prepare_scaleup', 'finance_pre']:
@@ -1230,8 +1229,6 @@ def prepare_scenario(scenario_params):
     macro_params['discount_rate_rho'] = macro_params.get('discount_rate_rho', .06)
     macro_params['axfin_impact'] = macro_params.get('axfin_impact', .1)
     macro_params['reconstruction_capital'] = macro_params.get('reconstruction_capital', 'self_hous')
-    macro_params['ew_year'] = macro_params.get('ew_year', 2018)
-    macro_params['ew_decade'] = macro_params.get('ew_decade', None)
     macro_params['reduction_vul'] = macro_params.get('reduction_vul', .2)
 
     hazard_params['hazard_protection'] = hazard_params.get('hazard_protection', 'FLOPROS')
@@ -1279,8 +1276,6 @@ def prepare_scenario(scenario_params):
         any_to_wb_=any_to_wb,
         include_hfa_data=True,
         guess_missing_countries=True,
-        ew_year=macro_params['ew_year'],
-        ew_decade=macro_params['ew_decade'],
         force_recompute=run_params['force_recompute'],
         verbose=run_params['verbose']
     )
