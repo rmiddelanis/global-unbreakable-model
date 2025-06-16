@@ -1010,9 +1010,7 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
     return ratings.rating
 
 
-def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True, guess_missing_countries=True, ew_year=2018, ew_decade=None,
-                                    forecast_accuracy_file_yearly="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_yearly.csv",
-                                    forecast_accuracy_file_decadal="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_decadal.csv",
+def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True, guess_missing_countries=True,
                                     force_recompute=True, verbose=True):
     """
     Loads and processes disaster preparedness data, including HFA and WRP data.
@@ -1022,27 +1020,19 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
         include_hfa_data (bool): Whether to include HFA data. Default is True.
         guess_missing_countries (bool): Whether to guess missing data based on income groups and regions. Default is True.
-        ew_year (int): Year for early warning data. Default is 2018 (no scaling is applied in this case).
-        ew_decade (str, optional): Decade for early warning data. Default is None.
-        forecast_accuracy_file_yearly (str): Path to the yearly forecast accuracy file. Default is "Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_yearly.csv".
-        forecast_accuracy_file_decadal (str): Path to the decadal forecast accuracy file. Default is "Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_decadal.csv".
         force_recompute (bool): Whether to force recomputation of data. Default is True.
         verbose (bool): Whether to print verbose output. Default is True.
 
     Returns:
         pd.DataFrame: Processed disaster preparedness data indexed by ISO3 country codes.
     """
-    if ew_decade == '':
-        ew_decade = None
     outpath = os.path.join(root_dir_, "data/processed/disaster_preparedness.csv")
-    if not force_recompute and os.path.exists(outpath) and (ew_year == 2018) and (ew_decade is None):
+    if not force_recompute and os.path.exists(outpath):
         print("Loading disaster preparedness data from file...")
         disaster_preparedness_ = pd.read_csv(outpath, index_col='iso3')
         return disaster_preparedness_
 
     print("Recomputing disaster preparedness data...")
-    if ew_decade is not None or ew_year != 2018:
-        print("Recomputing disaster preparedness because of change in EW year or decade.")
     disaster_preparedness_ = load_wrp_data(any_to_wb_, "WRP/lrf_wrp_2021_full_data.csv.zip", root_dir_,
                                            verbose=verbose)
     if include_hfa_data:
@@ -1075,19 +1065,6 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Country income group').mean())
         merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Country income group'])], axis=1))
         disaster_preparedness_ = merged[disaster_preparedness_.columns]
-    if ew_year is not None and ew_decade is None:
-        forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "data/raw/", forecast_accuracy_file_yearly), index_col=[0, 1]).squeeze()
-        if ew_year not in forecast_accuracy.index.get_level_values('year'):
-            raise ValueError(f"Forecast accuracy data not available for year {ew_year}.")
-        ew_factor = forecast_accuracy.xs(ew_year, level='year') / forecast_accuracy.xs(forecast_accuracy.index.get_level_values('year').max(), level='year')
-    elif ew_year is None and ew_decade is not None:
-        forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "data/raw/", forecast_accuracy_file_decadal), index_col=[0, 1]).squeeze()
-        if ew_decade not in forecast_accuracy.index.get_level_values('decade'):
-            raise ValueError(f"Forecast accuracy data not available for decade {ew_decade}.")
-        ew_factor = forecast_accuracy.xs(ew_decade, level='decade') / forecast_accuracy.xs('2011-2020', level='decade')
-    else:
-        raise ValueError("Exactly one of ew_year or ew_decade must be set.")
-    disaster_preparedness_.loc[:, 'ew'] = (disaster_preparedness_['ew'] * ew_factor).copy()
     disaster_preparedness_ = disaster_preparedness_.dropna()
     disaster_preparedness_.to_csv(outpath)
     return disaster_preparedness_
