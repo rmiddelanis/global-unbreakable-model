@@ -66,7 +66,7 @@ INCOME_GROUP_MARKERS = ['o', 's', 'D', '^']
 
 NAME_DICT = {
     'resilience': 'socio-economic\nresilience [%]',
-    'risk': 'risk to well-being\n[% of GDP]',
+    'risk_to_wellbeing': 'risk to well-being\n[% of GDP]',
     'risk_to_assets': 'risk to assets\n[% of GDP]',
     'gdp_pc_pp': 'GDPpc [$PPP]',
     'log_gdp_pc_pp': 'ln(GDPpc [$PPP])',
@@ -116,13 +116,10 @@ def load_data(simulation_paths_, model_root_dir_):
         cat_info_data_[k].recovery_params = cat_info_data_[k].recovery_params.apply(
             lambda x: [(float(d.split(', ')[0]), float(d.split(', ')[1])) for d in x[2:-2].split('), (')])
 
-    results_data_ = {
-        k: pd.read_csv(os.path.join(v, "results.csv"), index_col=0) for k, v in
-        simulation_paths_.items()
-    }
+    results_data_ = {k: pd.read_csv(os.path.join(v, "results.csv"), index_col=0) for k, v in simulation_paths_.items()}
 
     for k in results_data_.keys():
-        results_data_[k][['resilience', 'risk', 'risk_to_assets']] *= 100
+        results_data_[k][['resilience', 'risk_to_wellbeing', 'risk_to_assets']] *= 100
         results_data_[k]['log_gdp_pc_pp'] = np.log(results_data_[k]['gdp_pc_pp'])
         results_data_[k] = results_data_[k].rename(columns={'income_group': 'Country income group', 'region': 'Region'})
         if 'THA' in results_data_[k].index:
@@ -135,7 +132,7 @@ def load_data(simulation_paths_, model_root_dir_):
 
     name_dict_ = {
         'resilience': 'socio-economic resilience [%]',
-        'risk': 'risk to well-being [% of GDP]',
+        'risk_to_wellbeing': 'risk to well-being [% of GDP]',
         'risk_to_assets': 'risk to assets [% of GDP]',
         'gdp_pc_pp': 'GDP per capita [$PPP]',
         'dk_tot': 'Asset losses [$PPP]',
@@ -222,7 +219,7 @@ def print_results_table(results_data_, data_coverage_=None):
             superscripts = '\\textsuperscript{' + ','.join(superscript_letters[data_coverage_.loc[idx, superscript_columns] != 'available']) + '}'
             if superscripts == '\\textsuperscript{}':
                 superscripts = ''
-        print(f'{idx}{superscripts} & {row["Country income group"]} & {row["gdp_pc_pp"]:.0f} & {row["risk_to_assets"]:.2f} & {row["risk"]:.2f}  & {row["resilience"]:.2f}\\\\')
+        print(f'{idx}{superscripts} & {row["Country income group"]} & {row["gdp_pc_pp"]:.0f} & {row["risk_to_assets"]:.2f} & {row["risk_to_wellbeing"]:.2f}  & {row["resilience"]:.2f}\\\\')
 
 
 def plot_recovery(t_max, productivity_pi_, delta_tax_sp_, k_h_eff_, delta_k_h_eff_, lambda_h_, sigma_h_, savings_s_h_,
@@ -603,11 +600,11 @@ def plot_supfig_5(results_data_, outpath_=None, show=False):
     fig, axs = plt.subplots(ncols=2, figsize=(fig_width, fig_heigt))
 
     # Scatter plot
-    sns.scatterplot(data=results_data_, x='risk_to_assets', y='risk', hue='Country income group', style='Country income group',
+    sns.scatterplot(data=results_data_, x='risk_to_assets', y='risk_to_wellbeing', hue='Country income group', style='Country income group',
                                   palette=INCOME_GROUP_COLORS, ax=axs[0], legend=False, markers=INCOME_GROUP_MARKERS, alpha=.5, s=10,
                                   hue_order=['LICs', 'LMICs', 'UMICs', 'HICs'])
     axs[0].set_xlabel(NAME_DICT['risk_to_assets'])
-    axs[0].set_ylabel(NAME_DICT['risk'])
+    axs[0].set_ylabel(NAME_DICT['risk_to_wellbeing'])
 
     # Scatter plot
     sns_scatter = sns.scatterplot(data=results_data_, x='dk_tot', y='dWtot_currency', hue='Country income group',
@@ -637,12 +634,12 @@ def plot_supfig_5(results_data_, outpath_=None, show=False):
 
     if outpath_:
         plt.savefig(outpath_ + '/supfig_5.pdf', dpi=300, bbox_inches='tight')
-        supfig_5_data = results_data_[['dk_tot', 'dWtot_currency', 'risk_to_assets', 'risk']]
+        supfig_5_data = results_data_[['dk_tot', 'dWtot_currency', 'risk_to_assets', 'risk_to_wellbeing']]
         supfig_5_data = supfig_5_data.rename(columns={
             'dk_tot': 'risk_to_assets_abs',
             'risk_to_assets': 'risk_to_assets_GDP',
             'dWtot_currency': 'risk_to_wellbeing_abs',
-            'risk': 'risk_to_wellbeing_GDP',
+            'risk_to_wellbeing': 'risk_to_wellbeing_GDP',
         })
         supfig_5_data.to_csv(outpath_ + '/supfig_5.csv')
     if show:
@@ -1011,7 +1008,7 @@ def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', 
 def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None, outpath_=None, show=True):
     variables = {
         'risk_to_assets': 'Avoided risk to\nassets [%]',
-        'risk': 'Avoided risk to\nwell-being [%]',
+        'risk_to_wellbeing': 'Avoided risk to\nwell-being [%]',
         'resilience': 'Socioeconomic resilience\nchange [pp]',
         't_reco_reduction': 'Recovery time\nreduction [%]',
     }
@@ -1035,7 +1032,7 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
     fig, axs = plt.subplots(nrows=1, ncols=len(variables), figsize=(fig_width, fig_height), sharex='col', sharey=True)
     differences = []
     for data_idx, (policy, policy_name) in enumerate(policies.items()):
-        difference = (1 - results_data_[policy][['risk_to_assets', 'risk']].mul(results_data_[policy].gdp_pc_pp, axis=0) / ref_data[['risk_to_assets', 'risk']].mul(ref_data.gdp_pc_pp, axis=0)) * 100
+        difference = (1 - results_data_[policy][['risk_to_assets', 'risk_to_wellbeing']].mul(results_data_[policy].gdp_pc_pp, axis=0) / ref_data[['risk_to_assets', 'risk_to_wellbeing']].mul(ref_data.gdp_pc_pp, axis=0)) * 100
         difference['resilience'] = results_data_[policy]['resilience'] - ref_data['resilience']
         t_reco_95_avg = calculate_average_recovery_duration(cat_info_data_[policy], 'iso3', hazard_protections_[policy], plot_rp)
         difference['t_reco_reduction'] = (1 - t_reco_95_avg / ref_data.t_reco_95_avg) * 100
@@ -1046,12 +1043,12 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
 
     # compute avoided well-being losses over avoided asset losses by country income group
     reduced_assets_impact = differences[differences.policy.isin(list(policies.values())[:6])].copy()
-    reduced_assets_impact['avoided_dw_over_avoided_dk'] = reduced_assets_impact['risk'] / reduced_assets_impact['risk_to_assets']
+    reduced_assets_impact['avoided_dw_over_avoided_dk'] = reduced_assets_impact['risk_to_wellbeing'] / reduced_assets_impact['risk_to_assets']
     print(reduced_assets_impact.groupby(['policy', 'Country income group']).avoided_dw_over_avoided_dk.describe())
 
     bc_ratios = []
     for asp_variant in ['pds40', 'insurance20']:
-        benefit = (results_data_['baseline'][['risk', 'gdp_pc_pp']].prod(axis=1) - results_data_[asp_variant][['risk', 'gdp_pc_pp']].prod(axis=1)) / 100
+        benefit = (results_data_['baseline'][['risk_to_wellbeing', 'gdp_pc_pp']].prod(axis=1) - results_data_[asp_variant][['risk_to_wellbeing', 'gdp_pc_pp']].prod(axis=1)) / 100
         cost = results_data[asp_variant]['average_aid_cost_pc']
         bc_ratios.append((benefit / cost).rename(asp_variant))
     returns_merged = pd.merge(pd.concat(bc_ratios, axis=1), income_groups, left_index=True, right_index=True)
@@ -1112,7 +1109,7 @@ def plot_fig_5(results_data_, cat_info_data_, hazard_protections_, plot_rp=None,
     if outpath_:
         plt.savefig(outpath_ + '/fig_5.pdf', dpi=300, bbox_inches='tight')
         csv_outvars = {
-            'risk': 'avoided_risk_to_wellbeing_percent',
+            'risk_to_wellbeing': 'avoided_risk_to_wellbeing_percent',
             'risk_to_assets': 'avoided_risk_to_assets_percent',
             't_reco_reduction': 'recovery_time_reduction_percent',
             'resilience': 'resilience_increase_percent'
@@ -1349,7 +1346,7 @@ def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='virid
     list: List of axes objects.
     """
 
-    variables = ['risk_to_assets', 'risk', 'resilience']
+    variables = ['risk_to_assets', 'risk_to_wellbeing', 'resilience']
 
     # Merge data with world map
     data_ = gpd.GeoDataFrame(pd.merge(data_, world, on='iso3', how='inner'))
@@ -1499,7 +1496,7 @@ def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='virid
     # Save or show the plot
     if outpath_:
         plt.savefig(outpath_ + '/fig_2.pdf', dpi=900, bbox_inches='tight', transparent=True, pad_inches=0)
-        data_[['log_gdp_pc_pp', 'risk_to_assets', 'risk', 'resilience']].rename(columns={'log_gdp_pc_pp': 'log_gdp_pc', 'risk': 'risk_to_wellbeing'}).to_csv(outpath_ + '/fig_2.csv')
+        data_[['log_gdp_pc_pp', 'risk_to_assets', 'risk_to_wellbeing', 'resilience']].rename(columns={'log_gdp_pc_pp': 'log_gdp_pc', 'risk_to_wellbeing': 'risk_to_wellbeing'}).to_csv(outpath_ + '/fig_2.csv')
     if show:
         plt.show(block=False)
         return
@@ -1787,9 +1784,9 @@ if __name__ == '__main__':
         plot_fig_2(
             data_=results_data['baseline'],
             world=gadm_world,
-            bins_list={'resilience': [10, 20, 30, 40, 50, 60, 70, 80], 'risk': [0, .25, .5, 1, 2, 6],
+            bins_list={'resilience': [10, 20, 30, 40, 50, 60, 70, 80], 'risk_to_wellbeing': [0, .25, .5, 1, 2, 6],
                        'risk_to_assets': [0, .125, .25, .5, 1, 3]},
-            cmap={'resilience': 'Reds_r', 'risk': 'Reds', 'risk_to_assets': 'Reds'},
+            cmap={'resilience': 'Reds_r', 'risk_to_wellbeing': 'Reds', 'risk_to_assets': 'Reds'},
             annotate=['HTI', 'TJK'],
             outpath_=outpath,
             log_xaxis=True,
