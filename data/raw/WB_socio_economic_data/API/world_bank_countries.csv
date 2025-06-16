@@ -1,0 +1,218 @@
+iso3,name,region,income_group
+ABW,Aruba,LAC,HICs
+AFG,Afghanistan,SAR,LICs
+AGO,Angola,SSA,LMICs
+ALB,Albania,ECA,UMICs
+AND,Andorra,ECA,HICs
+ARE,United Arab Emirates,MNA,HICs
+ARG,Argentina,LAC,UMICs
+ARM,Armenia,ECA,UMICs
+ASM,American Samoa,EAP,HICs
+ATG,Antigua and Barbuda,LAC,HICs
+AUS,Australia,EAP,HICs
+AUT,Austria,ECA,HICs
+AZE,Azerbaijan,ECA,UMICs
+BDI,Burundi,SSA,LICs
+BEL,Belgium,ECA,HICs
+BEN,Benin,SSA,LMICs
+BFA,Burkina Faso,SSA,LICs
+BGD,Bangladesh,SAR,LMICs
+BGR,Bulgaria,ECA,UMICs
+BHR,Bahrain,MNA,HICs
+BHS,"Bahamas, The",LAC,HICs
+BIH,Bosnia and Herzegovina,ECA,UMICs
+BLR,Belarus,ECA,UMICs
+BLZ,Belize,LAC,UMICs
+BMU,Bermuda,NMA,HICs
+BOL,Bolivia,LAC,LMICs
+BRA,Brazil,LAC,UMICs
+BRB,Barbados,LAC,HICs
+BRN,Brunei Darussalam,EAP,HICs
+BTN,Bhutan,SAR,LMICs
+BWA,Botswana,SSA,UMICs
+CAF,Central African Republic,SSA,LICs
+CAN,Canada,NMA,HICs
+CHE,Switzerland,ECA,HICs
+CHI,Channel Islands,ECA,HICs
+CHL,Chile,LAC,HICs
+CHN,China,EAP,UMICs
+CIV,Cote d'Ivoire,SSA,LMICs
+CMR,Cameroon,SSA,LMICs
+COD,"Congo, Dem. Rep.",SSA,LICs
+COG,"Congo, Rep.",SSA,LMICs
+COL,Colombia,LAC,UMICs
+COM,Comoros,SSA,LMICs
+CPV,Cabo Verde,SSA,LMICs
+CRI,Costa Rica,LAC,UMICs
+CUB,Cuba,LAC,UMICs
+CUW,Curacao,LAC,HICs
+CYM,Cayman Islands,LAC,HICs
+CYP,Cyprus,ECA,HICs
+CZE,Czechia,ECA,HICs
+DEU,Germany,ECA,HICs
+DJI,Djibouti,MNA,LMICs
+DMA,Dominica,LAC,UMICs
+DNK,Denmark,ECA,HICs
+DOM,Dominican Republic,LAC,UMICs
+DZA,Algeria,MNA,LMICs
+ECU,Ecuador,LAC,UMICs
+EGY,"Egypt, Arab Rep.",MNA,LMICs
+ERI,Eritrea,SSA,LICs
+ESP,Spain,ECA,HICs
+EST,Estonia,ECA,HICs
+ETH,Ethiopia,SSA,LICs
+FIN,Finland,ECA,HICs
+FJI,Fiji,EAP,UMICs
+FRA,France,ECA,HICs
+FRO,Faroe Islands,ECA,HICs
+FSM,"Micronesia, Fed. Sts.",EAP,LMICs
+GAB,Gabon,SSA,UMICs
+GBR,United Kingdom,ECA,HICs
+GEO,Georgia,ECA,UMICs
+GHA,Ghana,SSA,LMICs
+GIB,Gibraltar,ECA,HICs
+GIN,Guinea,SSA,LMICs
+GMB,"Gambia, The",SSA,LICs
+GNB,Guinea-Bissau,SSA,LICs
+GNQ,Equatorial Guinea,SSA,UMICs
+GRC,Greece,ECA,HICs
+GRD,Grenada,LAC,UMICs
+GRL,Greenland,ECA,HICs
+GTM,Guatemala,LAC,UMICs
+GUM,Guam,EAP,HICs
+GUY,Guyana,LAC,HICs
+HKG,"Hong Kong SAR, China",EAP,HICs
+HND,Honduras,LAC,LMICs
+HRV,Croatia,ECA,HICs
+HTI,Haiti,LAC,LMICs
+HUN,Hungary,ECA,HICs
+IDN,Indonesia,EAP,UMICs
+IMN,Isle of Man,ECA,HICs
+IND,India,SAR,LMICs
+IRL,Ireland,ECA,HICs
+IRN,"Iran, Islamic Rep.",MNA,LMICs
+IRQ,Iraq,MNA,UMICs
+ISL,Iceland,ECA,HICs
+ISR,Israel,MNA,HICs
+ITA,Italy,ECA,HICs
+JAM,Jamaica,LAC,UMICs
+JOR,Jordan,MNA,LMICs
+JPN,Japan,EAP,HICs
+KAZ,Kazakhstan,ECA,UMICs
+KEN,Kenya,SSA,LMICs
+KGZ,Kyrgyz Republic,ECA,LMICs
+KHM,Cambodia,EAP,LMICs
+KIR,Kiribati,EAP,LMICs
+KNA,St. Kitts and Nevis,LAC,HICs
+KOR,"Korea, Rep.",EAP,HICs
+KWT,Kuwait,MNA,HICs
+LAO,Lao PDR,EAP,LMICs
+LBN,Lebanon,MNA,LMICs
+LBR,Liberia,SSA,LICs
+LBY,Libya,MNA,UMICs
+LCA,St. Lucia,LAC,UMICs
+LIE,Liechtenstein,ECA,HICs
+LKA,Sri Lanka,SAR,LMICs
+LSO,Lesotho,SSA,LMICs
+LTU,Lithuania,ECA,HICs
+LUX,Luxembourg,ECA,HICs
+LVA,Latvia,ECA,HICs
+MAC,"Macao SAR, China",EAP,HICs
+MAF,St. Martin (French part),LAC,HICs
+MAR,Morocco,MNA,LMICs
+MCO,Monaco,ECA,HICs
+MDA,Moldova,ECA,UMICs
+MDG,Madagascar,SSA,LICs
+MDV,Maldives,SAR,UMICs
+MEX,Mexico,LAC,UMICs
+MHL,Marshall Islands,EAP,UMICs
+MKD,North Macedonia,ECA,UMICs
+MLI,Mali,SSA,LICs
+MLT,Malta,MNA,HICs
+MMR,Myanmar,EAP,LMICs
+MNE,Montenegro,ECA,UMICs
+MNG,Mongolia,EAP,LMICs
+MNP,Northern Mariana Islands,EAP,HICs
+MOZ,Mozambique,SSA,LICs
+MRT,Mauritania,SSA,LMICs
+MUS,Mauritius,SSA,UMICs
+MWI,Malawi,SSA,LICs
+MYS,Malaysia,EAP,UMICs
+NAM,Namibia,SSA,UMICs
+NCL,New Caledonia,EAP,HICs
+NER,Niger,SSA,LICs
+NGA,Nigeria,SSA,LMICs
+NIC,Nicaragua,LAC,LMICs
+NLD,Netherlands,ECA,HICs
+NOR,Norway,ECA,HICs
+NPL,Nepal,SAR,LMICs
+NRU,Nauru,EAP,HICs
+NZL,New Zealand,EAP,HICs
+OMN,Oman,MNA,HICs
+PAK,Pakistan,SAR,LMICs
+PAN,Panama,LAC,HICs
+PER,Peru,LAC,UMICs
+PHL,Philippines,EAP,LMICs
+PLW,Palau,EAP,UMICs
+PNG,Papua New Guinea,EAP,LMICs
+POL,Poland,ECA,HICs
+PRI,Puerto Rico,LAC,HICs
+PRK,"Korea, Dem. People's Rep.",EAP,LICs
+PRT,Portugal,ECA,HICs
+PRY,Paraguay,LAC,UMICs
+PSE,West Bank and Gaza,MNA,UMICs
+PYF,French Polynesia,EAP,HICs
+QAT,Qatar,MNA,HICs
+ROU,Romania,ECA,HICs
+RUS,Russian Federation,ECA,UMICs
+RWA,Rwanda,SSA,LICs
+SAU,Saudi Arabia,MNA,HICs
+SDN,Sudan,SSA,LICs
+SEN,Senegal,SSA,LMICs
+SGP,Singapore,EAP,HICs
+SLB,Solomon Islands,EAP,LMICs
+SLE,Sierra Leone,SSA,LICs
+SLV,El Salvador,LAC,UMICs
+SMR,San Marino,ECA,HICs
+SOM,Somalia,SSA,LICs
+SRB,Serbia,ECA,UMICs
+SSD,South Sudan,SSA,LICs
+STP,Sao Tome and Principe,SSA,LMICs
+SUR,Suriname,LAC,UMICs
+SVK,Slovak Republic,ECA,HICs
+SVN,Slovenia,ECA,HICs
+SWE,Sweden,ECA,HICs
+SWZ,Eswatini,SSA,LMICs
+SXM,Sint Maarten (Dutch part),LAC,HICs
+SYC,Seychelles,SSA,HICs
+SYR,Syrian Arab Republic,MNA,LICs
+TCA,Turks and Caicos Islands,LAC,HICs
+TCD,Chad,SSA,LICs
+TGO,Togo,SSA,LICs
+THA,Thailand,EAP,UMICs
+TJK,Tajikistan,ECA,LMICs
+TKM,Turkmenistan,ECA,UMICs
+TLS,Timor-Leste,EAP,LMICs
+TON,Tonga,EAP,UMICs
+TTO,Trinidad and Tobago,LAC,HICs
+TUN,Tunisia,MNA,LMICs
+TUR,Turkiye,ECA,UMICs
+TUV,Tuvalu,EAP,UMICs
+TZA,Tanzania,SSA,LMICs
+UGA,Uganda,SSA,LICs
+UKR,Ukraine,ECA,LMICs
+URY,Uruguay,LAC,HICs
+USA,United States,NMA,HICs
+UZB,Uzbekistan,ECA,LMICs
+VCT,St. Vincent and the Grenadines,LAC,UMICs
+VEN,"Venezuela, RB",LAC,UMICs
+VGB,British Virgin Islands,LAC,HICs
+VIR,Virgin Islands (U.S.),LAC,HICs
+VNM,Viet Nam,EAP,LMICs
+VUT,Vanuatu,EAP,LMICs
+WSM,Samoa,EAP,LMICs
+XKX,Kosovo,ECA,UMICs
+YEM,"Yemen, Rep.",MNA,LICs
+ZAF,South Africa,SSA,UMICs
+ZMB,Zambia,SSA,LMICs
+ZWE,Zimbabwe,SSA,LMICs

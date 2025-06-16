@@ -39,6 +39,9 @@ from src.misc.helpers import get_country_name_dicts, df_to_iso3, load_income_gro
     get_population_scope_indices
 from time import time
 
+from src.scenario.data_processing.process_flopros_data import process_flopros_data
+from src.scenario.data_processing.process_peb_data import process_peb_data
+
 
 def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, resolution, axfin_impact_,
                              scale_non_diversified_income_=None, min_diversified_share_=None, scale_income_=None,
@@ -49,7 +52,7 @@ def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, resolution,
     Parameters:
         cat_info_ (pd.DataFrame): DataFrame containing income category information, including transfers, income shares, and financial inclusion.
         wb_data_macro_ (pd.DataFrame): DataFrame containing macroeconomic data_processing, including GDP per capita and population.
-        avg_prod_k_ (float): Average productivity of capital.
+        avg_prod_k_ (pd.Series): Average productivity of capital.
         resolution (float): Population resolution for scaling calculations.
         axfin_impact_ (float): Impact factor for financial access (axfin) on diversified income share.
         scale_non_diversified_income_ (dict, optional): Dictionary with 'scope' and 'parameter' to scale non-diversified income.
@@ -103,7 +106,8 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
                     flopros_protection_file="flopros_protection_processed.csv",
                     protection_level_assumptions_file="WB_country_classification/protection_level_assumptions.csv",
                     income_groups_file="WB_country_classification/country_classification.xlsx",
-                    income_groups_file_historical="WB_country_classification/country_classification_historical.xlsx"):
+                    income_groups_file_historical="WB_country_classification/country_classification_historical.xlsx",
+                    force_recompute_=True):
     """
     Loads and processes protection level data_processing for countries based on the specified protection data_processing source.
 
@@ -121,7 +125,16 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     Returns:
         pd.Series: A Series indexed by country and hazard, containing protection levels.
     """
-    print("Loading protection data_processing...")
+    protection_path = os.path.join(root_dir_, "data/processed/", flopros_protection_file)
+    if force_recompute_ or not os.path.exists(protection_path):
+        process_flopros_data(
+            flopros_path=os.path.join(root_dir_, "data/raw/FLOPROS"),
+            population_path=os.path.join(root_dir_, "data/raw/GPW/gpw_v4_population_density_adjusted_rev11_2pt5_min.nc"),
+            gadm_path=os.path.join(root_dir_, "data/raw/GADM/gadm_410-levels.gpkg"),
+            outpath=os.path.join(root_dir_, "data/processed/")
+        )
+    else:
+        print("Loading protection data_processing...")
     if 'rp' in index_.names:
         index_ = index_.droplevel('rp').drop_duplicates()
     if 'income_cat' in index_.names:
@@ -129,7 +142,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     prot = pd.Series(index=index_, name="protection", data=0.)
     if protection_data in ['FLOPROS', 'country_income']:
         if protection_data == 'FLOPROS':
-            prot_data = pd.read_csv(os.path.join(root_dir_, "data/processed/", flopros_protection_file), index_col=0)
+            prot_data = pd.read_csv(protection_path, index_col=0)
             prot_data = prot_data.drop('country', axis=1)
             prot_data.rename({'MerL_Riv': 'Flood', 'MerL_Co': 'Storm surge'}, axis=1, inplace=True)
             update_data_coverage(root_dir_, 'flopros', prot_data.index, None)
@@ -463,7 +476,7 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
 
 
 def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missing_countries, population_data_=None,
-                                peb_data_path="exposure_bias_per_quintile.csv"):
+                                peb_data_path="exposure_bias_per_quintile.csv", force_recompute_=True):
     """
     Applies poverty exposure bias to exposure data_processing.
 
@@ -478,7 +491,20 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missi
     Returns:
         pd.Series: Exposure data_processing with poverty exposure bias applied.
     """
-    bias = pd.read_csv(os.path.join(root_dir_, "data/processed/", peb_data_path))
+    bias_path = os.path.join(root_dir_, "data/processed/", peb_data_path)
+    if force_recompute_ or not os.path.exists(bias_path):
+        print("Recomputing poverty exposure biases...")
+        process_peb_data(
+            root_dir=root_dir_,
+            exposure_data_path="data/raw/PEB/exposure bias.dta",
+            poverty_data_path="data/raw/PEB/poverty_data/",
+            outpath=os.path.join(root_dir_, "data/processed/"),
+            wb_macro_path="data/processed/wb_data_macro.csv",
+            exclude_povline=13.7,
+        )
+    else:
+        print("Loading poverty exposure biases from file...")
+    bias = pd.read_csv(bias_path)
     bias['income_cat'] = bias.income_cat.apply(lambda x: int(x.split('q')[1]))
     bias['income_cat'] = np.round(bias.income_cat / bias.income_cat.max(), 2)
     bias = bias.set_index(['iso3', 'hazard', 'income_cat'])
@@ -588,6 +614,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
             resolution=resolution,
             guess_missing_countries=True,
             population_data_=population_data,
+            force_recompute_=force_recompute_,
         ).clip(lower=0, upper=fa_threshold_).values
 
     for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
@@ -1195,7 +1222,7 @@ def prepare_scenario(scenario_params):
             - pd.DataFrame: Hazard ratios data_processing.
             - pd.DataFrame: Hazard protection data_processing.
     """
-    root_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
     # unpack scenario parameters
@@ -1357,6 +1384,7 @@ def prepare_scenario(scenario_params):
         root_dir_=root_dir,
         protection_data=hazard_params['hazard_protection'],
         min_rp=0,
+        force_recompute_=run_params['force_recompute'],
     )
     if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")

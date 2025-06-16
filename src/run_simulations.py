@@ -3,7 +3,7 @@ import yaml
 
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 model_outpath = os.path.join(root_dir, "results/simulation_output")
-gadm_path = os.path.join(root_dir, "data/gadm_410-levels.gpkg")
+gadm_path = os.path.join(root_dir, "data/raw/GADM/gadm_410-levels.gpkg")
 figure_outpath = os.path.join(root_dir, "results/figures")
 model_path = os.path.join(root_dir, "src/model/run_model.py")
 force_recompute_on_first_simulation = True

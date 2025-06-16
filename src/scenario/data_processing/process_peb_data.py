@@ -30,7 +30,7 @@ import numpy as np
 
 def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bias.dta",
                      poverty_data_path="data/raw/PEB/poverty_data/",
-                     wb_macro_path="data/raw/WB_socio_economic_data/wb_data_macro.csv", outpath=None,
+                     wb_macro_path="data/processed/wb_data_macro.csv", outpath=None,
                      exclude_povline=None):
     """
     Processes Poverty Exposure Bias (PEB) data_processing by combining exposure and poverty data_processing, calculating exposure bias,
@@ -40,7 +40,7 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
         root_dir (str): Root directory of the project. Defaults to "./".
         exposure_data_path (str): Path to the exposure data_processing file (as per Doan et al. 2023). Defaults to "data/raw/PEB/exposure bias.dta".
         poverty_data_path (str): Path to the directory containing poverty data_processing files. Defaults to "data/raw/PEB/poverty_data/".
-        wb_macro_path (str): Path to the World Bank macroeconomic data_processing file. Defaults to "data/raw/WB_socio_economic_data/wb_data_macro.csv".
+        wb_macro_path (str): Path to the World Bank macroeconomic data_processing file.
         outpath (str, optional): Directory to save the processed exposure bias per quintile. Defaults to None.
         exclude_povline (float, optional): Poverty line to exclude from the analysis. Defaults to None.
 
@@ -190,14 +190,3 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
         print(f"Exposure bias per quintile stored in {outpath}")
 
     return exp_bias_q
-
-
-if __name__ == "__main__":
-    exp_bias_q = process_peb_data(
-        root_dir=os.getcwd(),
-        exposure_data_path="inputs/PEB/exposure bias.dta",
-        poverty_data_path="inputs/PEB/poverty_data/",
-        outpath="./inputs/PEB/",
-        wb_macro_path="inputs/WB_socio_economic_data/wb_data_macro.csv",
-        exclude_povline=13.7,
-    )

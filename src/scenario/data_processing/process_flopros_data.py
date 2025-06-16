@@ -32,7 +32,7 @@ import tqdm
 import xarray as xr
 
 
-def process_flopros_data(flopros_path, flopros_update_path, flopros_update_shapes_path, population_path, gadm_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
+def process_flopros_data(flopros_path, population_path, gadm_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
     """
     Processes FLOPROS data_processing to compute national-level flood protection levels for riverine and coastal areas.
 
@@ -53,7 +53,7 @@ def process_flopros_data(flopros_path, flopros_update_path, flopros_update_shape
         - Outputs are saved to the specified directory if `outpath` is provided.
     """
     # Load flopros data
-    flopros = gpd.read_file(flopros_path)
+    flopros = gpd.read_file(os.path.join(flopros_path, "Scussolini_et_al_FLOPROS_shp_V1"))
     flopros = flopros[flopros.OBJECTID != 0]
 
     # Original data has no merged layer due to lack of the modeled layer. Merge available design and policy layers
@@ -63,8 +63,8 @@ def process_flopros_data(flopros_path, flopros_update_path, flopros_update_shape
     flopros['DL_PL_Co'] = flopros[['DL_Max_Co', 'DL_Min_Co']].mean(axis=1).fillna(flopros[['PL_Max_Co', 'PL_Min_Co']].mean(axis=1))
 
     # Load flopros modeled layer data for coastal protection
-    flopros_mod_co = pd.read_excel(flopros_update_path, index_col=0)
-    flopros_update_shapes = gpd.read_file(flopros_update_shapes_path)
+    flopros_mod_co = pd.read_excel(os.path.join(flopros_path, "Tiggeloven_et_al_2020_data/Results_adaptation_objectives/Protection_constant_Adaptation_objective_RCP4P5_SSP1.xlsx"), index_col=0)
+    flopros_update_shapes = gpd.read_file(os.path.join(flopros_path, "Tiggeloven_et_al_2020_data/Results_adaptation_objectives/Countries_States_simplified.shp"))
     flopros_mod_co = pd.merge(flopros_update_shapes[['FID_Aque', 'geometry']], flopros_mod_co, on='FID_Aque')
     flopros_mod_co = flopros_mod_co[['Protection standards', 'geometry']]
     flopros_mod_co.rename({'Protection standards': 'ModL_Co'}, axis=1, inplace=True)
@@ -118,14 +118,3 @@ def process_flopros_data(flopros_path, flopros_update_path, flopros_update_shape
         prot_ntl_aggregated.drop('geometry', axis=1).to_csv(os.path.join(outpath, "flopros_protection_processed.csv"))
 
     return prot_ntl_aggregated
-
-
-if __name__ == '__main__':
-    result = process_flopros_data(
-        flopros_path="./data/raw/FLOPROS/Scussolini_et_al_FLOPROS_shp_V1/",
-        flopros_update_path="./data/raw/FLOPROS/Tiggeloven_et_al_2020_data/Results_adaptation_objectives/Protection_constant_Adaptation_objective_RCP4P5_SSP1.xlsx",
-        flopros_update_shapes_path="./data/raw/FLOPROS/Tiggeloven_et_al_2020_data/Results_adaptation_objectives/Countries_States_simplified.shp",
-        population_path="/Users/robin/data/NASA_SEDAC/GPW_gridded_population_of_the_world/gpw-v4-population-density-adjusted-to-2015-unwpp-country-totals-rev11_totpop_2pt5_min_nc/gpw_v4_population_density_adjusted_rev11_2pt5_min.nc",
-        gadm_path='/Users/robin/data/GADM/gadm_410-levels.gpkg',
-        outpath="./data/processed/"
-    )
