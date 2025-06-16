@@ -1095,7 +1095,7 @@ def plot_fig_4(macro_results_, country, metrics, scaling_selection=None, outpath
             raise ValueError(f"Unknown metric: {metric}")
 
     if scaling_selection is not None:
-        fig_height = min(2 * (len(scaling_selection) - 1) + 2, 25) * centimeter
+        fig_height = min(2.1 * (len(scaling_selection) - 1) + 2, 25) * centimeter
         fig, axs = plt.subplots(figsize=(double_col_width, fig_height), nrows=1, ncols=len(metrics) + 1, sharex='col',
                                 width_ratios=[1.2] + [1] * len(metrics))
         axs[0].set_visible(False)
@@ -1122,12 +1122,12 @@ def plot_fig_4(macro_results_, country, metrics, scaling_selection=None, outpath
                     handles, labels = ax.get_legend_handles_labels()
 
                 country_diff_abs = scenario_diff_abs.loc[country].item()
-                ax.text(country_diff_rel, row_idx + .15, f"{get_value_with_unit(country_diff_abs, metric)}",
+                ax.text(country_diff_rel, row_idx + .15, f"{round(country_diff_rel, 1)}%\n({get_value_with_unit(country_diff_abs, metric)})",
                         ha='center', va='bottom', fontsize=7, color='darkturquoise')
                 # twiny.plot(country_diff_abs, row_idx, alpha=0)
 
                 if row_idx == len(scaling_selection) - 1:
-                    ax.set_xlabel(f"{metric_names[metric]}[%]\n")
+                    ax.set_xlabel(f"{metric_names[metric]} [%]\n")
 
                     # ax.set_xlabel('relative change [%]')
                     ax.set_ylabel('')
@@ -1240,7 +1240,8 @@ def plot_fig_4(macro_results_, country, metrics, scaling_selection=None, outpath
     plt.show(block=False)
 
 
-def prepare_data(cat_info_res_, macro_res_, hazard_prot_sc_, cat_info_sc_, macro_sc_, hazard_ratios_sc_, capital_shares_, gini_index_, data_coverage_, excel_outpath=None):
+def prepare_data(cat_info_res_, macro_res_, hazard_prot_sc_, cat_info_sc_, macro_sc_, hazard_ratios_sc_,
+                 capital_shares_, gini_index_, data_coverage_, excel_outpath=None):
     policy_name_lookup_ = get_policy_name_lookup(cat_info_res_)
 
     policy_dims = ['policy']
@@ -1364,7 +1365,12 @@ def load_model_data(preprocessed_inputs_dir_, raw_data_dir_):
     capital_shares_ = pd.read_csv(os.path.join(preprocessed_inputs_dir_, 'capital_shares.csv'), index_col=0)
     data_coverage_ = pd.read_csv(os.path.join(preprocessed_inputs_dir_, 'data_coverage.csv'), index_col=0)
     gini_index_ = pd.read_csv(os.path.join(raw_data_dir_, 'WB_socio_economic_data/gini_index.csv'), index_col=0) / 100
-    return capital_shares_, data_coverage_, gini_index_
+    poverty_rates_ = pd.read_csv(os.path.join(raw_data_dir_, 'WB_socio_economic_data/2025-03-07_pip_data.csv'))
+    poverty_rates_ = poverty_rates_[['country_code', 'reporting_year', 'poverty_line', 'headcount', 'spr']]
+    poverty_rates_ = poverty_rates_[poverty_rates_.poverty_line == 2.15].drop(columns='poverty_line')
+    poverty_rates_ = poverty_rates_.rename({'country_code': 'iso3', 'reporting_year': 'year', 'headcount': 'extreme_poverty', 'spr': 'societal_poverty'}, axis=1)
+    poverty_rates_ = poverty_rates_.loc[poverty_rates_.groupby('iso3').year.idxmax().values].set_index('iso3').drop('year', axis=1)
+    return capital_shares_, data_coverage_, gini_index_, poverty_rates_
 
 
 def generate_pdf_report(ppp_reference_year, tex_template_path, outpath, countries=None):
@@ -1387,7 +1393,8 @@ def generate_pdf_report(ppp_reference_year, tex_template_path, outpath, countrie
         tex_template = tex_template.replace("+++currency-year+++", f"{ppp_reference_year}")
         tex_template = tex_template.replace("+++resilience+++", f"{bl_model_results.loc[(country, 'all hazards', 'annual average', 'total'), 'resilience'] * 100:,.1f}")
         tex_template = tex_template.replace("+++well-being-loss+++", f"{1 / bl_model_results.loc[(country, 'all hazards', 'annual average', 'total'), 'resilience']:,.2f} (= \$1/{bl_model_results.loc[(country, 'all hazards', 'annual average', 'total'), 'resilience']:,.3f})")
-
+        tex_template = tex_template.replace("+++extreme-pov-rate+++", f"{poverty_rates.loc[country, 'extreme_poverty'] * 100:.1f}")
+        tex_template = tex_template.replace("+++societal-pov-rate+++", f"{poverty_rates.loc[country, 'societal_poverty'] * 100:.1f}")
 
         os.makedirs(os.path.join(outpath, f"_input/{country}"), exist_ok=True)
 
@@ -1445,7 +1452,7 @@ if __name__ == '__main__':
     cat_info_res, event_res, macro_res, poverty_res, hazard_prot_sc, cat_info_sc, macro_sc, hazard_ratios_sc = preprocess_simulation_data(simulation_outputs_dir, store_preprocessed, concat_policy_parameters=concat_policy_params)
 
     # Load preprocessed inputs
-    capital_shares, data_coverage, gini_index = load_model_data(preprocessed_inputs_dir, raw_data_dir)
+    capital_shares, data_coverage, gini_index, poverty_rates = load_model_data(preprocessed_inputs_dir, raw_data_dir)
 
     # Create country report excel file
     cat_info_inputs, macro_inputs, hazard_inputs_quintile, model_results, t_reco, policy_name_lookup = prepare_data(
