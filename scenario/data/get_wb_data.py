@@ -78,7 +78,8 @@ def get_wb_mrv(wb_name, colname, wb_raw_data_path, download):
     Returns:
         pd.Series: Series containing the most recent values of the World Bank series.
     """
-    return get_most_recent_value(get_wb_df(wb_name, colname, wb_raw_data_path, download))
+    # if year is not in index, it is already the most recent value
+    return get_most_recent_value(get_wb_df(wb_name, colname, wb_raw_data_path, download), drop_year=True)
 
 
 def get_most_recent_value(data, drop_year=True):
@@ -92,13 +93,17 @@ def get_most_recent_value(data, drop_year=True):
     Returns:
         pd.Series: Data with the most recent values for each group.
     """
-    levels_new = data.index.droplevel('year').names
-    res = data.dropna().reset_index()
-    if drop_year:
-        res = res.loc[res.groupby(levels_new)['year'].idxmax()].drop(columns='year').set_index(levels_new).squeeze()
+    if 'year' in data.index.names:
+        levels_new = data.index.droplevel('year').names
+        res = data.dropna().reset_index()
+        if drop_year:
+            res = res.loc[res.groupby(levels_new)['year'].idxmax()].drop(columns='year').set_index(levels_new).squeeze()
+        else:
+            res = res.loc[res.groupby(levels_new)['year'].idxmax()].set_index(levels_new).squeeze()
+        return res
     else:
-        res = res.loc[res.groupby(levels_new)['year'].idxmax()].set_index(levels_new).squeeze()
-    return res
+        print("Warning: No 'year' in index names, returning data as is.")
+    return data
 
 
 def get_wb_df(wb_name, colname, wb_raw_data_path, download):
@@ -303,8 +308,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
 
     # World Development Indicators
     if ppp_reference_year == 2021:
-        # gdp_pc_pp = get_wb_mrv('NY.GDP.PCAP.pp.kd', "gdp_pc_pp")  # Gdp per capita ppp (source: International Comparison Program)
-        gdp_pc_pp = get_wb_series('NY.GDP.PCAP.pp.kd', "gdp_pc_pp", wb_raw_data_path, download)  # Gdp per capita ppp (source: International Comparison Program)
+        gdp_pc_pp = get_wb_series('NY.GDP.PCAP.PP.KD', "gdp_pc_pp", wb_raw_data_path, download)  # Gdp per capita ppp (source: International Comparison Program)
         gni_pc_pp = get_wb_series('NY.GNP.PCAP.PP.KD', 'gni_pc_pp', wb_raw_data_path, download)
     elif ppp_reference_year == 2017:
         wb_wdi = pd.read_excel(os.path.join(root_dir, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
@@ -320,19 +324,23 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         gdp_pc_pp = gdp_pc_pp.stack().rename('gdp_pc_pp')
     else:
         raise ValueError("PPP reference year not supported")
-    gdp_pc_pp = gdp_pc_pp.drop(np.intersect1d(gdp_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
-    gdp_pc_pp = df_to_iso3(gdp_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
+    gdp_pc_pp = gdp_pc_pp.drop(np.intersect1d(gdp_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if gdp_pc_pp.index.nlevels > 1 else None)
+    gdp_pc_pp = df_to_iso3(gdp_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
+    gdp_pc_pp = gdp_pc_pp.set_index(list(np.intersect1d(['iso3', 'year'], gdp_pc_pp.columns))).drop('country', axis=1)
 
-    gni_pc_pp = gni_pc_pp.drop(np.intersect1d(gni_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
-    gni_pc_pp = df_to_iso3(gni_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
+    gni_pc_pp = gni_pc_pp.drop(np.intersect1d(gni_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if gni_pc_pp.index.nlevels > 1 else None)
+    gni_pc_pp = df_to_iso3(gni_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
+    gni_pc_pp = gni_pc_pp.set_index(list(np.intersect1d(['iso3', 'year'], gni_pc_pp.columns))).drop('country', axis=1)
 
     pop = get_wb_series('SP.POP.TOTL', "pop", wb_raw_data_path, download)  # population (source: World Development Indicators)
-    pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country')
-    pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
+    pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if pop.index.nlevels > 1 else None)
+    pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
+    pop = pop.set_index(list(np.intersect1d(['iso3', 'year'], pop.columns))).drop('country', axis=1)
 
     gini_index = get_wb_series('SI.POV.GINI', 'gini_index', wb_raw_data_path, download)
-    gini_index = gini_index.drop(np.intersect1d(gini_index.index.get_level_values('country').unique(), AGG_REGIONS), level='country').dropna()
-    gini_index = df_to_iso3(gini_index.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year']).drop('country', axis=1)
+    gini_index = gini_index.drop(np.intersect1d(gini_index.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if gini_index.index.nlevels > 1 else None).dropna()
+    gini_index = df_to_iso3(gini_index.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
+    gini_index = gini_index.set_index(list(np.intersect1d(['iso3', 'year'], gini_index.columns))).drop('country', axis=1)
 
     country_classification = get_world_bank_countries(wb_raw_data_path, download)
 
