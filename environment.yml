@@ -1,14 +1,11 @@
-name: global-unbreakable-model
+name: disaster_resilience
 channels:
   - conda-forge
   - anaconda
   - defaults
 dependencies:
   - affine=2.3.0=pyhd3eb1b0_0
-  - appnope=0.1.2=py39hca03da5_1001
-  - asttokens=3.0.0=py39hca03da5_0
   - attrs=24.3.0=py39hca03da5_0
-  - backcall=0.2.0=pyhd3eb1b0_0
   - blas=1.0=openblas
   - blosc=1.21.3=h313beb8_0
   - boost-cpp=1.82.0=h48ca7d4_2
@@ -18,22 +15,18 @@ dependencies:
   - bzip2=1.0.8=h80987f9_6
   - c-ares=1.19.1=h80987f9_0
   - ca-certificates=2025.2.25=hca03da5_0
-  - cairo=1.16.0=h302bd0f_5
+  - cairo=1.16.0=hd886ae0_6
   - cartopy=0.22.0=py39h46d7db6_0
   - certifi=2025.4.26=py39hca03da5_0
-  - cffi=1.17.1=py39h3eb5a62_1
   - cfitsio=3.470=ha83d327_7
   - charset-normalizer=3.3.2=pyhd3eb1b0_0
   - click=8.1.8=py39hca03da5_0
   - click-plugins=1.1.1=pyhd3eb1b0_0
   - cligj=0.7.2=pyhd3eb1b0_0
   - contourpy=1.2.1=py39h48ca7d4_1
-  - cryptography=44.0.1=py39h8026fc7_0
   - cycler=0.11.0=pyhd3eb1b0_0
   - cyrus-sasl=2.1.28=h9131b1a_1
-  - decorator=5.1.1=pyhd3eb1b0_0
-  - exceptiongroup=1.2.0=py39hca03da5_0
-  - executing=0.8.3=pyhd3eb1b0_0
+  - et_xmlfile=1.1.0=py39hca03da5_0
   - expat=2.7.1=h313beb8_0
   - folium=0.14.0=py39hca03da5_0
   - fontconfig=2.14.1=h6402c1e_3
@@ -46,16 +39,12 @@ dependencies:
   - geotiff=1.7.0=hcec61be_4
   - gettext=0.21.0=hbdbcc25_2
   - giflib=5.2.2=h80987f9_0
-  - glib=2.78.4=h313beb8_0
-  - glib-tools=2.78.4=h313beb8_0
   - hdf4=4.2.13=h5e329fb_3
   - hdf5=1.14.5=hd77251f_2
   - icu=73.1=h313beb8_0
   - idna=3.7=py39hca03da5_0
   - importlib-metadata=8.5.0=py39hca03da5_0
   - importlib_resources=6.4.0=py39hca03da5_0
-  - ipython=8.15.0=py39hca03da5_0
-  - jedi=0.19.2=py39hca03da5_0
   - jinja2=3.1.6=py39hca03da5_0
   - joblib=1.4.2=py39hca03da5_0
   - jpeg=9e=h80987f9_3
@@ -80,7 +69,7 @@ dependencies:
   - libkml=1.3.0=hc4d7c42_7
   - libnetcdf=4.8.1=h7d1a7d1_5
   - libnghttp2=1.57.0=h62f6fdd_0
-  - libopenblas=0.3.21=h269037a_0
+  - libopenblas=0.3.29=hea593b9_0
   - libpng=1.6.39=h80987f9_0
   - libpq=17.4=h02f6b3c_0
   - libspatialite=5.1.0=h4e90699_2
@@ -97,7 +86,6 @@ dependencies:
   - markupsafe=3.0.2=py39h80987f9_0
   - matplotlib=3.8.0=py39hca03da5_0
   - matplotlib-base=3.8.0=py39h46d7db6_0
-  - matplotlib-inline=0.1.6=py39hca03da5_0
   - minizip=4.0.3=ha89c15f_0
   - ncurses=6.4=h313beb8_0
   - networkx=3.2.1=py39hca03da5_0
@@ -108,34 +96,26 @@ dependencies:
   - numpy-base=1.26.2=py39ha9811e2_0
   - openjpeg=2.5.2=hba36e21_1
   - openldap=2.6.4=he7ef289_0
+  - openpyxl=3.1.5=py39h80987f9_0
   - openssl=3.0.16=h02f6b3c_0
   - packaging=24.2=py39hca03da5_0
   - pandas=2.1.4=py39h46d7db6_0
   - pandas-datareader=0.10.0=pyhd3eb1b0_0
-  - parso=0.8.4=py39hca03da5_0
   - patsy=1.0.1=py39hca03da5_0
   - pcre2=10.42=hb066dcc_1
-  - pexpect=4.8.0=pyhd3eb1b0_3
-  - pickleshare=0.7.5=pyhd3eb1b0_1003
   - pillow=11.1.0=py39h41ba818_1
   - pip=25.1=pyhc872135_2
   - pixman=0.40.0=h1a28f6b_0
   - poppler=24.09.0=hb57d120_2
   - poppler-data=0.4.11=hca03da5_1
   - proj=9.3.1=hdced247_1
-  - prompt-toolkit=3.0.43=py39hca03da5_0
-  - ptyprocess=0.7.0=pyhd3eb1b0_2
-  - pure_eval=0.2.2=pyhd3eb1b0_0
   - pycountry=22.3.5=pyhd8ed1ab_0
-  - pycparser=2.21=pyhd3eb1b0_0
-  - pygments=2.19.1=py39hca03da5_0
   - pyogrio=0.10.0=py39hcf39714_0
-  - pyopenssl=25.0.0=py39h9e2d7d8_0
   - pyparsing=3.0.9=py39hca03da5_0
   - pyproj=3.6.1=py39h6070227_1
   - pyshp=2.3.1=py39hca03da5_0
   - pysocks=1.7.1=py39hca03da5_0
-  - python=3.9.21=hb885b13_1
+  - python=3.9.23=h99c0cbc_0
   - python-dateutil=2.9.0post0=py39hca03da5_2
   - python-tzdata=2025.2=pyhd3eb1b0_0
   - pytz=2024.1=py39hca03da5_0
@@ -143,7 +123,7 @@ dependencies:
   - qhull=2020.2=h48ca7d4_2
   - rasterio=1.4.3=py39h9ce171c_0
   - readline=8.2=h1a28f6b_0
-  - requests=2.31.0=py39hca03da5_0
+  - requests=2.32.3=py39hca03da5_1
   - rioxarray=0.15.0=pyhd8ed1ab_0
   - scikit-learn=1.6.1=py39h313beb8_0
   - scipy=1.11.4=py39h20cbe94_0
@@ -153,20 +133,16 @@ dependencies:
   - shapely=2.0.6=py39hc1b91b6_0
   - six=1.17.0=py39hca03da5_0
   - sqlite=3.45.3=h80987f9_0
-  - stack_data=0.2.0=pyhd3eb1b0_0
   - statsmodels=0.14.0=py39hbda83bc_0
   - threadpoolctl=3.5.0=py39h33ce5c2_0
   - tiledb=2.3.3=hb4a6b97_3
-  - tk=8.6.14=h6ba3021_0
-  - tornado=6.4.2=py39h80987f9_0
+  - tk=8.6.14=h6ba3021_1
+  - tornado=6.5.1=py39h80987f9_0
   - tqdm=4.65.0=py39h86d0a89_0
-  - traitlets=5.14.3=py39hca03da5_0
-  - typing_extensions=4.12.2=py39hca03da5_0
   - tzdata=2025b=h04d1e81_0
   - unicodedata2=15.1.0=py39h80987f9_1
   - uriparser=0.9.7=h80987f9_0
-  - urllib3=1.26.19=py39hca03da5_0
-  - wcwidth=0.2.5=pyhd3eb1b0_0
+  - urllib3=2.3.0=py39hca03da5_0
   - wheel=0.45.1=py39hca03da5_0
   - xarray=2023.6.0=py39hca03da5_0
   - xerces-c=3.2.4=h313beb8_1
@@ -176,4 +152,4 @@ dependencies:
   - zipp=3.21.0=py39hca03da5_0
   - zlib=1.2.13=h18a0788_1
   - zstd=1.5.6=hfb09047_0
-prefix: /Users/robin/anaconda3/envs/global-unbreakable-model
+

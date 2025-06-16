@@ -1,0 +1,221 @@
+﻿country,iso3,old_age_pension_coverage
+Algeria,DZA,88.6
+Egypt,EGY,58.5
+Libya,LBY,79.4
+Morocco,MAR,23.4
+Sudan,SDN,10.6
+Tunisia,TUN,100
+Angola,AGO,15.3
+Benin,BEN,9.1
+Botswana,BWA,100
+Burkina Faso,BFA,6.7
+Burundi,BDI,13.3
+Cabo Verde,CPV,69.8
+Cameroon,CMR,18.3
+Central African Republic,CAF,4.7
+Chad,TCD,5.8
+Comoros,COM,7.1
+Congo,COG,22.1
+Côte d'Ivoire,CIV,16.2
+DR Congo,COD,1
+Djibouti,DJI,14.2
+Equatorial Guinea,GNQ,3.7
+Eritrea,ERI,…
+Eswatini,SWZ,100
+Ethiopia,ETH,4.2
+Gabon,GAB,38.8
+Gambia,GMB,17
+Ghana,GHA,15.7
+Guinea,GIN,2.5
+Guinea-Bissau,GNB,14.7
+Kenya,KEN,19.8
+Lesotho,LSO,100
+Liberia,LBR,3.4
+Madagascar,MDG,19.2
+Malawi,MWI,8.9
+Mali,MLI,5.6
+Mauritania,MRT,18.6
+Mauritius,MUS,100
+Mozambique,MOZ,42.3
+Namibia,NAM,100
+Niger,NER,5.8
+Nigeria,NGA,19.6
+Rwanda,RWA,16.7
+Sao Tome and Principe,STP,54.8
+Senegal,SEN,25.3
+Seychelles,SYC,100
+Sierra Leone,SLE,7
+Somalia,SOM,0
+South Africa,ZAF,79.9
+South Sudan,SSD,0
+Tanzania (United Republic of),TZA,6
+Togo,TGO,15.9
+Uganda,UGA,18.3
+Zambia,ZMB,25.8
+Zimbabwe,ZWE,19.6
+Anguilla,AIA,66.1
+Antigua and Barbuda,ATG,84.4
+Argentina,ARG,90.8
+Aruba,ABW,100
+Bahamas,BHS,74.8
+Barbados,BRB,98.4
+Belize,BLZ,37.5
+Bolivia (Plurinational State of),BOL,100
+Brazil,BRA,88.6
+British Virgin Islands,VGB,59.3
+Cayman Islands,CYM,3.1
+Chile,CHL,71.6
+Colombia,COL,51.4
+Costa Rica,CRI,56.9
+Cuba,CUB,60.9
+Curaçao,CUW,100
+Dominica,DMA,92.7
+Dominican Republic,DOM,7.6
+Ecuador,ECU,66.1
+El Salvador,SLV,24.5
+French Guiana,GUF,55.5
+Grenada,GRD,53.5
+Guadeloupe,GLP,82.3
+Guatemala,GTM,23.3
+Guyana,GUY,100
+Haiti,HTI,1
+Honduras,HND,14.6
+Jamaica,JAM,87.8
+Martinique,MTQ,72.1
+Mexico,MEX,100
+Montserrat,MSR,100
+Nicaragua,NIC,35
+Panama,PAN,61.5
+Paraguay,PRY,82.2
+Peru,PER,36.7
+Puerto Rico,PRI,80.8
+Saint Kitts and Nevis,KNA,84.7
+Saint Lucia,LCA,48.4
+Saint Vincent and the Grenadines,VCT,51.8
+Sint Maarten (Dutch part),SXM,100
+St Martin (French part),MAF,42.7
+Suriname,SUR,100
+Trinidad and Tobago,TTO,90.8
+Turks and Caicos Islands,TCA,35.5
+United States Virgin Islands,VIR,95
+Uruguay,URY,100
+Venezuela (Bolivarian Republic of),VEN,100
+Bermuda,BMU,92.8
+Canada,CAN,100
+Saint Pierre and Miquelon,SPM,100
+United States,USA,100
+Bahrain,BHR,46.5
+Iraq,IRQ,48.9
+Jordan,JOR,46.1
+Kuwait,KWT,25.4
+Lebanon,LBN,10
+Occupied Palestinian Territory,PSE,25
+Oman,OMN,46.6
+Qatar,QAT,8
+Saudi Arabia,SAU,24.5
+Syrian Arab Republic,SYR,16.7
+United Arab Emirates,ARE,19.7
+Yemen,YEM,17.8
+China,CHN,100
+"Hong Kong, China",HKG,82.5
+Japan,JPN,100
+Korea (Democratic People's Republic of),PRK,…
+"Macau, China",MAC,100
+Mongolia,MNG,100
+Republic of Korea,KOR,100
+"Taiwan, China",TWN,99.3
+Australia,AUS,74.4
+Brunei Darussalam,BRN,100
+Cambodia,KHM,8.1
+Cook Islands,COK,67.2
+Fiji,FJI,100
+Indonesia,IDN,31.2
+Kiribati,KIR,93.8
+Lao People's Democratic Republic,LAO,7
+Malaysia,MYS,18.5
+Marshall Islands,MHL,62.7
+Micronesia (Federated States of),FSM,97
+Myanmar,MMR,…
+Nauru,NRU,100
+New Caledonia,NCL,98.8
+New Zealand,NZL,100
+Niue,NIU,100
+Palau,PLW,100
+Papua New Guinea,PNG,1.9
+Philippines,PHL,65.6
+Samoa,WSM,93.9
+Singapore,SGP,37.3
+Solomon Islands,SLB,0
+Thailand,THA,82.6
+Timor-Leste,TLS,92.7
+Tonga,TON,100
+Tuvalu,TUV,100
+Vanuatu,VUT,4.1
+Viet Nam,VNM,40.9
+Afghanistan,AFG,24.7
+Bangladesh,BGD,56.9
+Bhutan,BTN,18.8
+India,IND,45.9
+Iran (Islamic Republic of),IRN,87.2
+Maldives,MDV,100
+Nepal,NPL,77.2
+Pakistan,PAK,17.4
+Sri Lanka,LKA,31.1
+Armenia,ARM,81.9
+Azerbaijan,AZE,97
+Cyprus,CYP,92.7
+Georgia,GEO,100
+Israel,ISR,100
+Kazakhstan,KAZ,95.7
+Kyrgyzstan,KGZ,100
+Tajikistan,TJK,100
+Turkmenistan,TKM,77.2
+Türkiye,TUR,85.9
+Uzbekistan,UZB,100
+Belarus,BLR,100
+Bulgaria,BGR,93
+Czechia,CZE,100
+Hungary,HUN,99
+Poland,POL,82.9
+Republic of Moldova,MDA,94
+Romania,ROU,98.9
+Russian Federation,RUS,100
+Slovakia,SVK,100
+Ukraine,UKR,96.2
+Albania,ALB,96.5
+Andorra,AND,100
+Austria,AUT,100
+Belgium,BEL,100
+Bosnia and Herzegovina,BIH,75.3
+Croatia,HRV,93.2
+Denmark,DNK,100
+Estonia,EST,100
+Finland,FIN,100
+France,FRA,100
+Germany,DEU,100
+Greece,GRC,99.2
+Guernsey,GGY,100
+Iceland,ISL,82.4
+Ireland,IRL,95.8
+Isle of Man,IMN,100
+Italy,ITA,100
+Jersey,JEY,100
+Kosovo,XKX,100
+Latvia,LVA,100
+Liechtenstein,LIE,100
+Lithuania,LTU,100
+Luxembourg,LUX,100
+Malta,MLT,82.9
+Monaco,MCO,24.2
+Montenegro,MNE,78
+Netherlands,NLD,100
+North Macedonia,MKD,65.8
+Norway,NOR,100
+Portugal,PRT,96.7
+San Marino,SMR,94.6
+Serbia,SRB,53.5
+Slovenia,SVN,100
+Spain,ESP,88.9
+Sweden,SWE,100
+Switzerland,CHE,99.3
+United Kingdom,GBR,100
