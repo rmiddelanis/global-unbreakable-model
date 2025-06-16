@@ -194,17 +194,17 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, resolution
         any_to_wb_ (dict): Mapping of country names to World Bank codes.
         gni_pc_pp (pd.Series): Gross national income per capita (PPP).
         resolution (float): Population resolution for broadcasting data.
-        force_recompute_ (bool): Whether to force recomputation of data_processing. Defaults to True. Method loads data_processing from file if False.
+        force_recompute_ (bool): Whether to force recomputation of data. Defaults to True. Method loads data from file if False.
         verbose_ (bool): Whether to print verbose output. Defaults to True.
         scale_liquidity_ (dict, optional): Scaling parameters for liquidity. Defaults to None.
 
     Returns:
-        pd.DataFrame: Liquidity and access to finance data_processing indexed by country and income category.
+        pd.DataFrame: Liquidity and access to finance data indexed by country and income category.
     """
 
     outpath = os.path.join(root_dir_, 'data', 'processed', 'findex_liquidity_and_axfin.csv')
     if not force_recompute_ and os.path.exists(outpath):
-        print("Loading liquidity and axfin data_processing from file...")
+        print("Loading liquidity and axfin data from file...")
         liquidity_and_axfin = pd.read_csv(outpath)
         liquidity_and_axfin.set_index(['iso3', 'income_cat'], inplace=True)
     else:
@@ -398,8 +398,8 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         any_to_wb_ (dict): Mapping of country names to World Bank codes.
         scale_self_employment (dict, optional): Scaling parameters for self-employment. Defaults to None.
         verbose (bool): Whether to print verbose output. Defaults to True.
-        force_recompute (bool): Whether to force recomputation of data_processing. Defaults to True.
-        guess_missing_countries (bool): Whether to guess missing data_processing for countries. Defaults to False.
+        force_recompute (bool): Whether to force recomputation of data. Defaults to True.
+        guess_missing_countries (bool): Whether to guess missing data for countries. Defaults to False.
 
     Returns:
         pd.DataFrame: Asset shares indexed by country.
@@ -478,18 +478,18 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
 def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missing_countries, population_data_=None,
                                 peb_data_path="exposure_bias_per_quintile.csv", force_recompute_=True):
     """
-    Applies poverty exposure bias to exposure data_processing.
+    Applies poverty exposure bias to exposure data.
 
     Args:
         root_dir_ (str): Root directory of the project.
-        exposure_fa_ (pd.Series): Exposure data_processing indexed by country, hazard, return period, and income category.
-        resolution (float): Population resolution for broadcasting data_processing.
-        guess_missing_countries (bool): Whether to guess missing data_processing for countries.
-        population_data_ (pd.DataFrame, optional): Population data_processing. Defaults to None.
-        peb_data_path (str): Path to the poverty exposure bias data_processing file. Defaults to "exposure_bias_per_quintile.csv".
+        exposure_fa_ (pd.Series): Exposure data indexed by country, hazard, return period, and income category.
+        resolution (float): Population resolution for broadcasting data.
+        guess_missing_countries (bool): Whether to guess missing data for countries.
+        population_data_ (pd.DataFrame, optional): Population data. Defaults to None.
+        peb_data_path (str): Path to the poverty exposure bias data file. Defaults to "exposure_bias_per_quintile.csv".
 
     Returns:
-        pd.Series: Exposure data_processing with poverty exposure bias applied.
+        pd.Series: Exposure data with poverty exposure bias applied.
     """
     bias_path = os.path.join(root_dir_, "data/processed/", peb_data_path)
     if force_recompute_ or not os.path.exists(bias_path):
@@ -533,7 +533,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missi
             bias = bias.rename({'exposure_bias_x': 'exposure_bias'}, axis=1).squeeze()
             bias = bias.swaplevel('income_cat', 'iso3').swaplevel('hazard', 'iso3').sort_index()
         else:
-            raise Exception("Population data_processing not available. Cannot use average PE.")
+            raise Exception("Population data not available. Cannot use average PE.")
     bias.fillna(1, inplace=True)
     exposure_fa_with_peb_ = (exposure_fa_ * bias).swaplevel('rp', 'income_cat').sort_index().rename(exposure_fa_.name)
     return exposure_fa_with_peb_
@@ -544,24 +544,24 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
                                        scale_vulnerability=None, early_warning_data=None, reduction_vul=.2,
                                        no_ew_hazards="Earthquake+Tsunami"):
     """
-    Computes exposure and vulnerability data_processing for countries and hazards.
+    Computes exposure and vulnerability data for countries and hazards.
 
     Args:
         root_dir_ (str): Root directory of the project.
-        fa_threshold_ (float): Threshold for exposure data_processing. Specified in settings yml file. Should be lower or equal to 1.
-        resolution (float): Population resolution for broadcasting data_processing.
+        fa_threshold_ (float): Threshold for exposure data. Specified in settings yml file. Should be lower or equal to 1.
+        resolution (float): Population resolution for broadcasting data.
         verbose (bool): Whether to print verbose output. Defaults to True.
-        force_recompute_ (bool): Whether to force recomputation of data_processing. Defaults to False.
+        force_recompute_ (bool): Whether to force recomputation of data. Defaults to False.
         apply_exposure_bias (bool): Whether to apply poverty exposure bias. Defaults to True.
-        population_data (pd.DataFrame, optional): Population data_processing. Defaults to None.
+        population_data (pd.DataFrame, optional): Population data. Defaults to None.
         scale_exposure (dict, optional): Scaling parameters for exposure. Defaults to None.
         scale_vulnerability (dict, optional): Scaling parameters for vulnerability. Defaults to None.
-        early_warning_data (pd.Series, optional): Early warning (EW) data_processing. Defaults to None. EW can reduce vulnerability by up to factor reduction_vul.
+        early_warning_data (pd.Series, optional): Early warning (EW) data. Defaults to None. EW can reduce vulnerability by up to factor reduction_vul.
         reduction_vul (float): Reduction in vulnerability due to early warning. Defaults to 0.2.
         no_ew_hazards (str): Hazards without early warning. Defaults to "Earthquake+Tsunami".
 
     Returns:
-        pd.DataFrame: Exposure and vulnerability data_processing indexed by country, hazard, and income category.
+        pd.DataFrame: Exposure and vulnerability data indexed by country, hazard, and income category.
     """
     hazard_ratios_path = os.path.join(root_dir_, 'data', 'processed', 'hazard_ratios.csv')
     if not force_recompute_ and os.path.exists(hazard_ratios_path):
@@ -645,20 +645,20 @@ def process_vulnerability_data(
         gmd_vulnerability_distribution_path="GMD_vulnerability_distribution/Dwelling quintile vul ratio.xlsx",
 ):
     """
-    Processes vulnerability data_processing for different building classes and income categories.
+    Processes vulnerability data for different building classes and income categories.
 
     Args:
         root_dir_ (str): Root directory of the project.
         building_classes (pd.DataFrame): DataFrame containing building class distributions by country and hazard.
-        resolution (str): Resolution of the data_processing (e.g., national or subnational).
-        use_gmd_to_distribute (bool): Whether to use GMD data_processing to distribute vulnerability. Default is True.
-        fill_missing_gmd_with_country_average (bool): Whether to fill missing GMD data_processing with country averages. Default is False.
+        resolution (str): Resolution of the data (e.g., national or subnational).
+        use_gmd_to_distribute (bool): Whether to use GMD data to distribute vulnerability. Default is True.
+        fill_missing_gmd_with_country_average (bool): Whether to fill missing GMD data with country averages. Default is False.
         vulnerability_bounds (str): Method to bound vulnerability values ('gem_extremes' or 'class_extremes'). Default is 'gem_extremes'.
         building_class_vuln_path (str): Path to the building class vulnerability mapping file.
         gmd_vulnerability_distribution_path (str): Path to the GMD vulnerability distribution file.
 
     Returns:
-        pd.DataFrame: Processed vulnerability data_processing indexed by country, hazard, and income category.
+        pd.DataFrame: Processed vulnerability data indexed by country, hazard, and income category.
     """
     # load vulnerability of building classes
     building_class_vuln = pd.read_csv(os.path.join(root_dir_, "data/raw/", building_class_vuln_path), index_col=0)
@@ -755,24 +755,24 @@ def process_vulnerability_data(
 def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None, cat_ddo_filepath="CatDDO/catddo.csv",
                               verbose=True, force_recompute=True):
     """
-    Processes vulnerability data_processing for different building classes and income categories.
+    Processes vulnerability data for different building classes and income categories.
 
     Args:
         root_dir_ (str): Root directory of the project.
         building_classes (pd.DataFrame): DataFrame containing building class distributions by country and hazard.
-        resolution (str): Resolution of the data_processing (e.g., national or subnational).
-        use_gmd_to_distribute (bool): Whether to use GMD data_processing to distribute vulnerability. Default is True.
-        fill_missing_gmd_with_country_average (bool): Whether to fill missing GMD data_processing with country averages. Default is False.
+        resolution (str): Resolution of the data (e.g., national or subnational).
+        use_gmd_to_distribute (bool): Whether to use GMD data to distribute vulnerability. Default is True.
+        fill_missing_gmd_with_country_average (bool): Whether to fill missing GMD data with country averages. Default is False.
         vulnerability_bounds (str): Method to bound vulnerability values ('gem_extremes' or 'class_extremes'). Default is 'gem_extremes'.
         building_class_vuln_path (str): Path to the building class vulnerability mapping file.
         gmd_vulnerability_distribution_path (str): Path to the GMD vulnerability distribution file.
 
     Returns:
-        pd.DataFrame: Processed vulnerability data_processing indexed by country, hazard, and income category.
+        pd.DataFrame: Processed vulnerability data indexed by country, hazard, and income category.
     """
     outpath = os.path.join(root_dir_, "data/processed/borrowing_ability.csv")
     if not force_recompute and os.path.exists(outpath):
-        print("Loading borrowing ability data_processing from file...")
+        print("Loading borrowing ability data from file...")
         borrowing_ability_ = pd.read_csv(outpath, index_col='iso3')
         return borrowing_ability_
     print("Computing borrowing ability...")
@@ -794,13 +794,13 @@ def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None,
 
 def load_hfa_data(root_dir_):
     """
-    Loads Hyogo Framework for Action (HFA) data_processing to assess early warning systems and disaster preparedness.
+    Loads Hyogo Framework for Action (HFA) data to assess early warning systems and disaster preparedness.
 
     Args:
         root_dir_ (str): Root directory of the project.
 
     Returns:
-        pd.DataFrame: HFA data_processing with columns for early warning, preparedness, and financial reserves.
+        pd.DataFrame: HFA data with columns for early warning, preparedness, and financial reserves.
     """
     # HFA (Hyogo Framework for Action) data to assess the role of early warning system
     # 2015 hfa
@@ -840,17 +840,17 @@ def load_hfa_data(root_dir_):
 
 def load_wrp_data(any_to_wb_, wrp_data_path_, root_dir_, outfile=None, verbose=True):
     """
-    Loads World Risk Poll (WRP) data_processing for disaster preparedness and early warning systems.
+    Loads World Risk Poll (WRP) data for disaster preparedness and early warning systems.
 
     Args:
         any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
-        wrp_data_path_ (str): Path to the WRP data_processing file.
+        wrp_data_path_ (str): Path to the WRP data file.
         root_dir_ (str): Root directory of the project.
-        outfile (str, optional): Path to save the processed data_processing. Default is None.
+        outfile (str, optional): Path to save the processed data. Default is None.
         verbose (bool): Whether to print verbose output. Default is True.
 
     Returns:
-        pd.DataFrame: Processed WRP data_processing with indicators for disaster preparedness and early warning.
+        pd.DataFrame: Processed WRP data with indicators for disaster preparedness and early warning.
     """
 
     # previously used HFA indicators for "ability to scale up the support to affected population after the disaster":
@@ -929,7 +929,7 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
                         ratings_scale_path="credit_ratings/credit_ratings_scale.csv",
                         verbose=True):
     """
-    Loads and processes credit ratings data_processing from multiple sources.
+    Loads and processes credit ratings data from multiple sources.
 
     Args:
         root_dir_ (str): Root directory of the project.
@@ -940,7 +940,7 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
         verbose (bool): Whether to print verbose output. Default is True.
 
     Returns:
-        pd.Series: Processed credit ratings data_processing indexed by ISO3 country codes.
+        pd.Series: Processed credit ratings data indexed by ISO3 country codes.
     """
     # Trading Economics ratings
     if verbose:
@@ -1015,28 +1015,28 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
                                     forecast_accuracy_file_decadal="Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_decadal.csv",
                                     force_recompute=True, verbose=True):
     """
-    Loads and processes disaster preparedness data_processing, including HFA and WRP data_processing.
+    Loads and processes disaster preparedness data, including HFA and WRP data.
 
     Args:
         root_dir_ (str): Root directory of the project.
         any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
-        include_hfa_data (bool): Whether to include HFA data_processing. Default is True.
-        guess_missing_countries (bool): Whether to guess missing data_processing based on income groups and regions. Default is True.
-        ew_year (int): Year for early warning data_processing. Default is 2018 (no scaling is applied in this case).
-        ew_decade (str, optional): Decade for early warning data_processing. Default is None.
+        include_hfa_data (bool): Whether to include HFA data. Default is True.
+        guess_missing_countries (bool): Whether to guess missing data based on income groups and regions. Default is True.
+        ew_year (int): Year for early warning data. Default is 2018 (no scaling is applied in this case).
+        ew_decade (str, optional): Decade for early warning data. Default is None.
         forecast_accuracy_file_yearly (str): Path to the yearly forecast accuracy file. Default is "Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_yearly.csv".
         forecast_accuracy_file_decadal (str): Path to the decadal forecast accuracy file. Default is "Linsenmeier_Shrader_forecast_accuracy/Linsenmeier_Shrader_forecast_accuracy_per_country_decadal.csv".
-        force_recompute (bool): Whether to force recomputation of data_processing. Default is True.
+        force_recompute (bool): Whether to force recomputation of data. Default is True.
         verbose (bool): Whether to print verbose output. Default is True.
 
     Returns:
-        pd.DataFrame: Processed disaster preparedness data_processing indexed by ISO3 country codes.
+        pd.DataFrame: Processed disaster preparedness data indexed by ISO3 country codes.
     """
     if ew_decade == '':
         ew_decade = None
     outpath = os.path.join(root_dir_, "data/processed/disaster_preparedness.csv")
     if not force_recompute and os.path.exists(outpath) and (ew_year == 2018) and (ew_decade is None):
-        print("Loading disaster preparedness data_processing from file...")
+        print("Loading disaster preparedness data from file...")
         disaster_preparedness_ = pd.read_csv(outpath, index_col='iso3')
         return disaster_preparedness_
 
@@ -1061,7 +1061,7 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
     if guess_missing_countries:
         income_groups = load_income_groups(root_dir_)
         if verbose:
-            print("Guessing missing countries' disaster preparedness data_processing based on income group and region averages.")
+            print("Guessing missing countries' disaster preparedness data based on income group and region averages.")
         merged = pd.merge(disaster_preparedness_, income_groups, left_index=True, right_index=True, how='outer')
         merged.dropna(subset=['Region', 'Country income group'], inplace=True)
 
@@ -1078,12 +1078,12 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
     if ew_year is not None and ew_decade is None:
         forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "data/raw/", forecast_accuracy_file_yearly), index_col=[0, 1]).squeeze()
         if ew_year not in forecast_accuracy.index.get_level_values('year'):
-            raise ValueError(f"Forecast accuracy data_processing not available for year {ew_year}.")
+            raise ValueError(f"Forecast accuracy data not available for year {ew_year}.")
         ew_factor = forecast_accuracy.xs(ew_year, level='year') / forecast_accuracy.xs(forecast_accuracy.index.get_level_values('year').max(), level='year')
     elif ew_year is None and ew_decade is not None:
         forecast_accuracy = pd.read_csv(os.path.join(root_dir_, "data/raw/", forecast_accuracy_file_decadal), index_col=[0, 1]).squeeze()
         if ew_decade not in forecast_accuracy.index.get_level_values('decade'):
-            raise ValueError(f"Forecast accuracy data_processing not available for decade {ew_decade}.")
+            raise ValueError(f"Forecast accuracy data not available for decade {ew_decade}.")
         ew_factor = forecast_accuracy.xs(ew_decade, level='decade') / forecast_accuracy.xs('2011-2020', level='decade')
     else:
         raise ValueError("Exactly one of ew_year or ew_decade must be set.")
@@ -1102,7 +1102,7 @@ def load_gem_data(
         verbose=True,
     ):
     """
-    Loads GEM (Global Exposure Model) data_processing for vulnerability and building class distributions.
+    Loads GEM (Global Exposure Model) data for vulnerability and building class distributions.
 
     Args:
         root_dir_ (str): Root directory of the project.
@@ -1140,11 +1140,11 @@ def load_gem_data(
 
 def get_average_capital_productivity(root_dir_, force_recompute=True):
     """
-    Computes the average productivity of capital using Penn World Table data_processing.
+    Computes the average productivity of capital using Penn World Table data.
 
     Args:
         root_dir_ (str): Root directory of the project.
-        force_recompute (bool): Whether to force recomputation of data_processing. Default is True.
+        force_recompute (bool): Whether to force recomputation of data. Default is True.
 
     Returns:
         pd.Series: Average productivity of capital indexed by ISO3 country codes.
@@ -1153,7 +1153,7 @@ def get_average_capital_productivity(root_dir_, force_recompute=True):
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
     outpath = os.path.join(root_dir_, "data/processed/avg_prod_k.csv")
     if not force_recompute and os.path.exists(outpath):
-        print("Loading capital data_processing from file...")
+        print("Loading capital data from file...")
         return pd.read_csv(outpath, index_col='iso3').squeeze()
 
     print("Recomputing capital data...")
@@ -1180,7 +1180,7 @@ def get_average_capital_productivity(root_dir_, force_recompute=True):
 
 def social_to_tx_and_gsp(cat_info):
     """
-    Computes tax rate and social protection income fraction from data_processing by income category.
+    Computes tax rate and social protection income fraction from data by income category.
 
     Args:
         cat_info (pd.DataFrame): DataFrame containing category information with columns 'social', 'c', and 'n'.
@@ -1206,7 +1206,7 @@ def social_to_tx_and_gsp(cat_info):
 
 def prepare_scenario(scenario_params):
     """
-    Prepares data_processing for a disaster risk scenario based on specified parameters.
+    Prepares data for a disaster risk scenario based on specified parameters.
 
     Args:
         scenario_params (dict): Dictionary containing scenario parameters, including:
@@ -1217,10 +1217,10 @@ def prepare_scenario(scenario_params):
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: Macro-economic data_processing.
+            - pd.DataFrame: Macro-economic data.
             - pd.DataFrame: Data by income category.
-            - pd.DataFrame: Hazard ratios data_processing.
-            - pd.DataFrame: Hazard protection data_processing.
+            - pd.DataFrame: Hazard ratios data.
+            - pd.DataFrame: Hazard protection data.
     """
     root_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 
@@ -1417,11 +1417,11 @@ def prepare_scenario(scenario_params):
 
     if run_params['countries'] != 'all':
         if len(np.intersect1d(countries, run_params['countries'])) == 0:
-            print("None of the selected countries found in data_processing. Keeping all countries.")
+            print("None of the selected countries found in data. Keeping all countries.")
         else:
             countries = np.intersect1d(countries, run_params['countries'])
             if len(countries) < len(run_params['countries']):
-                print("Not all selected countries found in data_processing.")
+                print("Not all selected countries found in data.")
     macro = macro.loc[countries]
     cat_info = cat_info.loc[countries]
     hazard_ratios = hazard_ratios.loc[countries]

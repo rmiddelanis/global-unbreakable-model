@@ -355,10 +355,10 @@ def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_p
 
     Args:
         macro (pd.DataFrame): Original macroeconomic data.
-        macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
-        cat_info_event_iah (pd.DataFrame): Category-level data_processing with welfare loss calculations.
+        macro_event (pd.DataFrame): Macroeconomic data at the event level.
+        cat_info_event_iah (pd.DataFrame): Category-level data with welfare loss calculations.
         event_level (list): List of index levels for events.
-        hazard_protection_ (pd.DataFrame): Hazard protection data_processing.
+        hazard_protection_ (pd.DataFrame): Hazard protection data.
         is_local_welfare (bool): Whether to include local welfare calculations.
 
     Returns:
@@ -401,7 +401,7 @@ def agg_to_event_level(df, seriesname, event_level):
     Aggregates a specified series in a DataFrame to the event level using weights.
 
     Args:
-        df (pd.DataFrame): Input DataFrame containing the data_processing to be aggregated.
+        df (pd.DataFrame): Input DataFrame containing the data to be aggregated.
         seriesname (str or list of str): Name(s) of the series/column(s) to aggregate.
         event_level (list): List of index levels defining the event level (e.g., country, hazard, return period).
 
@@ -420,7 +420,7 @@ def calc_risk_and_resilience_from_k_w(df, is_local_welfare=True):#, long_term_ho
     Computes risk and resilience from welfare losses and capital losses.
 
     Args:
-        df (pd.DataFrame): DataFrame containing macroeconomic and welfare loss data_processing.
+        df (pd.DataFrame): DataFrame containing macroeconomic and welfare loss data.
         is_local_welfare (bool): Whether to use local welfare. Defaults to True.
 
     Returns:
