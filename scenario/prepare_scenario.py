@@ -1279,13 +1279,15 @@ def prepare_scenario(scenario_params):
         timestamp = time()
 
     # compute country borrowing ability
-    borrowing_ability = compute_borrowing_ability(
-        root_dir_=scenario_root_dir,
-        any_to_wb_=any_to_wb,
-        finance_preparedness_=disaster_preparedness.finance_pre,
-        verbose=run_params['verbose'],
-        force_recompute=run_params['force_recompute'],
-    )
+    if 'finance_pre' in disaster_preparedness.columns:
+        borrowing_ability = compute_borrowing_ability(
+            root_dir_=scenario_root_dir,
+            any_to_wb_=any_to_wb,
+            finance_preparedness_=disaster_preparedness.finance_pre,
+            verbose=run_params['verbose'],
+            force_recompute=run_params['force_recompute'],
+        )
+        disaster_preparedness = pd.merge(disaster_preparedness, borrowing_ability, left_index=True, right_index=True, how='left')
     if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
@@ -1359,7 +1361,6 @@ def prepare_scenario(scenario_params):
         timestamp = time()
 
     macro = macro.join(disaster_preparedness, how='left')
-    macro = macro.join(borrowing_ability, how='left')
     macro = macro.join(avg_prod_k, how='left')
     macro = macro.join(tau_tax, how='left')
     macro = macro.join(capital_shares, how='left')

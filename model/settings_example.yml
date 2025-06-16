@@ -14,7 +14,7 @@ scenario_params:
   run_params:
     outpath: './output/'
     force_recompute: True
-    force_download: False
+    download: False
     verbose: False
     countries: 'all'
     exclude_countries: ['THA']
