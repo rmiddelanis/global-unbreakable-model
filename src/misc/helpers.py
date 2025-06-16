@@ -45,7 +45,7 @@ def get_world_bank_countries(wb_raw_data_path, download):
 
         response = requests.get(url, params=params)
         if response.status_code != 200:
-            raise Exception(f"Failed to retrieve data_processing: {response.status_code}")
+            raise Exception(f"Failed to retrieve data: {response.status_code}")
 
         data = response.json()
 
@@ -155,7 +155,7 @@ def xr_average_over_rp(da, protection=None):
         ValueError: If the input is not an xarray object.
     """
     if type(da) not in (xr.DataArray, xr.Dataset):
-        raise ValueError("da should be an xarray data_processing object. Use average_over_rp for pandas objects.")
+        raise ValueError("da should be an xarray data object. Use average_over_rp for pandas objects.")
     return_periods = da.coords['rp']
     rp_probabilities = 1 / return_periods - np.append(1 / return_periods, 0)[1:]
     probabilities = rp_probabilities.broadcast_like(da)
@@ -391,10 +391,10 @@ def load_income_groups(root_dir_):
 
 def update_data_coverage(root_dir_, variable, available_countries, imputed_countries=None):
     """
-    Update the data_processing coverage file with availability and imputation information for a variable.
+    Update the data coverage file with availability and imputation information for a variable.
 
     Args:
-        root_dir_ (str): Root directory containing the data_processing coverage file.
+        root_dir_ (str): Root directory containing the data coverage file.
         variable (str): Name of the variable to update.
         available_countries (list): List of countries where the variable is available.
         imputed_countries (list, optional): List of countries where the variable is imputed. Defaults to None.

@@ -33,14 +33,14 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
                      wb_macro_path="data/processed/wb_data_macro.csv", outpath=None,
                      exclude_povline=None):
     """
-    Processes Poverty Exposure Bias (PEB) data_processing by combining exposure and poverty data_processing, calculating exposure bias,
+    Processes Poverty Exposure Bias (PEB) data by combining exposure and poverty data, calculating exposure bias,
     and generating exposure bias per income quintile.
 
     Args:
         root_dir (str): Root directory of the project. Defaults to "./".
-        exposure_data_path (str): Path to the exposure data_processing file (as per Doan et al. 2023). Defaults to "data/raw/PEB/exposure bias.dta".
-        poverty_data_path (str): Path to the directory containing poverty data_processing files. Defaults to "data/raw/PEB/poverty_data/".
-        wb_macro_path (str): Path to the World Bank macroeconomic data_processing file.
+        exposure_data_path (str): Path to the exposure data file (as per Doan et al. 2023). Defaults to "data/raw/PEB/exposure bias.dta".
+        poverty_data_path (str): Path to the directory containing poverty data files. Defaults to "data/raw/PEB/poverty_data/".
+        wb_macro_path (str): Path to the World Bank macroeconomic data file.
         outpath (str, optional): Directory to save the processed exposure bias per quintile. Defaults to None.
         exclude_povline (float, optional): Poverty line to exclude from the analysis. Defaults to None.
 
@@ -49,7 +49,7 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
 
     Notes:
         - The function calculates relative exposure and exposure bias for different poverty lines.
-        - It interpolates missing poverty lines and adjusts population data_processing for consistency.
+        - It interpolates missing poverty lines and adjusts population data for consistency.
         - Exposure bias per quintile is stored in the specified `outpath` if provided.
     """
 
@@ -142,7 +142,7 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
     # use more recent population data for countries with f_a > 1:
     excess_countries = exposure[exposure['pop_a'] > exposure['pop']].index.get_level_values('iso3').unique()
     if len(excess_countries) > 0:
-        print(f"Using more recent population data_processing for {len(excess_countries)} countries with f_a > 1")
+        print(f"Using more recent population data for {len(excess_countries)} countries with f_a > 1")
         wb_pop = pd.read_csv(wb_macro_path).set_index('iso3')['pop']
         wb_pop = wb_pop.loc[np.intersect1d(wb_pop.index, excess_countries)].rename('pop')
         new_pop = (exposure.pov_headcount * wb_pop).dropna()

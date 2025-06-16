@@ -702,7 +702,7 @@ def plot_supfig_4(results_data_, outpath_=None, numbering=True):
 
 def plot_supfig_2(cat_info_data_, macro_data_, iso3='HTI', hazard='Earthquake', plot_rp=100, show=False, outpath_=None):
     if (cat_info_data_.help_received.unique() != 0).all():
-        raise ValueError("Must pass a data_processing set without PDS.")
+        raise ValueError("Must pass a data set without PDS.")
     data = pd.merge(
         cat_info_data_,
         macro_data_,
@@ -1327,10 +1327,10 @@ def plot_fig_3(results_data_, cat_info_data_, hazard_protection_, outpath_=None,
 def plot_fig_2(data_, world, exclude_countries=None, bins_list=None, cmap='viridis', outpath_=None,
                show=False, numbering=True, annotate=None, run_ols=False, log_xaxis=False):
     """
-    Plots a map with the given data_processing and variables.
+    Plots a map with the given data and variables.
 
     Parameters:
-    data_ (str or DataFrame or Series or GeoDataFrame): The data_processing to plot. Can be a path to a CSV file, a pandas DataFrame,
+    data_ (str or DataFrame or Series or GeoDataFrame): The data to plot. Can be a path to a CSV file, a pandas DataFrame,
                                                         a pandas Series, or a GeoDataFrame.
     exclude_countries (list or sftr, optional): Countries to exclude from the plot. Defaults to None.
     bins_list (dict, optional): Bins for the variables. Defaults to None.

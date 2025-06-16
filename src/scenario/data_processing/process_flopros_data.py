@@ -34,12 +34,12 @@ import xarray as xr
 
 def process_flopros_data(flopros_path, population_path, gadm_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
     """
-    Processes FLOPROS data_processing to compute national-level flood protection levels for riverine and coastal areas.
+    Processes FLOPROS data to compute national-level flood protection levels for riverine and coastal areas.
 
     Args:
-        flopros_path (str): Path to the FLOPROS shapefile containing protection data_processing.
-        flopros_update_path (str): Path to the Excel file with updated modeled coastal protection data_processing.
-        flopros_update_shapes_path (str): Path to the shapefile containing geometries for the updated modeled data_processing.
+        flopros_path (str): Path to the FLOPROS shapefile containing protection data.
+        flopros_update_path (str): Path to the Excel file with updated modeled coastal protection data.
+        flopros_update_shapes_path (str): Path to the shapefile containing geometries for the updated modeled data.
         population_path (str): Path to the population raster file for the year 2020.
         gadm_path (str): Path to the GADM geopackage file containing country boundaries.
         outpath (str, optional): Directory to save the processed protection levels as shapefile and CSV. Defaults to None.
@@ -48,7 +48,7 @@ def process_flopros_data(flopros_path, population_path, gadm_path, outpath=None)
         geopandas.GeoDataFrame: A GeoDataFrame containing national-level flood protection levels for riverine and coastal areas.
 
     Notes:
-        - The function merges design and policy layers for FLOPROS data_processing and incorporates updated modeled coastal protection levels.
+        - The function merges design and policy layers for FLOPROS data and incorporates updated modeled coastal protection levels.
         - Population-weighted protection levels are calculated and aggregated to the country level.
         - Outputs are saved to the specified directory if `outpath` is provided.
     """

@@ -81,7 +81,7 @@ def preprocess_simulation_data(simulation_outputs_dir_, store_preprocessed=False
             continue
 
     cat_info_res_, event_res_, macro_res_, poverty_res_, hazard_prot_sc_, cat_info_sc_, macro_sc_, hazard_ratios_sc_ = [], [], [], [], [], [], [], []
-    for (scenario, hs, vs, vs_sign), path in tqdm.tqdm(simulation_paths.items(), desc="Loading simulation data_processing"):
+    for (scenario, hs, vs, vs_sign), path in tqdm.tqdm(simulation_paths.items(), desc="Loading simulation data"):
         sim_res_cat_info_data = pd.read_csv(os.path.join(path, "iah.csv"), index_col=[0, 1, 2, 3, 4, 5])
         sim_res_macro_data = pd.read_csv(os.path.join(path, "macro.csv"), index_col=[0, 1, 2])
         sim_res_results_data = pd.read_csv(os.path.join(path, "results.csv"), index_col=0)

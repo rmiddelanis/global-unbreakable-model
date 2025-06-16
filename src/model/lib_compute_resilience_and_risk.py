@@ -33,18 +33,18 @@ from src.model.recovery_optimizer import optimize_data, recompute_data_with_tax
 
 def reshape_input(macro, cat_info, hazard_ratios, event_level):
     """
-    Reshapes macroeconomic and category-level data_processing to the event level.
+    Reshapes macroeconomic and category-level data to the event level.
 
     Args:
-        macro (pd.DataFrame): Macroeconomic data_processing.
-        cat_info (pd.DataFrame): Category-level data_processing.
-        hazard_ratios (pd.DataFrame): Hazard ratios data_processing.
+        macro (pd.DataFrame): Macroeconomic data.
+        cat_info (pd.DataFrame): Category-level data.
+        hazard_ratios (pd.DataFrame): Hazard ratios data.
         event_level (list): List of index levels for events.
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: Reshaped macroeconomic data_processing.
-            - pd.DataFrame: Reshaped category-level data_processing.
+            - pd.DataFrame: Reshaped macroeconomic data.
+            - pd.DataFrame: Reshaped category-level data.
     """
 
     # Broadcast macro to event level
@@ -62,15 +62,15 @@ def compute_dk(macro_event, cat_info_event, event_level, affected_cats):
     Calculates potential damage to capital.
 
     Args:
-        macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
-        cat_info_event (pd.DataFrame): Category-level data_processing at the event level.
+        macro_event (pd.DataFrame): Macroeconomic data at the event level.
+        cat_info_event (pd.DataFrame): Category-level data at the event level.
         event_level (list): List of index levels for events.
         affected_cats (pd.Index): Categories for social protection.
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: Updated macroeconomic data_processing with damage calculations.
-            - pd.DataFrame: Updated category-level data_processing with damage calculations.
+            - pd.DataFrame: Updated macroeconomic data with damage calculations.
+            - pd.DataFrame: Updated category-level data with damage calculations.
     """
     macro_event_ = copy.deepcopy(macro_event)
     cat_info_event_ = copy.deepcopy(cat_info_event)
@@ -94,14 +94,14 @@ def compute_dk(macro_event, cat_info_event, event_level, affected_cats):
     return macro_event_, cat_info_event_ia
 
 
-def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending_rate=0.05, targeting="data_processing", variant="unif_poor", borrowing_ability="data_processing",
+def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending_rate=0.05, targeting="data", variant="unif_poor", borrowing_ability="data",
                      covered_loss_share=.2, loss_measure="dk_reco"):
     """
     Calculates the post-disaster response.
 
     Args:
-        macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
-        cat_info_event_ia (pd.DataFrame): Category-level data_processing with initial damage assessments.
+        macro_event (pd.DataFrame): Macroeconomic data at the event level.
+        cat_info_event_ia (pd.DataFrame): Category-level data with initial damage assessments.
         event_level (list): List of index levels for events.
         scope (pd.Index): Population scope indices.
         targeting (str): Targeting strategy for social protection.
@@ -113,8 +113,8 @@ def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: Updated macroeconomic data_processing with response calculations.
-            - pd.DataFrame: Updated category-level data_processing with response calculations.
+            - pd.DataFrame: Updated macroeconomic data with response calculations.
+            - pd.DataFrame: Updated category-level data with response calculations.
     """
 
     macro_event_ = macro_event.copy()
@@ -124,7 +124,7 @@ def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending
     if targeting == "perfect":
         macro_event_["error_incl"] = 0
         macro_event_["error_excl"] = 0
-    elif targeting == "data_processing":
+    elif targeting == "data":
         macro_event_["error_incl"] = ((1 - macro_event_["prepare_scaleup"]) / 2 * macro_event_["fa"] / (1 - macro_event_["fa"])).clip(upper=1, lower=0)  # as in equation 16 of the paper
         macro_event_["error_excl"] = ((1 - macro_event_["prepare_scaleup"]) / 2).clip(upper=1, lower=0)  # as in equation 16 of the paper
     else:
@@ -164,7 +164,7 @@ def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending
 
     # actual aid is limited by borrowing capacity
     max_aid = lending_rate * macro_event_["gdp_pc_pp"]
-    if borrowing_ability == "data_processing":
+    if borrowing_ability == "data":
         # clip by max_aid * borrowing ability
         macro_event_["aid"] = macro_event_["need"].clip(upper=max_aid * macro_event_["borrowing_ability"])
     elif borrowing_ability == "lending_rate":
@@ -183,22 +183,22 @@ def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending
 
 def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, num_cores=None):
     """
-    Prepares data_processing for recovery rate optimization of affected households after a disaster and uses recovery optimizer module to obtain recovery rates.
+    Prepares data for recovery rate optimization of affected households after a disaster and uses recovery optimizer module to obtain recovery rates.
 
     Args:
-        macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
-        cat_info_event_iah (pd.DataFrame): Category-level data_processing with post-disaster response.
+        macro_event (pd.DataFrame): Macroeconomic data at the event level.
+        cat_info_event_iah (pd.DataFrame): Category-level data with post-disaster response.
         capital_t (int): Time horizon for capital recovery. Defaults to 50.
         num_cores (int, optional): Number of CPU cores to use for parallel processing. Defaults to None.
 
     Returns:
-        pd.DataFrame: Updated category-level data_processing with optimized recovery rates.
+        pd.DataFrame: Updated category-level data with optimized recovery rates.
 
     Notes:
-        - The function merges macroeconomic and category-level data_processing, reformats it for optimization,
+        - The function merges macroeconomic and category-level data, reformats it for optimization,
           and computes recovery rates using a numerical optimization process.
         - Only households with capital losses are included in the optimization.
-        - The recovery rates are merged back into the category-level data_processing.
+        - The recovery rates are merged back into the category-level data.
     """
     opt_data = pd.merge(
         macro_event.rename(columns={'avg_prod_k': 'productivity_pi', 'rho': 'discount_rate_rho',
@@ -228,18 +228,18 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
     Now, also includes transfers and tax.
 
     Args:
-        cat_info_event_iah (pd.DataFrame): Category-level data_processing with post-disaster response.
-        macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
+        cat_info_event_iah (pd.DataFrame): Category-level data with post-disaster response.
+        macro_event (pd.DataFrame): Macroeconomic data at the event level.
         event_level_ (list): List of index levels for events.
         capital_t (int): Time horizon for capital recovery. Defaults to 50.
         num_cores (int, optional): Number of CPU cores to use for parallel processing. Defaults to None.
 
     Returns:
-        pd.DataFrame: Updated category-level data_processing with well-being losses and savings usage.
+        pd.DataFrame: Updated category-level data with well-being losses and savings usage.
 
     Notes:
         - Combines recovery parameters (e.g., capital losses, recovery rates) for affected households.
-        - Recomputes data_processing with tax adjustments and integrates recovery parameters.
+        - Recomputes data with tax adjustments and integrates recovery parameters.
         - Calculates the amount of savings and social protection used for reconstruction.
     """
     recovery_parameters = cat_info_event_iah.xs('a', level='affected_cat')[['n', 'dk', 'lambda_h']]
@@ -276,14 +276,14 @@ def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):#, long_t
     Computes long-term well-being losses from public asset reconstruction costs, PDS costs, and used savings.
 
     Args:
-        cat_info_event_iah (pd.DataFrame): Category-level data_processing with post-disaster response.
-        macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
+        cat_info_event_iah (pd.DataFrame): Category-level data with post-disaster response.
+        macro_event (pd.DataFrame): Macroeconomic data at the event level.
         event_level (list): List of index levels for events.
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: Updated category-level data_processing with long-term well-being loss calculations.
-            - pd.DataFrame: Updated macroeconomic data_processing.
+            - pd.DataFrame: Updated category-level data with long-term well-being loss calculations.
+            - pd.DataFrame: Updated macroeconomic data.
 
     Notes:
         - Calculates public asset reconstruction costs and distributes them across households.
@@ -311,16 +311,16 @@ def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, num_
     Calculates dynamic consumption and well-being losses due to disasters.
 
     Args:
-        cat_info_event_iah (pd.DataFrame): Category-level data_processing with post-disaster response.
-        macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
+        cat_info_event_iah (pd.DataFrame): Category-level data with post-disaster response.
+        macro_event (pd.DataFrame): Macroeconomic data at the event level.
         event_level_ (list): List of index levels for events.
         capital_t (int): Time horizon for capital recovery.
         num_cores (int): Number of CPU cores to use for parallel processing.
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: Updated category-level data_processing.
-            - pd.DataFrame: Updated macroeconomic data_processing.
+            - pd.DataFrame: Updated category-level data.
+            - pd.DataFrame: Updated macroeconomic data.
     """
 
     # compute the optimal recovery rates
@@ -351,10 +351,10 @@ def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, num_
 def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_protection_,
                    is_local_welfare=True):
     """
-    Aggregates data_processing to the event level and prepares results.
+    Aggregates data to the event level and prepares results.
 
     Args:
-        macro (pd.DataFrame): Original macroeconomic data_processing.
+        macro (pd.DataFrame): Original macroeconomic data.
         macro_event (pd.DataFrame): Macroeconomic data_processing at the event level.
         cat_info_event_iah (pd.DataFrame): Category-level data_processing with welfare loss calculations.
         event_level (list): List of index levels for events.

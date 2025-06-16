@@ -31,17 +31,17 @@ from src.scenario.data_processing.get_wb_data import get_most_recent_value
 
 def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_: str, varname_: str, verbose: bool=False):
     """
-    Gathers and processes data_processing from the FINDEX datasets.
+    Gathers and processes data from the FINDEX datasets.
 
     Args:
-        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data_processing files.
+        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data files.
         question_ids_ (dict): Dictionary mapping years to question IDs for the FINDEX datasets.
         root_dir_ (str): Root directory of the project.
-        varname_ (str): Variable name to assign to the selected question data_processing.
+        varname_ (str): Variable name to assign to the selected question data.
         verbose (bool): Whether to print warnings or additional information. Defaults to False.
 
     Returns:
-        pd.DataFrame: Processed FINDEX data_processing indexed by country, year, and income category.
+        pd.DataFrame: Processed FINDEX data indexed by country, year, and income category.
 
     Raises:
         ValueError: If an unknown FINDEX year is encountered.
@@ -105,16 +105,16 @@ def gather_findex_data(findex_data_paths_: dict, question_ids_: dict, root_dir_:
 
 def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, verbose=True):
     """
-    Processes FINDEX data_processing to calculate the share of individuals saving money using formal financial institutions.
+    Processes FINDEX data to calculate the share of individuals saving money using formal financial institutions.
 
     Args:
         root_dir_ (str): Root directory of the project.
         any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
-        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data_processing files.
+        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data files.
         verbose (bool): Whether to print warnings or additional information. Defaults to True.
 
     Returns:
-        pd.Series: Processed data_processing containing the share of individuals saving money, indexed by ISO3, year, and income category.
+        pd.Series: Processed data containing the share of individuals saving money, indexed by ISO3, year, and income category.
     """
 
     # fin17a (2021): "Saved using an account at a financial institution"
@@ -155,18 +155,18 @@ def gather_axfin_data(root_dir_, any_to_wb_, findex_data_paths_, verbose=True):
 
 def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, gni_pc_pp, drop_refused=True, verbose=True):
     """
-    Calculates liquidity data_processing from FINDEX datasets, combining it with GNI per capita data_processing.
+    Calculates liquidity data from FINDEX datasets, combining it with GNI per capita data.
 
     Args:
         root_dir_ (str): Root directory of the project.
         any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
-        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data_processing files.
-        gni_pc_pp (pd.Series): GNI per capita data_processing indexed by ISO3.
+        findex_data_paths_ (dict): Dictionary where keys are years and values are paths to the FINDEX data files.
+        gni_pc_pp (pd.Series): GNI per capita data indexed by ISO3.
         drop_refused (bool): Whether to drop respondents who refused to answer. Defaults to True.
         verbose (bool): Whether to print warnings or additional information. Defaults to True.
 
     Returns:
-        pd.DataFrame: Liquidity data_processing indexed by ISO3, year, and income category, containing liquidity shares and average liquidity.
+        pd.DataFrame: Liquidity data indexed by ISO3, year, and income category, containing liquidity shares and average liquidity.
 
     Raises:
         ValueError: If an unknown FINDEX year is encountered.
@@ -174,7 +174,7 @@ def get_liquidity_from_findex(root_dir_, any_to_wb_, findex_data_paths_, gni_pc_
     Notes:
         - Liquidity is defined as the ability to come up with 1/20 of the GNI per capita in the country currency.
         - Respondents answering "don’t know", "cannot come up with the money", or "would need to sell assets" are considered not liquid.
-        - The function processes FINDEX data_processing to calculate liquidity shares and combines them with GNI per capita data_processing to compute average liquidity.
+        - The function processes FINDEX data to calculate liquidity shares and combines them with GNI per capita data to compute average liquidity.
     """
 
     question_ids = {2021: 'fin24', 2017: 'fin25', 2014: 'q25', 2011: None}

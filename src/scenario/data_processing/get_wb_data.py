@@ -59,7 +59,7 @@ def get_wb_series(wb_name, colname, wb_raw_data_path, download):
 
     Args:
         wb_name (str): World Bank indicator name.
-        colname (str or float): Column name for the data_processing.
+        colname (str or float): Column name for the data.
 
     Returns:
         pd.DataFrame: DataFrame containing the World Bank series.
@@ -73,7 +73,7 @@ def get_wb_mrv(wb_name, colname, wb_raw_data_path, download):
 
     Args:
         wb_name (str): World Bank indicator name.
-        colname (str): Column name for the data_processing.
+        colname (str): Column name for the data.
 
     Returns:
         pd.Series: Series containing the most recent values of the World Bank series.
@@ -84,10 +84,10 @@ def get_wb_mrv(wb_name, colname, wb_raw_data_path, download):
 
 def get_most_recent_value(data, drop_year=True):
     """
-    Extracts the most recent value for each group in the data_processing.
+    Extracts the most recent value for each group in the data.
 
     Args:
-        data (pd.DataFrame or pd.Series): Input data_processing.
+        data (pd.DataFrame or pd.Series): Input data.
         drop_year (bool): Whether to drop the year column. Defaults to True.
 
     Returns:
@@ -102,7 +102,7 @@ def get_most_recent_value(data, drop_year=True):
             res = res.loc[res.groupby(levels_new)['year'].idxmax()].set_index(levels_new).squeeze()
         return res
     else:
-        print("Warning: No 'year' in index names, returning data_processing as is.")
+        print("Warning: No 'year' in index names, returning data as is.")
     return data
 
 
@@ -112,7 +112,7 @@ def get_wb_df(wb_name, colname, wb_raw_data_path, download):
 
     Args:
         wb_name (str): World Bank indicator name.
-        colname (str): Column name for the data_processing.
+        colname (str): Column name for the data.
 
     Returns:
         pd.DataFrame: DataFrame containing the World Bank dataset.
@@ -131,17 +131,17 @@ def get_wb_df(wb_name, colname, wb_raw_data_path, download):
 
 def broadcast_to_population_resolution(data, resolution):
     """
-    Scales data_processing to a specified population resolution.
+    Scales data to a specified population resolution.
 
     Args:
-        data (pd.DataFrame or pd.Series): Input data_processing to be scaled.
-        resolution (float): Resolution to scale the data_processing to.
+        data (pd.DataFrame or pd.Series): Input data to be scaled.
+        resolution (float): Resolution to scale the data to.
 
     Returns:
         pd.DataFrame or pd.Series: Data scaled to the specified resolution.
 
     Raises:
-        ValueError: If the input data_processing is not a DataFrame or Series.
+        ValueError: If the input data is not a DataFrame or Series.
     """
     # scale to resolution
     if type(data) == pd.DataFrame:
@@ -167,7 +167,7 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classificati
         root_dir_ (str): Root directory of the project.
         any_to_wb (dict): Mapping of country names to World Bank ISO3 codes.
         verbose (bool): Whether to print verbose output. Defaults to True.
-        reg_data_outpath (str, optional): Path to save regression data_processing. Defaults to None.
+        reg_data_outpath (str, optional): Path to save regression data. Defaults to None.
 
     Returns:
         pd.DataFrame: Updated category information with predicted transfer shares.
@@ -237,21 +237,21 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classificati
 def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, wb_raw_data_path, download, most_recent_value=True,
                            upper_bound=None, lower_bound=None):
     """
-    Downloads World Bank quintile data_processing and processes it.
+    Downloads World Bank quintile data and processes it.
 
     Args:
-        name (str): Name of the data_processing.
+        name (str): Name of the data.
         id_q1 (str): World Bank indicator ID for the first quintile.
         id_q2 (str): World Bank indicator ID for the second quintile.
         id_q3 (str): World Bank indicator ID for the third quintile.
         id_q4 (str): World Bank indicator ID for the fourth quintile.
         id_q5 (str): World Bank indicator ID for the fifth quintile.
         most_recent_value (bool): Whether to use the most recent value. Defaults to True.
-        upper_bound (float, optional): Upper bound for the data_processing. Defaults to None.
-        lower_bound (float, optional): Lower bound for the data_processing. Defaults to None.
+        upper_bound (float, optional): Upper bound for the data. Defaults to None.
+        lower_bound (float, optional): Lower bound for the data. Defaults to None.
 
     Returns:
-        pd.Series: Processed quintile data_processing indexed by country, year, and income category.
+        pd.Series: Processed quintile data indexed by country, year, and income category.
     """
     data_q1 = get_wb_series(id_q1, .2, wb_raw_data_path, download)
     data_q2 = get_wb_series(id_q2,.4, wb_raw_data_path, download)
@@ -274,24 +274,24 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
                 drop_incomplete=True, force_recompute=True, verbose=True, save=True, include_spl=False, resolution=.2,
                 download=False):
     """
-    Downloads and processes World Bank socio-economic data_processing, including macroeconomic and income-level data_processing.
+    Downloads and processes World Bank socio-economic data, including macroeconomic and income-level data.
 
     Args:
         root_dir (str): Root directory of the project.
-        ppp_reference_year (int): Reference year for PPP data_processing. Defaults to 2021.
-        include_remittances (bool): Whether to include remittance data_processing. Defaults to True.
-        impute_missing_data (bool): Whether to impute missing data_processing. Defaults to False.
-        drop_incomplete (bool): Whether to drop countries with incomplete data_processing. Defaults to True.
-        force_recompute (bool): Whether to force recomputation of data_processing. Defaults to True.
+        ppp_reference_year (int): Reference year for PPP data. Defaults to 2021.
+        include_remittances (bool): Whether to include remittance data. Defaults to True.
+        impute_missing_data (bool): Whether to impute missing data. Defaults to False.
+        drop_incomplete (bool): Whether to drop countries with incomplete data. Defaults to True.
+        force_recompute (bool): Whether to force recomputation of data. Defaults to True.
         verbose (bool): Whether to print verbose output. Defaults to True.
-        save (bool): Whether to save the processed data_processing. Defaults to True.
-        include_spl (bool): Whether to include shared prosperity line data_processing. Defaults to False.
+        save (bool): Whether to save the processed data. Defaults to True.
+        include_spl (bool): Whether to include shared prosperity line data. Defaults to False.
         resolution (float): Resolution for income shares. Defaults to 0.2.
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: Macroeconomic data_processing indexed by ISO3 country codes.
-            - pd.DataFrame: Category-level data_processing indexed by ISO3 country codes and income categories.
+            - pd.DataFrame: Macroeconomic data indexed by ISO3 country codes.
+            - pd.DataFrame: Category-level data indexed by ISO3 country codes and income categories.
     """
     macro_path = os.path.join(root_dir, "data/processed/wb_data_macro.csv")
     cat_info_path = os.path.join(root_dir, "data/processed/wb_data_cat_info.csv")
@@ -299,11 +299,11 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     transfers_regr_data_path = os.path.join(root_dir, "data/processed/social_shares_regressors.csv")
     wb_raw_data_path = os.path.join(root_dir, "data/raw/WB_socio_economic_data/API")
     if not force_recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
-        print("Loading World Bank data_processing from file...")
+        print("Loading World Bank data from file...")
         macro_df = pd.read_csv(macro_path, index_col='iso3')
         cat_info_df = pd.read_csv(cat_info_path, index_col=['iso3', 'income_cat'])
         return macro_df, cat_info_df
-    print("Downloading World Bank data_processing...")
+    print("Downloading World Bank data...")
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
     # World Development Indicators
@@ -452,12 +452,12 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     complete_cat_info = cat_info_df.isna().any(axis=1).replace(True, np.nan).unstack('income_cat').dropna(how='any').index.unique()
     complete_countries = np.intersect1d(complete_macro, complete_cat_info)
     if verbose:
-        print(f"Full data_processing for {len(complete_countries)} countries.")
+        print(f"Full data for {len(complete_countries)} countries.")
     if drop_incomplete:
         dropped = list(set(list(macro_df.index.get_level_values('iso3').unique()) +
                            list(cat_info_df.index.get_level_values('iso3').unique())) - set(complete_countries))
         if verbose:
-            print(f"Dropped {len(dropped)} countries with missing data_processing: {dropped}")
+            print(f"Dropped {len(dropped)} countries with missing data: {dropped}")
         macro_df = macro_df.loc[complete_countries]
         cat_info_df = cat_info_df.loc[complete_countries]
 

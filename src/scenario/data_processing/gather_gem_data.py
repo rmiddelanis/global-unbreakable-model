@@ -178,7 +178,7 @@ def identify_gem_attribute_type(attribute, field_value_to_type_map, verbose=True
 def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path_, vuln_class_mapping_,
                     vulnerability_class_output_=None, weight_by='total_replacement_cost', verbose=True):
     """
-    Gathers and processes GEM (Global Exposure Model) data_processing.
+    Gathers and processes GEM (Global Exposure Model) data.
 
     Args:
         gem_repo_root_dir_ (str): Root directory of the GEM repository.
@@ -191,7 +191,7 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
 
     Returns:
         tuple: A tuple containing:
-            - pd.DataFrame: GEM data_processing with decoded taxonomy and assigned vulnerabilities.
+            - pd.DataFrame: GEM data with decoded taxonomy and assigned vulnerabilities.
             - pd.DataFrame: Vulnerability class shares by country and hazard.
     """
 

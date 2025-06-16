@@ -53,7 +53,7 @@ def run_model(settings: dict):
         None
 
     Notes:
-        - The function generates scenario data_processing, reshapes inputs, computes disaster impacts,
+        - The function generates scenario data, reshapes inputs, computes disaster impacts,
           and calculates post-disaster responses.
         - Results are saved to the specified output directory.
     """

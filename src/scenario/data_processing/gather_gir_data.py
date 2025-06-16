@@ -32,15 +32,15 @@ from src.misc.helpers import average_over_rp
 
 def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scenario='Existing climate', verbose=True):
     """
-    Loads and processes GIRI (Global Infrastructure Risk Model and Resilience Index) hazard loss data_processing.
+    Loads and processes GIRI (Global Infrastructure Risk Model and Resilience Index) hazard loss data.
 
-    This function processes hazard loss data_processing to compute the fraction of value destroyed for each country, hazard,
+    This function processes hazard loss data to compute the fraction of value destroyed for each country, hazard,
     and return period. It supports extrapolation of return periods and filtering by climate scenarios.
 
     Args:
-        gir_filepath_ (str): Path to the GIR hazard loss data_processing file (compressed CSV).
+        gir_filepath_ (str): Path to the GIR hazard loss data file (compressed CSV).
         extrapolate_rp_ (bool): Whether to extrapolate return periods. Defaults to True.
-        climate_scenario (str): Climate scenario to filter the data_processing. Defaults to 'Existing climate'.
+        climate_scenario (str): Climate scenario to filter the data. Defaults to 'Existing climate'.
         verbose (bool): Whether to print warnings and additional information. Defaults to True.
 
     Returns:
@@ -51,7 +51,7 @@ def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scena
         ValueError: If invalid return periods are provided during extrapolation.
 
     Notes:
-        - The function handles disputed territories and merges data_processing for specific regions into their respective countries.
+        - The function handles disputed territories and merges data for specific regions into their respective countries.
         - It supports adding new return periods for frequent and infrequent events.
         - Zero values are dropped from the final result.
     """
@@ -148,7 +148,7 @@ def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scena
             # check that the new data is consistent with the overall AAL. Values should be 0 (tolerance 1e-10)
             max_deviation = (average_over_rp(res).squeeze() - aal_data_).abs().max()
             if max_deviation > 1e-10 and verbose:
-                print(f"Warning: new data_processing for return period {new_rp_} is not consistent with the overall AAL. The "
+                print(f"Warning: new data for return period {new_rp_} is not consistent with the overall AAL. The "
                       f"difference of the AAL to the return period average is up to {max_deviation}.")
             return res
 
