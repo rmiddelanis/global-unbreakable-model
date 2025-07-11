@@ -59,7 +59,7 @@ def get_world_bank_countries(wb_raw_data_path, download):
         country_df = country_df[country_df.region != 'Aggregates']
         country_df['region'] = country_df.region.replace(
             {'East Asia & Pacific': 'EAP', 'Europe & Central Asia': 'ECA', 'Latin America & Caribbean': 'LAC',
-             'Middle East & North Africa': 'MNA', 'North America': 'NMA', 'South Asia': 'SAR', 'Sub-Saharan Africa': 'SSA'}
+             'Middle East, North Africa, Afghanistan & Pakistan': 'MNA', 'North America': 'NMA', 'South Asia': 'SAR', 'Sub-Saharan Africa': 'SSA'}
         )
         country_df['income_group'] = country_df.income_group.replace({'LMCs': 'LMICs', 'UMCs': 'UMICs'})
         if country_df.loc['VEN', 'income_group'] == 'INXs': # use most recent available value for VEN
