@@ -1,7 +1,7 @@
 model_params:
   run_params:
     append_date: False
-    outpath: './output/'
+    outpath: './results/example'
     verbose: False
   pds_params:
     pds_variant: 'no'
@@ -12,8 +12,8 @@ model_params:
     covered_loss_share: 0.4
 scenario_params:
   run_params:
-    outpath: './output/'
-    force_recompute: True
+    outpath: './results/example'
+    force_recompute: False
     download: False
     verbose: False
     countries: 'all'
@@ -27,6 +27,7 @@ scenario_params:
     discount_rate_rho: .06
     axfin_impact: .1
     reduction_vul: .2
+    early_warning_file: "/Users/robin/Documents/Karriere/Jobs/2023_The_World_Bank/03_projects/02_Hydromet/04_code/global-unbreakable-model/data/processed/ew/3__ALL_ODA+SIDS:S+UA_ew.csv"
   hazard_params:
     hazard_protection: 'FLOPROS'
     no_exposure_bias: False

@@ -233,7 +233,7 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, resolution
     return liquidity_and_axfin
 
 
-def calc_real_estate_share_of_value_added(root_dir, any_to_wb, verbose=True):
+def calc_real_estate_share_of_value_added(root_dir, any_to_wb, verbose=True, most_recent_value=True):
     """
     Calculates the share of real estate activities in value added and GDP.
 
@@ -284,7 +284,8 @@ def calc_real_estate_share_of_value_added(root_dir, any_to_wb, verbose=True):
     real_est_value_added_share = merged.iloc[:, 0].fillna(merged.iloc[:, 1]).dropna().rename('real_estate_share_of_value_added').reset_index()
 
     # retain only the most recent year
-    real_est_value_added_share = real_est_value_added_share.loc[real_est_value_added_share.groupby('country').Year.idxmax()].drop('Year', axis=1)
+    if most_recent_value:
+        real_est_value_added_share = real_est_value_added_share.loc[real_est_value_added_share.groupby('country').Year.idxmax()].drop('Year', axis=1)
 
     # replace country names with iso3 codes
     real_est_value_added_share = df_to_iso3(real_est_value_added_share, 'country', any_to_wb, verbose_=verbose).set_index('iso3').drop('country', axis=1)
@@ -528,7 +529,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missi
             bias_wavg = (bias_pop.product(axis=1).groupby(['hazard', 'income_cat']).sum()
                          / bias_pop['pop'].groupby(['hazard', 'income_cat']).sum()).rename('exposure_bias')
             bias = pd.merge(bias, bias_wavg, left_index=True, right_index=True, how='left')
-            bias.exposure_bias_x.fillna(bias.exposure_bias_y, inplace=True)
+            bias["exposure_bias_x"] = bias["exposure_bias_x"].fillna(bias.exposure_bias_y)
             bias.drop('exposure_bias_y', axis=1, inplace=True)
             bias = bias.rename({'exposure_bias_x': 'exposure_bias'}, axis=1).squeeze()
             bias = bias.swaplevel('income_cat', 'iso3').swaplevel('hazard', 'iso3').sort_index()
@@ -1011,7 +1012,7 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
 
 
 def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True, guess_missing_countries=True,
-                                    force_recompute=True, verbose=True):
+                                    force_recompute=True, verbose=True, early_warning_file=None):
     """
     Loads and processes disaster preparedness data, including HFA and WRP data.
 
@@ -1022,51 +1023,55 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         guess_missing_countries (bool): Whether to guess missing data based on income groups and regions. Default is True.
         force_recompute (bool): Whether to force recomputation of data. Default is True.
         verbose (bool): Whether to print verbose output. Default is True.
+        early_warning_file (str): Filepath for alternative early warning data (optional).
 
     Returns:
         pd.DataFrame: Processed disaster preparedness data indexed by ISO3 country codes.
     """
-    outpath = os.path.join(root_dir_, "data/processed/disaster_preparedness.csv")
-    if not force_recompute and os.path.exists(outpath):
+    dp_path = os.path.join(root_dir_, "data/processed/disaster_preparedness.csv")
+
+    if not force_recompute and os.path.exists(dp_path):
         print("Loading disaster preparedness data from file...")
-        disaster_preparedness_ = pd.read_csv(outpath, index_col='iso3')
-        return disaster_preparedness_
+        disaster_preparedness_ = pd.read_csv(dp_path, index_col='iso3').drop(columns='ew')
+        early_warning_ = pd.read_csv(early_warning_file if early_warning_file else dp_path)
+        early_warning_ = early_warning_.set_index(list(np.intersect1d(early_warning_.columns, ['iso3', 'hazard']))[::-1]).ew
+    else:
+        print("Recomputing disaster preparedness data...")
+        disaster_preparedness_ = load_wrp_data(any_to_wb_, "WRP/lrf_wrp_2021_full_data.csv.zip", root_dir_,
+                                               verbose=verbose)
+        if include_hfa_data:
+            # read HFA data
+            hfa_data = load_hfa_data(root_dir_=root_dir_)
+            # merge HFA and WRP data: mean of the two data sets where both are available
+            disaster_preparedness_['ew'] = pd.concat((hfa_data['ew'], disaster_preparedness_['ew']), axis=1).mean(axis=1)
+            disaster_preparedness_['prepare_scaleup'] = pd.concat(
+                (hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1).mean(axis=1)
+            disaster_preparedness_ = pd.merge(disaster_preparedness_, hfa_data.finance_pre, left_index=True, right_index=True, how='outer')
 
-    print("Recomputing disaster preparedness data...")
-    disaster_preparedness_ = load_wrp_data(any_to_wb_, "WRP/lrf_wrp_2021_full_data.csv.zip", root_dir_,
-                                           verbose=verbose)
-    if include_hfa_data:
-        # read HFA data
-        hfa_data = load_hfa_data(root_dir_=root_dir_)
-        # merge HFA and WRP data: mean of the two data sets where both are available
-        disaster_preparedness_['ew'] = pd.concat((hfa_data['ew'], disaster_preparedness_['ew']), axis=1).mean(axis=1)
-        disaster_preparedness_['prepare_scaleup'] = pd.concat(
-            (hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1).mean(axis=1)
-        disaster_preparedness_ = pd.merge(disaster_preparedness_, hfa_data.finance_pre, left_index=True, right_index=True, how='outer')
+        for v in ['ew', 'prepare_scaleup', 'finance_pre']:
+            update_data_coverage(root_dir_, v, disaster_preparedness_.dropna(subset=v).index, None)
 
-    for v in ['ew', 'prepare_scaleup', 'finance_pre']:
-        update_data_coverage(root_dir_, v, disaster_preparedness_.dropna(subset=v).index, None)
+        if guess_missing_countries:
+            income_groups = load_income_groups(root_dir_)
+            if verbose:
+                print("Guessing missing countries' disaster preparedness data based on income group and region averages.")
+            merged = pd.merge(disaster_preparedness_, income_groups, left_index=True, right_index=True, how='outer')
+            merged.dropna(subset=['Region', 'Country income group'], inplace=True)
 
-    if guess_missing_countries:
-        income_groups = load_income_groups(root_dir_)
-        if verbose:
-            print("Guessing missing countries' disaster preparedness data based on income group and region averages.")
-        merged = pd.merge(disaster_preparedness_, income_groups, left_index=True, right_index=True, how='outer')
-        merged.dropna(subset=['Region', 'Country income group'], inplace=True)
+            # keep track of imputed data
+            for v in ['finance_pre', 'ew', 'prepare_scaleup']:
+                available_countries = merged[~merged[v].isna()].index.get_level_values('iso3').unique()
+                imputed_countries = merged[merged[v].isna()].index.get_level_values('iso3').unique()
+                update_data_coverage(root_dir_, v, available_countries, imputed_countries)
 
-        # keep track of imputed data
-        for v in ['finance_pre', 'ew', 'prepare_scaleup']:
-            available_countries = merged[~merged[v].isna()].index.get_level_values('iso3').unique()
-            imputed_countries = merged[merged[v].isna()].index.get_level_values('iso3').unique()
-            update_data_coverage(root_dir_, v, available_countries, imputed_countries)
-
-        fill_values = merged.groupby(['Region', 'Country income group']).mean()
-        fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Country income group').mean())
-        merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Country income group'])], axis=1))
-        disaster_preparedness_ = merged[disaster_preparedness_.columns]
-    disaster_preparedness_ = disaster_preparedness_.dropna()
-    disaster_preparedness_.to_csv(outpath)
-    return disaster_preparedness_
+            fill_values = merged.groupby(['Region', 'Country income group']).mean()
+            fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Country income group').mean())
+            merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Country income group'])], axis=1))
+            disaster_preparedness_ = merged[disaster_preparedness_.columns]
+        disaster_preparedness_ = disaster_preparedness_.dropna()
+        disaster_preparedness_.to_csv(dp_path)
+        early_warning_ = disaster_preparedness_.pop('ew')
+    return disaster_preparedness_, early_warning_
 
 
 def load_gem_data(
@@ -1230,6 +1235,7 @@ def prepare_scenario(scenario_params):
     macro_params['axfin_impact'] = macro_params.get('axfin_impact', .1)
     macro_params['reconstruction_capital'] = macro_params.get('reconstruction_capital', 'self_hous')
     macro_params['reduction_vul'] = macro_params.get('reduction_vul', .2)
+    macro_params['early_warning_file'] = macro_params.get('early_warning_file', None)
 
     hazard_params['hazard_protection'] = hazard_params.get('hazard_protection', 'FLOPROS')
     hazard_params['no_exposure_bias'] = hazard_params.get('no_exposure_bias', False)
@@ -1271,13 +1277,14 @@ def prepare_scenario(scenario_params):
 
     cat_info = pd.merge(wb_data_cat_info, liquidity_and_axfin, left_index=True, right_index=True, how='inner')
 
-    disaster_preparedness = load_disaster_preparedness_data(
+    disaster_preparedness, early_warning = load_disaster_preparedness_data(
         root_dir_=root_dir,
         any_to_wb_=any_to_wb,
         include_hfa_data=True,
         guess_missing_countries=True,
         force_recompute=run_params['force_recompute'],
-        verbose=run_params['verbose']
+        verbose=run_params['verbose'],
+        early_warning_file=macro_params['early_warning_file'],
     )
     if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
@@ -1331,7 +1338,7 @@ def prepare_scenario(scenario_params):
         population_data=wb_data_macro['pop'],
         scale_exposure=policy_params.pop('scale_exposure', None),
         scale_vulnerability=policy_params.pop('scale_vulnerability', None),
-        early_warning_data=disaster_preparedness.ew,
+        early_warning_data=early_warning,
         no_ew_hazards="Earthquake+Tsunami",
         reduction_vul=macro_params['reduction_vul'],
     )
@@ -1365,6 +1372,8 @@ def prepare_scenario(scenario_params):
     if run_params['force_recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
+
+    hazard_protection = pd.merge(hazard_protection, early_warning, left_index=True, right_index=True, how='outer')
 
     macro = macro.join(disaster_preparedness, how='left')
     macro = macro.join(avg_prod_k, how='left')
