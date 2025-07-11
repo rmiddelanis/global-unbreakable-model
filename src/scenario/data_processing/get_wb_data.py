@@ -127,7 +127,7 @@ def get_wb_df(wb_name, colname, wb_raw_data_path, download):
         wb_raw = wb_raw.set_index(list(np.intersect1d(wb_raw.columns, ['country', 'year'])))
     if 'year' in wb_raw.index.names:
         # make year index an integer
-        wb_raw = wb_raw[~wb_raw.index.get_level_values('year').str.contains('W|S')]
+        wb_raw = wb_raw[~wb_raw.index.get_level_values('year').astype(str).str.contains('W|S')]
         wb_raw.rename(index={y: int(y) for y in wb_raw.index.get_level_values('year').unique()}, level='year', inplace=True)
     # sensible name for the column
     return wb_raw.rename(columns={wb_raw.columns[0]: colname})
