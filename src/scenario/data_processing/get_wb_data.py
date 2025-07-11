@@ -177,11 +177,11 @@ def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classificati
         pd.DataFrame: Updated category information with predicted transfer shares.
     """
     regression_spec = {
-        .2: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY + MNA', # R2=0.557
-        .4: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.558
-        .6: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA + MNA',  # R2=0.503
-        .8: 'transfers ~ exp_SP_GDP + remittances_GDP + HICs + UMICs + EAP + LAC + MNA',  # R2=0.468
-        1: 'transfers ~ exp_SP_GDP + remittances_GDP + UMICs + EAP',  # R2=0.328
+        .2: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY',
+        .4: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + ECA',
+        .6: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA',
+        .8: 'transfers ~ exp_SP_GDP + remittances_GDP + HICs + UMICs + EAP + LAC',
+        1: 'transfers ~ exp_SP_GDP + remittances_GDP + UMICs + EAP',
     }
 
     remittances = get_wb_mrv('BX.TRF.PWKR.DT.GD.ZS', 'remittances_GDP', wb_raw_data_path, download).dropna().astype(float)
