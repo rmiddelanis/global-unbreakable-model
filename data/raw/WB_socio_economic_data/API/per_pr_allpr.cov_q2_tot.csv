@@ -1,499 +1,1770 @@
 country,year,per_pr_allpr.cov_q2_tot
-East Asia & Pacific,2010-20W,38.2295383969125
-East Asia & Pacific,2010-20S,36.28516329994899
-Europe & Central Asia,2010-20W,30.5320807387599
-Europe & Central Asia,2010-20S,20.5505865458396
-High income,2010-20W,23.028858016133398
-High income,2010-20S,19.9372726132455
-Latin America & Caribbean,2010-20W,20.1151353880255
-Latin America & Caribbean,2010-20S,32.25953529142469
-Low income,2010-20W,25.35842401064709
-Low income,2010-20S,33.11511948740899
-Lower middle income,2010-20W,39.53299039663299
-Lower middle income,2010-20S,32.857482145611
-Middle East & North Africa,2010-20W,57.4478743738461
-Middle East & North Africa,2010-20S,58.26799998538089
-South Asia,2010-20W,30.188710900840498
-South Asia,2010-20S,24.4342853277826
-Sub-Saharan Africa,2010-20W,31.3579029614081
-Sub-Saharan Africa,2010-20S,33.5710300430983
-Upper middle income,2010-20W,32.8451853494739
-Upper middle income,2010-20S,34.11436419646769
-World,2010-20W,33.90784192760119
-World,2010-20S,32.45848607232829
+East Asia & Pacific,2023,
+East Asia & Pacific,2022,
+East Asia & Pacific,2021,
+East Asia & Pacific,2020,
+East Asia & Pacific,2019,
+East Asia & Pacific,2018,
+East Asia & Pacific,2017,
+East Asia & Pacific,2016,
+East Asia & Pacific,2015,
+East Asia & Pacific,2014,
+East Asia & Pacific,2013,
+East Asia & Pacific,2012,
+East Asia & Pacific,2011-21W,37.9410401583525
+East Asia & Pacific,2011-21S,36.0255784345973
+East Asia & Pacific,2011,
+East Asia & Pacific,2010-20W,
+East Asia & Pacific,2010-20S,
+East Asia & Pacific,2010,
+East Asia & Pacific,2009,
+East Asia & Pacific,2008,
+East Asia & Pacific,2007,
+East Asia & Pacific,2006,
+East Asia & Pacific,2005,
+East Asia & Pacific,2004,
+East Asia & Pacific,2003,
+East Asia & Pacific,2002,
+East Asia & Pacific,2001,
+East Asia & Pacific,2000,
+Europe & Central Asia,2023,
+Europe & Central Asia,2022,
+Europe & Central Asia,2021,
+Europe & Central Asia,2020,
+Europe & Central Asia,2019,
+Europe & Central Asia,2018,
+Europe & Central Asia,2017,
+Europe & Central Asia,2016,
+Europe & Central Asia,2015,
+Europe & Central Asia,2014,
+Europe & Central Asia,2013,
+Europe & Central Asia,2012,
+Europe & Central Asia,2011-21W,29.5723178902919
+Europe & Central Asia,2011-21S,20.1951132700996
+Europe & Central Asia,2011,
+Europe & Central Asia,2010-20W,
+Europe & Central Asia,2010-20S,
+Europe & Central Asia,2010,
+Europe & Central Asia,2009,
+Europe & Central Asia,2008,
+Europe & Central Asia,2007,
+Europe & Central Asia,2006,
+Europe & Central Asia,2005,
+Europe & Central Asia,2004,
+Europe & Central Asia,2003,
+Europe & Central Asia,2002,
+Europe & Central Asia,2001,
+Europe & Central Asia,2000,
+High income,2023,
+High income,2022,
+High income,2021,
+High income,2020,
+High income,2019,
+High income,2018,
+High income,2017,
+High income,2016,
+High income,2015,
+High income,2014,
+High income,2013,
+High income,2012,
+High income,2011-21W,21.8755889755598
+High income,2011-21S,18.7273242336549
+High income,2011,
+High income,2010-20W,
+High income,2010-20S,
+High income,2010,
+High income,2009,
+High income,2008,
+High income,2007,
+High income,2006,
+High income,2005,
+High income,2004,
+High income,2003,
+High income,2002,
+High income,2001,
+High income,2000,
+Latin America & Caribbean,2023,
+Latin America & Caribbean,2022,
+Latin America & Caribbean,2021,
+Latin America & Caribbean,2020,
+Latin America & Caribbean,2019,
+Latin America & Caribbean,2018,
+Latin America & Caribbean,2017,
+Latin America & Caribbean,2016,
+Latin America & Caribbean,2015,
+Latin America & Caribbean,2014,
+Latin America & Caribbean,2013,
+Latin America & Caribbean,2012,
+Latin America & Caribbean,2011-21W,20.6070015382017
+Latin America & Caribbean,2011-21S,32.6353870061767
+Latin America & Caribbean,2011,
+Latin America & Caribbean,2010-20W,
+Latin America & Caribbean,2010-20S,
+Latin America & Caribbean,2010,
+Latin America & Caribbean,2009,
+Latin America & Caribbean,2008,
+Latin America & Caribbean,2007,
+Latin America & Caribbean,2006,
+Latin America & Caribbean,2005,
+Latin America & Caribbean,2004,
+Latin America & Caribbean,2003,
+Latin America & Caribbean,2002,
+Latin America & Caribbean,2001,
+Latin America & Caribbean,2000,
+Low income,2023,
+Low income,2022,
+Low income,2021,
+Low income,2020,
+Low income,2019,
+Low income,2018,
+Low income,2017,
+Low income,2016,
+Low income,2015,
+Low income,2014,
+Low income,2013,
+Low income,2012,
+Low income,2011-21W,28.3016590715781
+Low income,2011-21S,36.3379831235481
+Low income,2011,
+Low income,2010-20W,
+Low income,2010-20S,
+Low income,2010,
+Low income,2009,
+Low income,2008,
+Low income,2007,
+Low income,2006,
+Low income,2005,
+Low income,2004,
+Low income,2003,
+Low income,2002,
+Low income,2001,
+Low income,2000,
+Lower middle income,2023,
+Lower middle income,2022,
+Lower middle income,2021,
+Lower middle income,2020,
+Lower middle income,2019,
+Lower middle income,2018,
+Lower middle income,2017,
+Lower middle income,2016,
+Lower middle income,2015,
+Lower middle income,2014,
+Lower middle income,2013,
+Lower middle income,2012,
+Lower middle income,2011-21W,20.5810012108645
+Lower middle income,2011-21S,31.9271769332325
+Lower middle income,2011,
+Lower middle income,2010-20W,
+Lower middle income,2010-20S,
+Lower middle income,2010,
+Lower middle income,2009,
+Lower middle income,2008,
+Lower middle income,2007,
+Lower middle income,2006,
+Lower middle income,2005,
+Lower middle income,2004,
+Lower middle income,2003,
+Lower middle income,2002,
+Lower middle income,2001,
+Lower middle income,2000,
+Middle East & North Africa,2023,
+Middle East & North Africa,2022,
+Middle East & North Africa,2021,
+Middle East & North Africa,2020,
+Middle East & North Africa,2019,
+Middle East & North Africa,2018,
+Middle East & North Africa,2017,
+Middle East & North Africa,2016,
+Middle East & North Africa,2015,
+Middle East & North Africa,2014,
+Middle East & North Africa,2013,
+Middle East & North Africa,2012,
+Middle East & North Africa,2011-21W,51.8615318994975
+Middle East & North Africa,2011-21S,43.755149736654
+Middle East & North Africa,2011,
+Middle East & North Africa,2010-20W,
+Middle East & North Africa,2010-20S,
+Middle East & North Africa,2010,
+Middle East & North Africa,2009,
+Middle East & North Africa,2008,
+Middle East & North Africa,2007,
+Middle East & North Africa,2006,
+Middle East & North Africa,2005,
+Middle East & North Africa,2004,
+Middle East & North Africa,2003,
+Middle East & North Africa,2002,
+Middle East & North Africa,2001,
+Middle East & North Africa,2000,
+South Asia,2023,
+South Asia,2022,
+South Asia,2021,
+South Asia,2020,
+South Asia,2019,
+South Asia,2018,
+South Asia,2017,
+South Asia,2016,
+South Asia,2015,
+South Asia,2014,
+South Asia,2013,
+South Asia,2012,
+South Asia,2011-21W,7.55170747507543
+South Asia,2011-21S,17.0255212121138
+South Asia,2011,
+South Asia,2010-20W,
+South Asia,2010-20S,
+South Asia,2010,
+South Asia,2009,
+South Asia,2008,
+South Asia,2007,
+South Asia,2006,
+South Asia,2005,
+South Asia,2004,
+South Asia,2003,
+South Asia,2002,
+South Asia,2001,
+South Asia,2000,
+Sub-Saharan Africa,2023,
+Sub-Saharan Africa,2022,
+Sub-Saharan Africa,2021,
+Sub-Saharan Africa,2020,
+Sub-Saharan Africa,2019,
+Sub-Saharan Africa,2018,
+Sub-Saharan Africa,2017,
+Sub-Saharan Africa,2016,
+Sub-Saharan Africa,2015,
+Sub-Saharan Africa,2014,
+Sub-Saharan Africa,2013,
+Sub-Saharan Africa,2012,
+Sub-Saharan Africa,2011-21W,33.4680074280241
+Sub-Saharan Africa,2011-21S,36.5458082958737
+Sub-Saharan Africa,2011,
+Sub-Saharan Africa,2010-20W,
+Sub-Saharan Africa,2010-20S,
+Sub-Saharan Africa,2010,
+Sub-Saharan Africa,2009,
+Sub-Saharan Africa,2008,
+Sub-Saharan Africa,2007,
+Sub-Saharan Africa,2006,
+Sub-Saharan Africa,2005,
+Sub-Saharan Africa,2004,
+Sub-Saharan Africa,2003,
+Sub-Saharan Africa,2002,
+Sub-Saharan Africa,2001,
+Sub-Saharan Africa,2000,
+Upper middle income,2023,
+Upper middle income,2022,
+Upper middle income,2021,
+Upper middle income,2020,
+Upper middle income,2019,
+Upper middle income,2018,
+Upper middle income,2017,
+Upper middle income,2016,
+Upper middle income,2015,
+Upper middle income,2014,
+Upper middle income,2013,
+Upper middle income,2012,
+Upper middle income,2011-21W,32.4278432375389
+Upper middle income,2011-21S,32.4425868786096
+Upper middle income,2011,
+Upper middle income,2010-20W,
+Upper middle income,2010-20S,
+Upper middle income,2010,
+Upper middle income,2009,
+Upper middle income,2008,
+Upper middle income,2007,
+Upper middle income,2006,
+Upper middle income,2005,
+Upper middle income,2004,
+Upper middle income,2003,
+Upper middle income,2002,
+Upper middle income,2001,
+Upper middle income,2000,
+World,2023,
+World,2022,
+World,2021,
+World,2020,
+World,2019,
+World,2018,
+World,2017,
+World,2016,
+World,2015,
+World,2014,
+World,2013,
+World,2012,
+World,2011-21W,26.4068186741871
+World,2011-21S,32.1028241369612
+World,2011,
+World,2010-20W,
+World,2010-20S,
+World,2010,
+World,2009,
+World,2008,
+World,2007,
+World,2006,
+World,2005,
+World,2004,
+World,2003,
+World,2002,
+World,2001,
+World,2000,
+Afghanistan,2023,
+Afghanistan,2022,
+Afghanistan,2021,
+Afghanistan,2020,
+Afghanistan,2019,
+Afghanistan,2018,
+Afghanistan,2017,
+Afghanistan,2016,
+Afghanistan,2015,
+Afghanistan,2014,
+Afghanistan,2013,
+Afghanistan,2012,
+Afghanistan,2011-21W,
+Afghanistan,2011-21S,
 Afghanistan,2011,3.84031388328872
+Afghanistan,2010-20W,
+Afghanistan,2010-20S,
+Afghanistan,2010,
+Afghanistan,2009,
+Afghanistan,2008,
 Afghanistan,2007,5.08239011297348
-Albania,2018,18.126638610655498
+Afghanistan,2006,
+Afghanistan,2005,
+Afghanistan,2004,
+Afghanistan,2003,
+Afghanistan,2002,
+Afghanistan,2001,
+Afghanistan,2000,
+Albania,2023,
+Albania,2022,
+Albania,2021,
+Albania,2020,
+Albania,2019,
+Albania,2018,18.1266386106555
 Albania,2017,16.7250127970484
 Albania,2016,2.6759356173408
 Albania,2015,2.08186402620017
+Albania,2014,
+Albania,2013,
 Albania,2012,17.9052579199514
+Albania,2011-21W,
+Albania,2011-21S,
+Albania,2011,
+Albania,2010-20W,
+Albania,2010-20S,
+Albania,2010,
+Albania,2009,
 Albania,2008,36.7971368236368
-Angola,2018,25.910901959395797
-Argentina,2021,16.22298078570269
+Albania,2007,
+Albania,2006,
+Albania,2005,
+Albania,2004,
+Albania,2003,
+Albania,2002,
+Albania,2001,
+Albania,2000,
+Angola,2023,
+Angola,2022,
+Angola,2021,
+Angola,2020,
+Angola,2019,
+Angola,2018,26.8534722630992
+Angola,2017,
+Angola,2016,
+Angola,2015,
+Angola,2014,
+Angola,2013,
+Angola,2012,
+Angola,2011-21W,
+Angola,2011-21S,
+Angola,2011,
+Angola,2010-20W,
+Angola,2010-20S,
+Angola,2010,
+Angola,2009,
+Angola,2008,
+Angola,2007,
+Angola,2006,
+Angola,2005,
+Angola,2004,
+Angola,2003,
+Angola,2002,
+Angola,2001,
+Angola,2000,
+Argentina,2023,
+Argentina,2022,16.2145077490767
+Argentina,2021,16.2229807857027
 Argentina,2020,21.9314480839036
-Argentina,2019,15.453438924523999
-Argentina,2018,13.014761428918002
-Argentina,2017,13.418716193116301
+Argentina,2019,15.453438924524
+Argentina,2018,13.014761428918
+Argentina,2017,13.4187161931163
 Argentina,2016,11.3720705194961
+Argentina,2015,
+Argentina,2014,12.6664088574996
 Argentina,2013,7.68079253955846
-Argentina,2010,7.557364494422581
-Argentina,2006,7.450556677784561
+Argentina,2012,10.2277263470479
+Argentina,2011-21W,
+Argentina,2011-21S,
+Argentina,2011,10.5922208863679
+Argentina,2010-20W,
+Argentina,2010-20S,
+Argentina,2010,7.55736449442258
+Argentina,2009,
+Argentina,2008,
+Argentina,2007,
+Argentina,2006,7.45055667778456
+Argentina,2005,
+Argentina,2004,
+Argentina,2003,
+Argentina,2002,
+Argentina,2001,
+Argentina,2000,
+Armenia,2023,
+Armenia,2022,17.9037039137271
+Armenia,2021,21.0571604508403
+Armenia,2020,14.5844817893407
 Armenia,2019,16.6527134142645
-Armenia,2018,32.1265803621222
-Armenia,2017,20.5443770459459
+Armenia,2018,32.1265803705421
+Armenia,2017,21.5003635151698
 Armenia,2016,27.1700782031939
 Armenia,2015,29.6617100768086
 Armenia,2014,23.1702477036396
 Armenia,2013,19.6819586109427
 Armenia,2012,18.9915749804107
+Armenia,2011-21W,
+Armenia,2011-21S,
 Armenia,2011,16.2926909484222
-Armenia,2010,21.4143961525964
+Armenia,2010-20W,
+Armenia,2010-20S,
+Armenia,2010,21.4143961525963
 Armenia,2009,16.8531953695129
 Armenia,2008,19.5610340848901
-Azerbaijan,2015,14.030624541436291
+Armenia,2007,
+Armenia,2006,
+Armenia,2005,
+Armenia,2004,
+Armenia,2003,
+Armenia,2002,
+Armenia,2001,
+Armenia,2000,
+Azerbaijan,2023,
+Azerbaijan,2022,
+Azerbaijan,2021,
+Azerbaijan,2020,
+Azerbaijan,2019,
+Azerbaijan,2018,
+Azerbaijan,2017,
+Azerbaijan,2016,
+Azerbaijan,2015,14.0306245414363
+Azerbaijan,2014,
+Azerbaijan,2013,
+Azerbaijan,2012,
+Azerbaijan,2011-21W,
+Azerbaijan,2011-21S,
+Azerbaijan,2011,
+Azerbaijan,2010-20W,
+Azerbaijan,2010-20S,
+Azerbaijan,2010,
+Azerbaijan,2009,
+Azerbaijan,2008,
+Azerbaijan,2007,
+Azerbaijan,2006,
+Azerbaijan,2005,
+Azerbaijan,2004,
+Azerbaijan,2003,
+Azerbaijan,2002,
+Azerbaijan,2001,
+Azerbaijan,2000,
+Bangladesh,2023,
+Bangladesh,2022,36.2551861637436
+Bangladesh,2021,
+Bangladesh,2020,
+Bangladesh,2019,
+Bangladesh,2018,
+Bangladesh,2017,
 Bangladesh,2016,26.3628501554163
+Bangladesh,2015,
+Bangladesh,2014,
+Bangladesh,2013,
+Bangladesh,2012,
+Bangladesh,2011-21W,
+Bangladesh,2011-21S,
+Bangladesh,2011,
+Bangladesh,2010-20W,
+Bangladesh,2010-20S,
 Bangladesh,2010,22.2101661850543
-Bangladesh,2005,39.267944035042
-Belarus,2019,54.6674366656688
-Belarus,2018,52.6839132790313
-Belarus,2017,52.4460523648923
+Bangladesh,2009,
+Bangladesh,2008,
+Bangladesh,2007,
+Bangladesh,2006,
+Bangladesh,2005,39.2679440350419
+Bangladesh,2004,
+Bangladesh,2003,
+Bangladesh,2002,
+Bangladesh,2001,
+Bangladesh,2000,
+Belarus,2023,
+Belarus,2022,
+Belarus,2021,
+Belarus,2020,
+Belarus,2019,53.282889988155
+Belarus,2018,53.2753597572937
+Belarus,2017,54.3764420257174
 Belarus,2016,58.7807993859836
 Belarus,2015,54.8884508372268
-Belarus,2014,59.64313625771091
+Belarus,2014,59.6431362577109
 Belarus,2013,54.572153828683
 Belarus,2012,54.521751961116
+Belarus,2011-21W,
+Belarus,2011-21S,
+Belarus,2011,
+Belarus,2010-20W,
+Belarus,2010-20S,
 Belarus,2010,62.3435405360469
 Belarus,2009,66.6255494606075
 Belarus,2008,60.4364503692486
-Belize,2009,37.881322266891196
+Belarus,2007,
+Belarus,2006,
+Belarus,2005,
+Belarus,2004,
+Belarus,2003,
+Belarus,2002,
+Belarus,2001,
+Belarus,2000,
+Belize,2023,
+Belize,2022,
+Belize,2021,
+Belize,2020,
+Belize,2019,
+Belize,2018,
+Belize,2017,
+Belize,2016,
+Belize,2015,
+Belize,2014,
+Belize,2013,
+Belize,2012,
+Belize,2011-21W,
+Belize,2011-21S,
+Belize,2011,
+Belize,2010-20W,
+Belize,2010-20S,
+Belize,2010,
+Belize,2009,37.8813222668912
+Belize,2008,
+Belize,2007,
+Belize,2006,
+Belize,2005,
+Belize,2004,
+Belize,2003,
+Belize,2002,
+Belize,2001,
+Belize,2000,
+Benin,2023,
+Benin,2022,
+Benin,2021,21.4404893736671
+Benin,2020,
+Benin,2019,
 Benin,2018,20.4580666232
+Benin,2017,
+Benin,2016,
+Benin,2015,
+Benin,2014,
+Benin,2013,
+Benin,2012,
+Benin,2011-21W,
+Benin,2011-21S,
+Benin,2011,
+Benin,2010-20W,
+Benin,2010-20S,
+Benin,2010,
+Benin,2009,
+Benin,2008,
+Benin,2007,
+Benin,2006,
+Benin,2005,
+Benin,2004,
 Benin,2003,21.299311816532
+Benin,2002,
+Benin,2001,
+Benin,2000,
+Bhutan,2023,
+Bhutan,2022,11.0289137325513
+Bhutan,2021,
+Bhutan,2020,
+Bhutan,2019,
+Bhutan,2018,
+Bhutan,2017,5.45889790920425
+Bhutan,2016,
+Bhutan,2015,
+Bhutan,2014,
+Bhutan,2013,
 Bhutan,2012,14.6731281660655
+Bhutan,2011-21W,
+Bhutan,2011-21S,
+Bhutan,2011,
+Bhutan,2010-20W,
+Bhutan,2010-20S,
+Bhutan,2010,
+Bhutan,2009,
+Bhutan,2008,
+Bhutan,2007,10.1349610499665
+Bhutan,2006,
+Bhutan,2005,
+Bhutan,2004,
+Bhutan,2003,
+Bhutan,2002,
+Bhutan,2001,
+Bhutan,2000,
+Bolivia,2023,
+Bolivia,2022,
+Bolivia,2021,22.9649371508615
 Bolivia,2020,23.0489828298363
 Bolivia,2019,24.8278390036677
 Bolivia,2018,24.4267086182079
 Bolivia,2017,21.3866344913984
-Bolivia,2016,26.599443735431898
+Bolivia,2016,26.5994437354319
 Bolivia,2015,15.9694619069922
 Bolivia,2014,23.6207499196635
-Bolivia,2012,19.762771309418888
+Bolivia,2013,
+Bolivia,2012,19.7627713094189
+Bolivia,2011-21W,
+Bolivia,2011-21S,
 Bolivia,2011,22.6055196530812
-Bolivia,2009,16.797342453712698
-Bolivia,2008,19.267089832465288
+Bolivia,2010-20W,
+Bolivia,2010-20S,
+Bolivia,2010,
+Bolivia,2009,16.7973424537127
+Bolivia,2008,19.2670898324653
 Bolivia,2007,24.1189592471788
-Bolivia,2006,22.048146253625088
-Bosnia and Herzegovina,2015,7.564098799959639
+Bolivia,2006,22.0481462536251
+Bolivia,2005,
+Bolivia,2004,
+Bolivia,2003,
+Bolivia,2002,
+Bolivia,2001,
+Bolivia,2000,
+Bosnia and Herzegovina,2023,
+Bosnia and Herzegovina,2022,
+Bosnia and Herzegovina,2021,
+Bosnia and Herzegovina,2020,
+Bosnia and Herzegovina,2019,
+Bosnia and Herzegovina,2018,
+Bosnia and Herzegovina,2017,
+Bosnia and Herzegovina,2016,
+Bosnia and Herzegovina,2015,7.56409879995964
+Bosnia and Herzegovina,2014,
+Bosnia and Herzegovina,2013,
+Bosnia and Herzegovina,2012,
+Bosnia and Herzegovina,2011-21W,
+Bosnia and Herzegovina,2011-21S,
+Bosnia and Herzegovina,2011,
+Bosnia and Herzegovina,2010-20W,
+Bosnia and Herzegovina,2010-20S,
+Bosnia and Herzegovina,2010,
+Bosnia and Herzegovina,2009,
+Bosnia and Herzegovina,2008,
 Bosnia and Herzegovina,2007,11.6804098315814
+Bosnia and Herzegovina,2006,
+Bosnia and Herzegovina,2005,
+Bosnia and Herzegovina,2004,
+Bosnia and Herzegovina,2003,
+Bosnia and Herzegovina,2002,
+Bosnia and Herzegovina,2001,
+Bosnia and Herzegovina,2000,
+Botswana,2023,
+Botswana,2022,
+Botswana,2021,
+Botswana,2020,
+Botswana,2019,
+Botswana,2018,
+Botswana,2017,
+Botswana,2016,
+Botswana,2015,43.2843377586959
+Botswana,2014,
+Botswana,2013,
+Botswana,2012,
+Botswana,2011-21W,
+Botswana,2011-21S,
+Botswana,2011,
+Botswana,2010-20W,
+Botswana,2010-20S,
+Botswana,2010,
+Botswana,2009,
+Botswana,2008,
+Botswana,2007,
+Botswana,2006,
+Botswana,2005,
+Botswana,2004,
+Botswana,2003,
+Botswana,2002,
+Botswana,2001,
+Botswana,2000,
+Brazil,2023,
+Brazil,2022,7.74904671822956
+Brazil,2021,5.78855394647009
 Brazil,2020,5.51301294831982
 Brazil,2019,8.29793895073733
 Brazil,2018,8.60247482941027
 Brazil,2017,8.06629099116002
 Brazil,2016,7.66791492982894
 Brazil,2015,1.86633056336903
-Brazil,2012,1.6164542255541199
+Brazil,2014,
+Brazil,2013,
+Brazil,2012,1.61645422555412
+Brazil,2011-21W,
+Brazil,2011-21S,
 Brazil,2011,1.22576592580636
+Brazil,2010-20W,
+Brazil,2010-20S,
+Brazil,2010,
 Brazil,2009,2.1978957009051
-Brazil,2006,2.65602609276986
-Bulgaria,2007,24.969300046773498
-Burkina Faso,2018,30.461379824735204
+Brazil,2008,
+Brazil,2007,
+Brazil,2006,2.65602609276987
+Brazil,2005,
+Brazil,2004,
+Brazil,2003,
+Brazil,2002,
+Brazil,2001,
+Brazil,2000,
+Bulgaria,2023,
+Bulgaria,2022,
+Bulgaria,2021,
+Bulgaria,2020,
+Bulgaria,2019,
+Bulgaria,2018,
+Bulgaria,2017,
+Bulgaria,2016,
+Bulgaria,2015,
+Bulgaria,2014,
+Bulgaria,2013,
+Bulgaria,2012,
+Bulgaria,2011-21W,
+Bulgaria,2011-21S,
+Bulgaria,2011,
+Bulgaria,2010-20W,
+Bulgaria,2010-20S,
+Bulgaria,2010,
+Bulgaria,2009,
+Bulgaria,2008,
+Bulgaria,2007,24.9693000467735
+Bulgaria,2006,
+Bulgaria,2005,
+Bulgaria,2004,
+Bulgaria,2003,
+Bulgaria,2002,
+Bulgaria,2001,
+Bulgaria,2000,
+Burkina Faso,2023,
+Burkina Faso,2022,
+Burkina Faso,2021,29.5792736945589
+Burkina Faso,2020,
+Burkina Faso,2019,
+Burkina Faso,2018,28.1161134153763
+Burkina Faso,2017,
+Burkina Faso,2016,
+Burkina Faso,2015,
 Burkina Faso,2014,26.9290797263256
+Burkina Faso,2013,
+Burkina Faso,2012,
+Burkina Faso,2011-21W,
+Burkina Faso,2011-21S,
+Burkina Faso,2011,
+Burkina Faso,2010-20W,
+Burkina Faso,2010-20S,
+Burkina Faso,2010,
 Burkina Faso,2009,31.1627498242977
+Burkina Faso,2008,
+Burkina Faso,2007,
+Burkina Faso,2006,
+Burkina Faso,2005,
+Burkina Faso,2004,
 Burkina Faso,2003,15.5340819107091
+Burkina Faso,2002,
+Burkina Faso,2001,
+Burkina Faso,2000,
+Burundi,2023,
+Burundi,2022,
+Burundi,2021,
+Burundi,2020,
+Burundi,2019,35.9415031746814
+Burundi,2018,
+Burundi,2017,
+Burundi,2016,
+Burundi,2015,
+Burundi,2014,
+Burundi,2013,
+Burundi,2012,
+Burundi,2011-21W,
+Burundi,2011-21S,
+Burundi,2011,
+Burundi,2010-20W,
+Burundi,2010-20S,
+Burundi,2010,
+Burundi,2009,
+Burundi,2008,
+Burundi,2007,
+Burundi,2006,
+Burundi,2005,
+Burundi,2004,
+Burundi,2003,
+Burundi,2002,
+Burundi,2001,
+Burundi,2000,
+Cabo Verde,2023,
+Cabo Verde,2022,
+Cabo Verde,2021,
+Cabo Verde,2020,
+Cabo Verde,2019,
+Cabo Verde,2018,
+Cabo Verde,2017,
+Cabo Verde,2016,
+Cabo Verde,2015,
+Cabo Verde,2014,
+Cabo Verde,2013,
+Cabo Verde,2012,
+Cabo Verde,2011-21W,
+Cabo Verde,2011-21S,
+Cabo Verde,2011,
+Cabo Verde,2010-20W,
+Cabo Verde,2010-20S,
+Cabo Verde,2010,
+Cabo Verde,2009,
+Cabo Verde,2008,
 Cabo Verde,2007,32.7817568123817
-Cambodia,2013,47.86455916789739
+Cabo Verde,2006,
+Cabo Verde,2005,
+Cabo Verde,2004,
+Cabo Verde,2003,
+Cabo Verde,2002,
+Cabo Verde,2001,
+Cabo Verde,2000,
+Cambodia,2023,
+Cambodia,2022,
+Cambodia,2021,
+Cambodia,2020,
+Cambodia,2019,
+Cambodia,2018,
+Cambodia,2017,
+Cambodia,2016,
+Cambodia,2015,
+Cambodia,2014,
+Cambodia,2013,47.8645591678974
+Cambodia,2012,
+Cambodia,2011-21W,
+Cambodia,2011-21S,
+Cambodia,2011,
+Cambodia,2010-20W,
+Cambodia,2010-20S,
+Cambodia,2010,
+Cambodia,2009,
 Cambodia,2008,27.8324436655339
+Cambodia,2007,
+Cambodia,2006,
+Cambodia,2005,
+Cambodia,2004,
+Cambodia,2003,
+Cambodia,2002,
+Cambodia,2001,
+Cambodia,2000,
+Cameroon,2023,
+Cameroon,2022,
+Cameroon,2021,41.6251228485785
+Cameroon,2020,
+Cameroon,2019,
+Cameroon,2018,
+Cameroon,2017,
+Cameroon,2016,
+Cameroon,2015,
 Cameroon,2014,4.36117585347945
+Cameroon,2013,
+Cameroon,2012,
+Cameroon,2011-21W,
+Cameroon,2011-21S,
+Cameroon,2011,
+Cameroon,2010-20W,
+Cameroon,2010-20S,
+Cameroon,2010,
+Cameroon,2009,
+Cameroon,2008,
 Cameroon,2007,5.19986594357443
+Cameroon,2006,
+Cameroon,2005,
+Cameroon,2004,
+Cameroon,2003,
+Cameroon,2002,
+Cameroon,2001,
+Cameroon,2000,
+Central African Republic,2023,
+Central African Republic,2022,
+Central African Republic,2021,
+Central African Republic,2020,
+Central African Republic,2019,
+Central African Republic,2018,
+Central African Republic,2017,
+Central African Republic,2016,
+Central African Republic,2015,
+Central African Republic,2014,
+Central African Republic,2013,
+Central African Republic,2012,
+Central African Republic,2011-21W,
+Central African Republic,2011-21S,
+Central African Republic,2011,
+Central African Republic,2010-20W,
+Central African Republic,2010-20S,
+Central African Republic,2010,
+Central African Republic,2009,
 Central African Republic,2008,5.71293993384266
-Chad,2011,4.7028712057642394
-Chile,2020,31.221450340698397
-Chile,2017,18.1401850780469
+Central African Republic,2007,
+Central African Republic,2006,
+Central African Republic,2005,
+Central African Republic,2004,
+Central African Republic,2003,
+Central African Republic,2002,
+Central African Republic,2001,
+Central African Republic,2000,
+Chad,2023,
+Chad,2022,15.7859829895733
+Chad,2021,
+Chad,2020,
+Chad,2019,
+Chad,2018,21.1956869271969
+Chad,2017,
+Chad,2016,
+Chad,2015,
+Chad,2014,
+Chad,2013,
+Chad,2012,
+Chad,2011-21W,
+Chad,2011-21S,
+Chad,2011,4.70287120576424
+Chad,2010-20W,
+Chad,2010-20S,
+Chad,2010,
+Chad,2009,
+Chad,2008,
+Chad,2007,
+Chad,2006,
+Chad,2005,
+Chad,2004,
+Chad,2003,
+Chad,2002,
+Chad,2001,
+Chad,2000,
+Chile,2023,
+Chile,2022,18.818569790447
+Chile,2021,
+Chile,2020,31.2214503406984
+Chile,2019,
+Chile,2018,
+Chile,2017,18.1401850780468
+Chile,2016,
 Chile,2015,17.4131225655455
-Chile,2013,18.07148920151529
+Chile,2014,
+Chile,2013,18.0714892015153
+Chile,2012,
+Chile,2011-21W,
+Chile,2011-21S,
 Chile,2011,14.8289976279529
+Chile,2010-20W,
+Chile,2010-20S,
+Chile,2010,
+Chile,2009,
+Chile,2008,
+Chile,2007,
+Chile,2006,
+Chile,2005,
+Chile,2004,
+Chile,2003,
+Chile,2002,
+Chile,2001,
+Chile,2000,
+China,2023,
+China,2022,
+China,2021,
+China,2020,
+China,2019,
+China,2018,
+China,2017,
+China,2016,
+China,2015,
+China,2014,
 China,2013,37.0076280394044
-Colombia,2020,21.328431246798498
-Colombia,2019,24.97609147630529
-Colombia,2018,25.7513007715695
-Colombia,2017,26.3834933769664
+China,2012,
+China,2011-21W,
+China,2011-21S,
+China,2011,
+China,2010-20W,
+China,2010-20S,
+China,2010,
+China,2009,
+China,2008,
+China,2007,
+China,2006,
+China,2005,
+China,2004,
+China,2003,
+China,2002,
+China,2001,
+China,2000,
+Colombia,2023,
+Colombia,2022,20.9845507436611
+Colombia,2021,22.3858729872826
+Colombia,2020,21.3284312467985
+Colombia,2019,25.9777656267229
+Colombia,2018,25.7409675759082
+Colombia,2017,60.7008629349124
 Colombia,2016,22.959508836057
 Colombia,2015,23.3696352615686
-Colombia,2014,27.0715817713359
+Colombia,2014,27.0715817713358
+Colombia,2013,
 Colombia,2012,26.5656026004977
+Colombia,2011-21W,
+Colombia,2011-21S,
 Colombia,2011,30.7649383992953
+Colombia,2010-20W,
+Colombia,2010-20S,
 Colombia,2010,28.4918332225099
+Colombia,2009,
+Colombia,2008,
+Colombia,2007,
+Colombia,2006,
+Colombia,2005,
+Colombia,2004,
+Colombia,2003,
+Colombia,2002,
+Colombia,2001,
+Colombia,2000,
+Comoros,2023,
+Comoros,2022,
+Comoros,2021,
+Comoros,2020,56.4759176147462
+Comoros,2019,
+Comoros,2018,
+Comoros,2017,
+Comoros,2016,
+Comoros,2015,
+Comoros,2014,
+Comoros,2013,
+Comoros,2012,
+Comoros,2011-21W,
+Comoros,2011-21S,
+Comoros,2011,
+Comoros,2010-20W,
+Comoros,2010-20S,
+Comoros,2010,
+Comoros,2009,
+Comoros,2008,
+Comoros,2007,
+Comoros,2006,
+Comoros,2005,
 Comoros,2004,27.700527484659
+Comoros,2003,
+Comoros,2002,
+Comoros,2001,
+Comoros,2000,
+"Congo, Dem. Rep.",2023,
+"Congo, Dem. Rep.",2022,
+"Congo, Dem. Rep.",2021,
+"Congo, Dem. Rep.",2020,
+"Congo, Dem. Rep.",2019,
+"Congo, Dem. Rep.",2018,
+"Congo, Dem. Rep.",2017,
+"Congo, Dem. Rep.",2016,
+"Congo, Dem. Rep.",2015,
+"Congo, Dem. Rep.",2014,
+"Congo, Dem. Rep.",2013,
 "Congo, Dem. Rep.",2012,10.2612078220777
+"Congo, Dem. Rep.",2011-21W,
+"Congo, Dem. Rep.",2011-21S,
+"Congo, Dem. Rep.",2011,
+"Congo, Dem. Rep.",2010-20W,
+"Congo, Dem. Rep.",2010-20S,
+"Congo, Dem. Rep.",2010,
+"Congo, Dem. Rep.",2009,
+"Congo, Dem. Rep.",2008,
+"Congo, Dem. Rep.",2007,
+"Congo, Dem. Rep.",2006,
+"Congo, Dem. Rep.",2005,
 "Congo, Dem. Rep.",2004,4.02648012086476
+"Congo, Dem. Rep.",2003,
+"Congo, Dem. Rep.",2002,
+"Congo, Dem. Rep.",2001,
+"Congo, Dem. Rep.",2000,
+"Congo, Rep.",2023,
+"Congo, Rep.",2022,
+"Congo, Rep.",2021,
+"Congo, Rep.",2020,
+"Congo, Rep.",2019,
+"Congo, Rep.",2018,
+"Congo, Rep.",2017,
+"Congo, Rep.",2016,
+"Congo, Rep.",2015,
+"Congo, Rep.",2014,
+"Congo, Rep.",2013,
+"Congo, Rep.",2012,
+"Congo, Rep.",2011-21W,
+"Congo, Rep.",2011-21S,
+"Congo, Rep.",2011,
+"Congo, Rep.",2010-20W,
+"Congo, Rep.",2010-20S,
+"Congo, Rep.",2010,
+"Congo, Rep.",2009,
+"Congo, Rep.",2008,
+"Congo, Rep.",2007,
+"Congo, Rep.",2006,
 "Congo, Rep.",2005,43.7576070780311
+"Congo, Rep.",2004,
+"Congo, Rep.",2003,
+"Congo, Rep.",2002,
+"Congo, Rep.",2001,
+"Congo, Rep.",2000,
+Costa Rica,2023,
+Costa Rica,2022,18.953542346803
+Costa Rica,2021,19.3079408676768
 Costa Rica,2020,22.8180371019568
-Costa Rica,2019,18.69689339353319
+Costa Rica,2019,18.6968933935332
 Costa Rica,2018,19.6011564755604
-Costa Rica,2017,19.637740669769098
+Costa Rica,2017,19.6377406697691
 Costa Rica,2016,19.9299417413513
-Costa Rica,2015,21.91373826136889
+Costa Rica,2015,21.9137382613689
 Costa Rica,2014,18.8899852153546
+Costa Rica,2013,
 Costa Rica,2012,16.3761425478252
+Costa Rica,2011-21W,
+Costa Rica,2011-21S,
 Costa Rica,2011,17.058876802699
-Costa Rica,2010,18.272965803936998
+Costa Rica,2010-20W,
+Costa Rica,2010-20S,
+Costa Rica,2010,18.272965803937
+Costa Rica,2009,
 Costa Rica,2008,11.4280007240813
-Cote D'Ivoire,2018,35.0311641284913
+Costa Rica,2007,
+Costa Rica,2006,
+Costa Rica,2005,
+Costa Rica,2004,
+Costa Rica,2003,
+Costa Rica,2002,
+Costa Rica,2001,
+Costa Rica,2000,
+Cote D'Ivoire,2023,
+Cote D'Ivoire,2022,
+Cote D'Ivoire,2021,25.7078974868232
+Cote D'Ivoire,2020,
+Cote D'Ivoire,2019,
+Cote D'Ivoire,2018,32.6489701578363
+Cote D'Ivoire,2017,
+Cote D'Ivoire,2016,
 Cote D'Ivoire,2015,18.2034619977137
+Cote D'Ivoire,2014,
+Cote D'Ivoire,2013,
+Cote D'Ivoire,2012,
+Cote D'Ivoire,2011-21W,
+Cote D'Ivoire,2011-21S,
+Cote D'Ivoire,2011,
+Cote D'Ivoire,2010-20W,
+Cote D'Ivoire,2010-20S,
+Cote D'Ivoire,2010,
+Cote D'Ivoire,2009,
 Cote D'Ivoire,2008,31.8695791016962
+Cote D'Ivoire,2007,
+Cote D'Ivoire,2006,
+Cote D'Ivoire,2005,
+Cote D'Ivoire,2004,
+Cote D'Ivoire,2003,
 Cote D'Ivoire,2002,27.7803474857466
+Cote D'Ivoire,2001,
+Cote D'Ivoire,2000,
+Croatia,2023,
+Croatia,2022,
+Croatia,2021,
+Croatia,2020,
+Croatia,2019,
+Croatia,2018,
+Croatia,2017,
+Croatia,2016,
+Croatia,2015,
 Croatia,2014,9.8242073059082
+Croatia,2013,
+Croatia,2012,
+Croatia,2011-21W,
+Croatia,2011-21S,
 Croatia,2011,7.46405553817749
-Croatia,2010,14.10455044779049
+Croatia,2010-20W,
+Croatia,2010-20S,
+Croatia,2010,14.1045504477905
+Croatia,2009,
 Croatia,2008,13.8084659253844
+Croatia,2007,
+Croatia,2006,
+Croatia,2005,
+Croatia,2004,
+Croatia,2003,
+Croatia,2002,
+Croatia,2001,
+Croatia,2000,
+Djibouti,2023,
+Djibouti,2022,
+Djibouti,2021,
+Djibouti,2020,
+Djibouti,2019,
+Djibouti,2018,
+Djibouti,2017,
+Djibouti,2016,
+Djibouti,2015,
+Djibouti,2014,
+Djibouti,2013,
 Djibouti,2012,23.5511557248822
+Djibouti,2011-21W,
+Djibouti,2011-21S,
+Djibouti,2011,
+Djibouti,2010-20W,
+Djibouti,2010-20S,
+Djibouti,2010,
+Djibouti,2009,
+Djibouti,2008,
+Djibouti,2007,
+Djibouti,2006,
+Djibouti,2005,
+Djibouti,2004,
+Djibouti,2003,
+Djibouti,2002,0.204756656658577
+Djibouti,2001,
+Djibouti,2000,
+Dominica,2023,
+Dominica,2022,
+Dominica,2021,
+Dominica,2020,
+Dominica,2019,
+Dominica,2018,
+Dominica,2017,
+Dominica,2016,
+Dominica,2015,
+Dominica,2014,
+Dominica,2013,
+Dominica,2012,
+Dominica,2011-21W,
+Dominica,2011-21S,
+Dominica,2011,
+Dominica,2010-20W,
+Dominica,2010-20S,
+Dominica,2010,
+Dominica,2009,
+Dominica,2008,
+Dominica,2007,
+Dominica,2006,
+Dominica,2005,
+Dominica,2004,
+Dominica,2003,
 Dominica,2002,74.617816323251
+Dominica,2001,
+Dominica,2000,
+Dominican Republic,2023,
+Dominican Republic,2022,
+Dominican Republic,2021,49.1908739795422
+Dominican Republic,2020,
 Dominican Republic,2019,50.3731872692614
 Dominican Republic,2018,51.7286690658169
-Dominican Republic,2017,48.90343479629029
-Dominican Republic,2016,44.71035520340439
+Dominican Republic,2017,48.9034347962903
+Dominican Republic,2016,44.7103552034044
 Dominican Republic,2015,32.2509108901984
-Dominican Republic,2014,61.685934555288405
+Dominican Republic,2014,61.6859345552884
 Dominican Republic,2013,44.4174110282567
-Dominican Republic,2012,43.32753353329899
-Dominican Republic,2011,44.57960287007559
+Dominican Republic,2012,43.3275335332991
+Dominican Republic,2011-21W,
+Dominican Republic,2011-21S,
+Dominican Republic,2011,44.5796028700756
+Dominican Republic,2010-20W,
+Dominican Republic,2010-20S,
 Dominican Republic,2010,43.1715334557835
 Dominican Republic,2009,41.2481919246188
 Dominican Republic,2008,40.3365216095443
-Dominican Republic,2007,41.85781279993649
+Dominican Republic,2007,41.8578127999365
+Dominican Republic,2006,
+Dominican Republic,2005,
+Dominican Republic,2004,
+Dominican Republic,2003,
+Dominican Republic,2002,
+Dominican Republic,2001,
+Dominican Republic,2000,
+Ecuador,2023,
+Ecuador,2022,77.4334726308408
+Ecuador,2021,75.8944899430729
 Ecuador,2020,56.1154224131142
 Ecuador,2019,68.9385882946647
-Ecuador,2018,55.02527589827291
-Ecuador,2017,60.41809382542011
+Ecuador,2018,55.0252758982729
+Ecuador,2017,60.4180938254201
 Ecuador,2016,56.0155415268212
-Ecuador,2015,48.74272629037199
+Ecuador,2015,48.742726290372
 Ecuador,2014,26.6938987710728
-Ecuador,2012,12.649977687750999
-Ecuador,2011,14.44745432830539
+Ecuador,2013,
+Ecuador,2012,12.649977687751
+Ecuador,2011-21W,
+Ecuador,2011-21S,
+Ecuador,2011,14.4474543283054
+Ecuador,2010-20W,
+Ecuador,2010-20S,
 Ecuador,2010,14.4776222989128
-Ecuador,2008,12.477553791818389
+Ecuador,2009,
+Ecuador,2008,12.4775537918184
+Ecuador,2007,
+Ecuador,2006,
+Ecuador,2005,
+Ecuador,2004,
+Ecuador,2003,
+Ecuador,2002,
+Ecuador,2001,
+Ecuador,2000,
+"Egypt, Arab Rep.",2023,
+"Egypt, Arab Rep.",2022,
+"Egypt, Arab Rep.",2021,
+"Egypt, Arab Rep.",2020,
+"Egypt, Arab Rep.",2019,97.0184763726243
+"Egypt, Arab Rep.",2018,
 "Egypt, Arab Rep.",2017,99.3000473479951
+"Egypt, Arab Rep.",2016,
+"Egypt, Arab Rep.",2015,
+"Egypt, Arab Rep.",2014,
+"Egypt, Arab Rep.",2013,
+"Egypt, Arab Rep.",2012,
+"Egypt, Arab Rep.",2011-21W,
+"Egypt, Arab Rep.",2011-21S,
+"Egypt, Arab Rep.",2011,
+"Egypt, Arab Rep.",2010-20W,
+"Egypt, Arab Rep.",2010-20S,
+"Egypt, Arab Rep.",2010,
+"Egypt, Arab Rep.",2009,
 "Egypt, Arab Rep.",2008,5.24659227829932
+"Egypt, Arab Rep.",2007,
+"Egypt, Arab Rep.",2006,
+"Egypt, Arab Rep.",2005,
+"Egypt, Arab Rep.",2004,
+"Egypt, Arab Rep.",2003,
+"Egypt, Arab Rep.",2002,
+"Egypt, Arab Rep.",2001,
+"Egypt, Arab Rep.",2000,
+El Salvador,2023,
+El Salvador,2022,37.3235436516852
+El Salvador,2021,35.4604340905711
+El Salvador,2020,
 El Salvador,2019,35.5788423153693
-El Salvador,2018,31.4939592739238
-El Salvador,2017,32.5518860001474
+El Salvador,2018,34.1512852059386
+El Salvador,2017,35.1650539894096
 El Salvador,2016,32.9194009785204
 El Salvador,2015,31.716128532414
-El Salvador,2014,32.086112980970796
-El Salvador,2012,33.30937223525789
+El Salvador,2014,32.0861129809708
+El Salvador,2013,
+El Salvador,2012,33.3093722352579
+El Salvador,2011-21W,
+El Salvador,2011-21S,
 El Salvador,2011,32.027372883616
+El Salvador,2010-20W,
+El Salvador,2010-20S,
 El Salvador,2010,33.9897459894243
 El Salvador,2009,34.5885088736361
 El Salvador,2008,33.756127582059
 El Salvador,2007,38.3323535792516
+El Salvador,2006,
+El Salvador,2005,
+El Salvador,2004,
+El Salvador,2003,
+El Salvador,2002,
+El Salvador,2001,
+El Salvador,2000,
+Eswatini,2023,
+Eswatini,2022,
+Eswatini,2021,
+Eswatini,2020,
+Eswatini,2019,
+Eswatini,2018,
+Eswatini,2017,
 Eswatini,2016,73.9050109641188
+Eswatini,2015,
+Eswatini,2014,
+Eswatini,2013,
+Eswatini,2012,
+Eswatini,2011-21W,
+Eswatini,2011-21S,
+Eswatini,2011,
+Eswatini,2010-20W,
+Eswatini,2010-20S,
+Eswatini,2010,
+Eswatini,2009,61.7388902701195
+Eswatini,2008,
+Eswatini,2007,
+Eswatini,2006,
+Eswatini,2005,
+Eswatini,2004,
+Eswatini,2003,
+Eswatini,2002,
+Eswatini,2001,
+Eswatini,2000,69.5507496586567
+Ethiopia,2023,
+Ethiopia,2022,
+Ethiopia,2021,
+Ethiopia,2020,
+Ethiopia,2019,
 Ethiopia,2018,11.6687908851084
+Ethiopia,2017,
+Ethiopia,2016,
 Ethiopia,2015,12.225290922585
+Ethiopia,2014,
+Ethiopia,2013,
+Ethiopia,2012,
+Ethiopia,2011-21W,
+Ethiopia,2011-21S,
+Ethiopia,2011,
+Ethiopia,2010-20W,
+Ethiopia,2010-20S,
+Ethiopia,2010,
+Ethiopia,2009,
+Ethiopia,2008,
+Ethiopia,2007,
+Ethiopia,2006,
+Ethiopia,2005,
+Ethiopia,2004,1.10748045808108
+Ethiopia,2003,
+Ethiopia,2002,
+Ethiopia,2001,
+Ethiopia,2000,
+Fiji,2023,
+Fiji,2022,
+Fiji,2021,
+Fiji,2020,
+Fiji,2019,
+Fiji,2018,
+Fiji,2017,
+Fiji,2016,
+Fiji,2015,
+Fiji,2014,
 Fiji,2013,47.9799999613273
-Fiji,2008,58.42159490980809
-Gabon,2017,34.02246855289669
+Fiji,2012,
+Fiji,2011-21W,
+Fiji,2011-21S,
+Fiji,2011,
+Fiji,2010-20W,
+Fiji,2010-20S,
+Fiji,2010,
+Fiji,2009,
+Fiji,2008,58.4215949098081
+Fiji,2007,
+Fiji,2006,
+Fiji,2005,
+Fiji,2004,
+Fiji,2003,
+Fiji,2002,
+Fiji,2001,
+Fiji,2000,
+Gabon,2023,
+Gabon,2022,
+Gabon,2021,
+Gabon,2020,
+Gabon,2019,
+Gabon,2018,
+Gabon,2017,34.022468471052
+Gabon,2016,
+Gabon,2015,
+Gabon,2014,
+Gabon,2013,
+Gabon,2012,
+Gabon,2011-21W,
+Gabon,2011-21S,
+Gabon,2011,
+Gabon,2010-20W,
+Gabon,2010-20S,
+Gabon,2010,
+Gabon,2009,
+Gabon,2008,
+Gabon,2007,
+Gabon,2006,
 Gabon,2005,27.2602997540093
+Gabon,2004,
+Gabon,2003,
+Gabon,2002,
+Gabon,2001,
+Gabon,2000,
+"Gambia, The",2023,
+"Gambia, The",2022,
+"Gambia, The",2021,
+"Gambia, The",2020,
+"Gambia, The",2019,
+"Gambia, The",2018,
+"Gambia, The",2017,
+"Gambia, The",2016,
 "Gambia, The",2015,32.6324159606011
+"Gambia, The",2014,
+"Gambia, The",2013,
+"Gambia, The",2012,
+"Gambia, The",2011-21W,
+"Gambia, The",2011-21S,
+"Gambia, The",2011,
+"Gambia, The",2010-20W,
+"Gambia, The",2010-20S,
 "Gambia, The",2010,44.6130960228122
-Georgia,2021,59.810213811379896
-Georgia,2020,63.13203317594089
+"Gambia, The",2009,
+"Gambia, The",2008,
+"Gambia, The",2007,
+"Gambia, The",2006,
+"Gambia, The",2005,
+"Gambia, The",2004,
+"Gambia, The",2003,
+"Gambia, The",2002,
+"Gambia, The",2001,
+"Gambia, The",2000,
+Georgia,2023,
+Georgia,2022,
+Georgia,2021,59.8102138113799
+Georgia,2020,63.1320331759409
 Georgia,2019,41.4948753479767
-Georgia,2018,37.34361446353109
-Georgia,2017,40.51556132630919
-Georgia,2016,43.435904542375596
+Georgia,2018,37.3436144635311
+Georgia,2017,40.5155613263092
+Georgia,2016,43.4359045423756
 Georgia,2015,48.6479278464707
 Georgia,2014,82.1592697579597
 Georgia,2013,84.3618689891505
 Georgia,2012,75.0581876145037
+Georgia,2011-21W,
+Georgia,2011-21S,
 Georgia,2011,10.7252666342166
-Ghana,2016,32.5795098805575
+Georgia,2010-20W,
+Georgia,2010-20S,
+Georgia,2010,
+Georgia,2009,
+Georgia,2008,
+Georgia,2007,
+Georgia,2006,
+Georgia,2005,
+Georgia,2004,
+Georgia,2003,
+Georgia,2002,
+Georgia,2001,
+Georgia,2000,
+Ghana,2023,
+Ghana,2022,
+Ghana,2021,
+Ghana,2020,
+Ghana,2019,
+Ghana,2018,
+Ghana,2017,
+Ghana,2016,35.4937398224228
+Ghana,2015,
+Ghana,2014,
+Ghana,2013,
 Ghana,2012,32.5795098805575
+Ghana,2011-21W,
+Ghana,2011-21S,
+Ghana,2011,
+Ghana,2010-20W,
+Ghana,2010-20S,
+Ghana,2010,
+Ghana,2009,
+Ghana,2008,
+Ghana,2007,
+Ghana,2006,
 Ghana,2005,31.1412723183796
-Guatemala,2014,31.72431762994029
+Ghana,2004,
+Ghana,2003,
+Ghana,2002,
+Ghana,2001,
+Ghana,2000,
+Guatemala,2023,
+Guatemala,2022,
+Guatemala,2021,
+Guatemala,2020,
+Guatemala,2019,
+Guatemala,2018,
+Guatemala,2017,
+Guatemala,2016,
+Guatemala,2015,
+Guatemala,2014,31.7243176299403
+Guatemala,2013,
+Guatemala,2012,
+Guatemala,2011-21W,
+Guatemala,2011-21S,
 Guatemala,2011,47.5965091953117
+Guatemala,2010-20W,
+Guatemala,2010-20S,
+Guatemala,2010,
+Guatemala,2009,
+Guatemala,2008,
+Guatemala,2007,
 Guatemala,2006,31.490707299304
-Guinea,2012,47.42009292750069
+Guatemala,2005,
+Guatemala,2004,
+Guatemala,2003,
+Guatemala,2002,
+Guatemala,2001,
+Guatemala,2000,
+Guinea,2023,
+Guinea,2022,
+Guinea,2021,
+Guinea,2020,
+Guinea,2019,
+Guinea,2018,69.5222835677597
+Guinea,2017,
+Guinea,2016,
+Guinea,2015,
+Guinea,2014,
+Guinea,2013,
+Guinea,2012,47.4200929275007
+Guinea,2011-21W,
+Guinea,2011-21S,
+Guinea,2011,
+Guinea,2010-20W,
+Guinea,2010-20S,
+Guinea,2010,
+Guinea,2009,
+Guinea,2008,
+Guinea,2007,
+Guinea,2006,
+Guinea,2005,
+Guinea,2004,
+Guinea,2003,
+Guinea,2002,
+Guinea,2001,
+Guinea,2000,
+Guinea-Bissau,2023,
+Guinea-Bissau,2022,
+Guinea-Bissau,2021,25.3166540142445
+Guinea-Bissau,2020,
+Guinea-Bissau,2019,
+Guinea-Bissau,2018,23.3477666024638
+Guinea-Bissau,2017,
+Guinea-Bissau,2016,
+Guinea-Bissau,2015,
+Guinea-Bissau,2014,
+Guinea-Bissau,2013,
+Guinea-Bissau,2012,
+Guinea-Bissau,2011-21W,
+Guinea-Bissau,2011-21S,
+Guinea-Bissau,2011,
+Guinea-Bissau,2010-20W,
+Guinea-Bissau,2010-20S,
+Guinea-Bissau,2010,
+Guinea-Bissau,2009,
+Guinea-Bissau,2008,
+Guinea-Bissau,2007,
+Guinea-Bissau,2006,
+Guinea-Bissau,2005,
+Guinea-Bissau,2004,
+Guinea-Bissau,2003,
+Guinea-Bissau,2002,
+Guinea-Bissau,2001,
+Guinea-Bissau,2000,
+Haiti,2023,
+Haiti,2022,
+Haiti,2021,
+Haiti,2020,
+Haiti,2019,
+Haiti,2018,
+Haiti,2017,
+Haiti,2016,
+Haiti,2015,
+Haiti,2014,
+Haiti,2013,
 Haiti,2012,40.3469546276788
+Haiti,2011-21W,
+Haiti,2011-21S,
+Haiti,2011,
+Haiti,2010-20W,
+Haiti,2010-20S,
+Haiti,2010,
+Haiti,2009,
+Haiti,2008,
+Haiti,2007,
+Haiti,2006,
+Haiti,2005,
+Haiti,2004,
+Haiti,2003,
+Haiti,2002,
 Haiti,2001,34.6048444511896
+Haiti,2000,
+Honduras,2023,
+Honduras,2022,
+Honduras,2021,
+Honduras,2020,
 Honduras,2019,42.5731581790914
 Honduras,2018,43.900883353052
-Honduras,2017,44.492924145781195
-Honduras,2016,46.20691622674679
+Honduras,2017,44.4929241457812
+Honduras,2016,46.2069162267468
 Honduras,2015,44.7621375789357
-Honduras,2013,44.024864244237996
+Honduras,2014,
+Honduras,2013,44.024864244238
+Honduras,2012,
+Honduras,2011-21W,
+Honduras,2011-21S,
 Honduras,2011,39.973726766995
+Honduras,2010-20W,
+Honduras,2010-20S,
 Honduras,2010,47.0997470068461
-Honduras,2009,39.644648278752896
+Honduras,2009,39.6446482787529
 Honduras,2008,46.2306705520784
+Honduras,2007,
+Honduras,2006,
+Honduras,2005,
+Honduras,2004,
+Honduras,2003,
+Honduras,2002,
+Honduras,2001,
+Honduras,2000,
+Hungary,2023,
+Hungary,2022,
+Hungary,2021,
+Hungary,2020,
+Hungary,2019,
+Hungary,2018,
+Hungary,2017,
+Hungary,2016,
+Hungary,2015,
+Hungary,2014,
+Hungary,2013,
+Hungary,2012,
+Hungary,2011-21W,
+Hungary,2011-21S,
+Hungary,2011,
+Hungary,2010-20W,
+Hungary,2010-20S,
+Hungary,2010,
+Hungary,2009,
+Hungary,2008,
 Hungary,2007,25.5986350383908
-"Iran, Islamic Rep.",2018,18.4537301625393
-Iraq,2012,31.346950218499696
-Iraq,2006,45.8889968166102
-Jamaica,2017,68.8965779766022
-Jamaica,2010,51.6073478760046
-Jamaica,2002,46.83668464933789
-Jordan,2010,95.07689750987241
-Jordan,2006,16.9132650235946
-Kazakhstan,2017,16.6884184743021
-Kazakhstan,2015,35.014006367010495
-Kazakhstan,2014,35.652360480045495
-Kazakhstan,2010,26.289406386131596
-Kenya,2015,33.38176179552959
-Kenya,2005,42.513160843978895
-Kiribati,2006,45.729128669197
-Kosovo,2017,12.1091391741358
-Kosovo,2013,15.35153755312659
-Kosovo,2012,20.2332717048518
-Kosovo,2011,17.45053254948539
-Kosovo,2006,10.8562452569653
-Kyrgyz Republic,2020,8.40132348907481
-Kyrgyz Republic,2019,8.55042518947585
-Kyrgyz Republic,2013,9.235851150851069
-Kyrgyz Republic,2012,7.8764612723809995
-Kyrgyz Republic,2011,11.4082871112392
-Kyrgyz Republic,2006,14.0246951861571
-Lao PDR,2018,7.292267438737
-Lao PDR,2007,5.0398657308130295
-Latvia,2009,39.89092153449939
-Latvia,2008,36.5661457011633
-Lesotho,2017,46.953645276055
-Lesotho,2010,11.9110253625654
-Liberia,2016,41.3956435423887
-Liberia,2014,31.0619204527446
-Liberia,2007,33.6254178615171
-Lithuania,2008,4.84297709725203
-Madagascar,2010,33.6472502006724
-Malawi,2019,51.7863458114263
-Malawi,2016,41.9206084692763
-Malawi,2013,55.030852131553
-Malawi,2010,35.3480185111029
-Malawi,2004,74.504915496848
-Malaysia,2016,93.7173104315721
-Malaysia,2014,92.5509211649501
-Malaysia,2012,85.4845011466059
-Malaysia,2008,25.5223868063782
-Maldives,2019,32.6713550837949
-Maldives,2016,20.2821443359303
-Maldives,2009,24.9684960097286
-Maldives,2004,11.3551332669474
-Mali,2018,24.1790517414429
-Mali,2009,39.91615339763559
-Marshall Islands,2019,47.8015422550382
-Mauritania,2014,30.905928394182304
-Mauritius,2017,8.64601981506918
-Mauritius,2012,14.611225567365599
-Mauritius,2006,3.03232237940689
-Mexico,2020,25.491903201815692
-Mexico,2018,26.56976112963959
-Mexico,2016,27.355056383766403
-Mexico,2014,18.8660456329874
-Mexico,2012,31.071821328631298
-Mexico,2010,21.95967506788129
-Mexico,2008,19.8114008059771
-"Micronesia, Fed. Sts.",2000,51.2768817204301
-Moldova,2018,29.6958754408415
-Moldova,2013,30.7882147425709
-Moldova,2012,25.312848312071
-Moldova,2010,27.7858638404355
-Mongolia,2018,13.420172752597
-Mongolia,2016,12.521466247897301
-Mongolia,2014,14.6745777435971
-Mongolia,2012,13.3766311849541
-Mongolia,2011,16.406352994635
-Mongolia,2010,19.4758381613013
-Mongolia,2009,23.481372491844198
-Mongolia,2007,16.378016566925698
-Montenegro,2014,5.46660480740443
-Montenegro,2012,3.5541385000672
-Mozambique,2014,23.675878968133198
-Mozambique,2008,26.57219354180319
-Myanmar,2017,30.71743313424709
-Myanmar,2009,9.841444742932499
-Namibia,2015,48.8015334677233
-Nepal,2010,51.9579909835446
-Nicaragua,2014,30.0140246792369
-Nicaragua,2009,19.2461410161597
-Nicaragua,2005,32.1970065875332
-Niger,2018,41.116415333884696
-Niger,2014,46.37954138414289
-Niger,2011,53.77360501908161
-Nigeria,2018,47.52019439959539
-Nigeria,2015,1.43304813756986
-Nigeria,2012,0.18543161494418
-Nigeria,2010,0.40495549847523
-Pakistan,2018,35.3323759545035
-Pakistan,2015,18.1988718482222
-Pakistan,2013,13.5616666993258
-Pakistan,2009,15.6556369928327
-Pakistan,2007,14.7975969469844
-Palau,2006,21.7704536677806
-Panama,2019,35.118515932628
-Panama,2018,35.18081643265109
-Panama,2017,28.162761720945
-Panama,2016,36.4553154663116
-Panama,2015,32.6452897564741
-Panama,2014,14.695185185589791
-Panama,2013,15.631315570464999
-Panama,2012,15.9148257590594
-Panama,2011,13.8110943815968
-Panama,2010,14.01428716882949
-Panama,2009,12.9905472492423
-Panama,2008,34.5698926356718
-Papua New Guinea,2009,46.9087260955653
-Paraguay,2020,29.4378509219621
-Paraguay,2019,29.936159289747998
-Paraguay,2018,34.8670085142966
-Paraguay,2017,29.005535986106203
-Paraguay,2016,26.0698196526093
-Paraguay,2015,30.0049115025582
-Paraguay,2014,27.719109030550598
-Paraguay,2013,27.3395275541409
-Paraguay,2012,33.409347270710796
-Paraguay,2011,25.1825492759701
-Paraguay,2010,29.0528554836517
-Paraguay,2009,30.3997059340589
-Paraguay,2008,27.681886414606797
-Paraguay,2007,29.308922783824897
-Peru,2021,23.6198223082918
-Peru,2020,21.2904420186418
-Peru,2019,24.769328625636998
-Peru,2018,23.10918716303379
-Peru,2017,21.0827691568682
-Peru,2016,21.122555847916
-Peru,2015,20.5592802823753
-Peru,2014,21.3121606472867
-Peru,2013,20.9182602177731
-Peru,2012,21.4648186727024
-Peru,2011,24.1243660545863
-Peru,2010,24.9720240240748
-Peru,2009,21.172420361788
-Peru,2008,21.48617777510759
-Philippines,2018,69.745325865892
-Philippines,2015,68.0174799102135
-Philippines,2013,34.8220298867051
-Philippines,2006,93.4049170610345
-Poland,2017,28.490427373488703
-Poland,2016,33.6242077984989
-Poland,2015,34.5738468620378
-Poland,2012,32.557332607227
-Poland,2011,31.047198651802198
-Poland,2010,30.9362253613351
-Poland,2009,31.837982237976796
-Poland,2008,31.5487548067239
-Poland,2007,33.4571123887194
-Poland,2006,37.543986305643
-Poland,2005,39.1373830955348
-Romania,2016,6.1516767047115
-Romania,2012,5.61750994340174
-Romania,2011,6.07398430733563
-Romania,2008,4.40552059072266
-Russian Federation,2017,52.60279516269081
-Russian Federation,2016,52.4578968032131
-Russian Federation,2015,46.213121508904095
-Russian Federation,2014,46.1212367992826
-Rwanda,2013,96.02214604145199
-Rwanda,2010,97.8119154332808
-Rwanda,2005,79.8690726099879
-Samoa,2008,84.0459951380285
-Sao Tome and Principe,2017,16.1173769858566
-Senegal,2018,65.2421293046741
-Senegal,2011,85.6005502208509
-Serbia,2018,3.3327861316154
-Serbia,2015,3.15282853221497
-Serbia,2013,4.65837536441911
-Serbia,2010,4.40529949807368
-Serbia,2007,5.10051569553093
-Sierra Leone,2018,26.9603545261167
-Sierra Leone,2011,24.8889644633046
-Slovak Republic,2009,8.28091578032267
-Solomon Islands,2005,37.183490551964
-South Africa,2020,21.7786126246691
-South Africa,2019,27.752982519215504
-South Africa,2018,16.59709066209899
-South Africa,2016,29.2988751018273
-South Africa,2005,19.2145350593555
-Sri Lanka,2019,15.4162133247257
-Sri Lanka,2016,17.1334791000057
-Sri Lanka,2012,13.9731043518327
-Sri Lanka,2009,11.7533145827117
-Sri Lanka,2006,12.828266958583502
-Syrian Arab Republic,2003,6.20058860869063
-Tanzania,2014,33.8355878946727
-Tanzania,2012,16.2221969106884
-Tanzania,2008,24.096024536726297
-Thailand,2019,39.9244444659356
-Thailand,2017,40.2896922836525
-Thailand,2013,40.1832616975258
-Thailand,2011,44.3421708427093
-Thailand,2009,44.2672375454913
-Thailand,2006,52.4899234859897
-Timor-Leste,2011,4.84571234358523
-Timor-Leste,2007,19.5924631258493
-Togo,2018,24.5546779995417
-Togo,2011,26.90221617519749
-Togo,2006,1.5205103217511
-Tonga,2009,39.5652915825745
-Turkiye,2019,16.9563807704787
-Turkiye,2018,17.275339471946698
-Turkiye,2017,16.6742722822159
-Turkiye,2016,17.3837163198273
-Turkiye,2015,18.1982953238151
-Turkiye,2014,22.7479306262967
-Turkiye,2013,23.4413823310569
-Turkiye,2012,23.76115306658769
-Turkiye,2011,22.5687382697295
-Turkiye,2010,28.282208580448398
-Turkiye,2009,27.111502964405197
-Turkiye,2008,21.27214804283499
-Turkiye,2007,14.9968565897993
-Turkiye,2006,19.7825734108356
-Turkiye,2005,15.4722523060484
-Turkiye,2004,14.4848476474921
-Uganda,2016,43.1614604960391
-Uganda,2012,43.636802370557696
-Uganda,2009,39.06020439480779
-Uganda,2005,42.446877087956096
-Ukraine,2013,62.2668830882684
-Ukraine,2012,59.4837896992773
-Ukraine,2011,64.3987233737506
-Ukraine,2006,60.77662548578749
-Uruguay,2020,20.1086108202146
-Uruguay,2019,23.649612204710397
-Uruguay,2018,24.1124758259123
-Uruguay,2017,25.444027606747
-Uruguay,2016,25.023359313681798
-Uruguay,2015,24.3142538548202
-Uruguay,2012,25.882399662742202
-Uruguay,2011,23.913033795611
-Uruguay,2010,25.0060877467022
-Uruguay,2009,26.5200320459767
-Uruguay,2008,27.2866046517822
-Uzbekistan,2018,6.01737778253486
-Vanuatu,2019,26.5398711303011
-Viet Nam,2014,4.82292273781644
-Viet Nam,2012,5.41502958583197
-Viet Nam,2010,4.18401250297136
-Viet Nam,2006,90.6731244612985
-West Bank and Gaza,2016,98.7932004709598
-West Bank and Gaza,2009,32.79406242202409
-West Bank and Gaza,2007,15.93784197790849
-"Yemen, Rep.",2014,41.3540184629178
-"Yemen, Rep.",2005,46.264875410523295
-Zambia,2015,15.1517448971944
-Zambia,2010,21.4432732589459
-Zimbabwe,2019,27.023927688598597
-Zimbabwe,2017,26.0390635106843
-Zimbabwe,2007,24.1663630480152
-Argentina,2014,12.6664088574996
-Argentina,2012,10.2277263470479
-Argentina,2011,10.5922208863679
-Bhutan,2007,10.134961049966499
-Botswana,2015,43.28433775869589
-Botswana,2009,
-Chile,2009,
-Chile,2006,
-Eswatini,2009,61.7388902701195
-India,2011,
+Hungary,2006,
+Hungary,2005,
+Hungary,2004,
+Hungary,2003,
+Hungary,2002,
+Hungary,2001,
+Hungary,2000,
+India,2023,
+India,2022,
+India,2021,
+India,2020,
+India,2019,
+India,2018,
+India,2017,
+India,2016,
+India,2015,
+India,2014,
+India,2013,
+India,2012,
+India,2011-21W,
+India,2011-21S,
+India,2011,0.0966421738632863
+India,2010-20W,
+India,2010-20S,
+India,2010,
+India,2009,
+India,2008,
+India,2007,
+India,2006,
+India,2005,
+India,2004,
+India,2003,
+India,2002,
+India,2001,
+India,2000,
+Indonesia,2023,
+Indonesia,2022,
 Indonesia,2021,
 Indonesia,2020,
 Indonesia,2019,
@@ -501,39 +1772,2234 @@ Indonesia,2018,
 Indonesia,2017,
 Indonesia,2016,
 Indonesia,2015,
+Indonesia,2014,
+Indonesia,2013,
+Indonesia,2012,
+Indonesia,2011-21W,
+Indonesia,2011-21S,
+Indonesia,2011,
+Indonesia,2010-20W,
+Indonesia,2010-20S,
+Indonesia,2010,
+Indonesia,2009,
+Indonesia,2008,
+Indonesia,2007,
+Indonesia,2006,
+Indonesia,2005,
+Indonesia,2004,
+Indonesia,2003,
+Indonesia,2002,
+Indonesia,2001,
+Indonesia,2000,
+"Iran, Islamic Rep.",2023,
+"Iran, Islamic Rep.",2022,
+"Iran, Islamic Rep.",2021,
+"Iran, Islamic Rep.",2020,12.9056700208704
+"Iran, Islamic Rep.",2019,17.2221262740006
+"Iran, Islamic Rep.",2018,18.4537301625393
+"Iran, Islamic Rep.",2017,17.6437499778086
+"Iran, Islamic Rep.",2016,
+"Iran, Islamic Rep.",2015,
+"Iran, Islamic Rep.",2014,
+"Iran, Islamic Rep.",2013,
+"Iran, Islamic Rep.",2012,
+"Iran, Islamic Rep.",2011-21W,
+"Iran, Islamic Rep.",2011-21S,
+"Iran, Islamic Rep.",2011,
+"Iran, Islamic Rep.",2010-20W,
+"Iran, Islamic Rep.",2010-20S,
+"Iran, Islamic Rep.",2010,
+"Iran, Islamic Rep.",2009,
+"Iran, Islamic Rep.",2008,
+"Iran, Islamic Rep.",2007,
+"Iran, Islamic Rep.",2006,
+"Iran, Islamic Rep.",2005,
+"Iran, Islamic Rep.",2004,
+"Iran, Islamic Rep.",2003,
+"Iran, Islamic Rep.",2002,
+"Iran, Islamic Rep.",2001,
+"Iran, Islamic Rep.",2000,
+Iraq,2023,
+Iraq,2022,
+Iraq,2021,
+Iraq,2020,
+Iraq,2019,
+Iraq,2018,
+Iraq,2017,
+Iraq,2016,
+Iraq,2015,
+Iraq,2014,
+Iraq,2013,
+Iraq,2012,31.3469502184997
+Iraq,2011-21W,
+Iraq,2011-21S,
+Iraq,2011,
+Iraq,2010-20W,
+Iraq,2010-20S,
+Iraq,2010,
+Iraq,2009,
+Iraq,2008,
+Iraq,2007,
+Iraq,2006,45.8889968166101
+Iraq,2005,
+Iraq,2004,
+Iraq,2003,
+Iraq,2002,
+Iraq,2001,
+Iraq,2000,
+Jamaica,2023,
+Jamaica,2022,
+Jamaica,2021,
+Jamaica,2020,
+Jamaica,2019,
+Jamaica,2018,
+Jamaica,2017,68.8965779766025
+Jamaica,2016,
+Jamaica,2015,
+Jamaica,2014,
+Jamaica,2013,
+Jamaica,2012,
+Jamaica,2011-21W,
+Jamaica,2011-21S,
+Jamaica,2011,
+Jamaica,2010-20W,
+Jamaica,2010-20S,
+Jamaica,2010,51.6073478760046
+Jamaica,2009,
+Jamaica,2008,
+Jamaica,2007,
+Jamaica,2006,
+Jamaica,2005,
+Jamaica,2004,
+Jamaica,2003,
+Jamaica,2002,46.8366846493379
+Jamaica,2001,
+Jamaica,2000,
+Jordan,2023,
+Jordan,2022,
+Jordan,2021,
+Jordan,2020,
+Jordan,2019,
+Jordan,2018,
+Jordan,2017,
+Jordan,2016,
+Jordan,2015,
+Jordan,2014,
+Jordan,2013,
+Jordan,2012,
+Jordan,2011-21W,
+Jordan,2011-21S,
+Jordan,2011,
+Jordan,2010-20W,
+Jordan,2010-20S,
+Jordan,2010,95.0768975098724
+Jordan,2009,
+Jordan,2008,
+Jordan,2007,
+Jordan,2006,16.9132650235946
+Jordan,2005,
+Jordan,2004,
+Jordan,2003,
+Jordan,2002,
+Jordan,2001,
+Jordan,2000,
+Kazakhstan,2023,
+Kazakhstan,2022,
+Kazakhstan,2021,6.34117494980809
+Kazakhstan,2020,8.24640357918124
+Kazakhstan,2019,14.7641318192274
+Kazakhstan,2018,17.5781403645432
+Kazakhstan,2017,16.6884184743021
+Kazakhstan,2016,
+Kazakhstan,2015,35.0140063670104
+Kazakhstan,2014,35.6523604800455
+Kazakhstan,2013,
+Kazakhstan,2012,
+Kazakhstan,2011-21W,
+Kazakhstan,2011-21S,
+Kazakhstan,2011,
+Kazakhstan,2010-20W,
+Kazakhstan,2010-20S,
+Kazakhstan,2010,26.2894063861316
+Kazakhstan,2009,
+Kazakhstan,2008,
 Kazakhstan,2007,
+Kazakhstan,2006,
+Kazakhstan,2005,
+Kazakhstan,2004,
+Kazakhstan,2003,
+Kazakhstan,2002,
+Kazakhstan,2001,
+Kazakhstan,2000,
+Kenya,2023,
+Kenya,2022,
+Kenya,2021,
+Kenya,2020,
+Kenya,2019,
+Kenya,2018,
+Kenya,2017,
+Kenya,2016,
+Kenya,2015,33.3817617955296
+Kenya,2014,
+Kenya,2013,
+Kenya,2012,
+Kenya,2011-21W,
+Kenya,2011-21S,
+Kenya,2011,
+Kenya,2010-20W,
+Kenya,2010-20S,
+Kenya,2010,
+Kenya,2009,
+Kenya,2008,
+Kenya,2007,
+Kenya,2006,
+Kenya,2005,42.5131608439789
+Kenya,2004,
+Kenya,2003,
+Kenya,2002,
+Kenya,2001,
+Kenya,2000,
+Kiribati,2023,
+Kiribati,2022,
+Kiribati,2021,
+Kiribati,2020,
 Kiribati,2019,36.3130964749352
+Kiribati,2018,
+Kiribati,2017,
+Kiribati,2016,
+Kiribati,2015,
+Kiribati,2014,
+Kiribati,2013,
+Kiribati,2012,
+Kiribati,2011-21W,
+Kiribati,2011-21S,
+Kiribati,2011,
+Kiribati,2010-20W,
+Kiribati,2010-20S,
+Kiribati,2010,
+Kiribati,2009,
+Kiribati,2008,
+Kiribati,2007,
+Kiribati,2006,45.729128669197
+Kiribati,2005,
+Kiribati,2004,
+Kiribati,2003,
+Kiribati,2002,
+Kiribati,2001,
+Kiribati,2000,
+Kosovo,2023,
+Kosovo,2022,
+Kosovo,2021,
+Kosovo,2020,
+Kosovo,2019,
+Kosovo,2018,
+Kosovo,2017,12.1091391741358
+Kosovo,2016,
+Kosovo,2015,
+Kosovo,2014,
+Kosovo,2013,15.3515375531266
+Kosovo,2012,20.2332717048518
+Kosovo,2011-21W,
+Kosovo,2011-21S,
+Kosovo,2011,17.4505325494854
+Kosovo,2010-20W,
+Kosovo,2010-20S,
+Kosovo,2010,
+Kosovo,2009,
+Kosovo,2008,
+Kosovo,2007,
+Kosovo,2006,10.8562452569653
+Kosovo,2005,
+Kosovo,2004,
+Kosovo,2003,
+Kosovo,2002,
+Kosovo,2001,
+Kosovo,2000,
+Kyrgyz Republic,2023,
+Kyrgyz Republic,2022,
+Kyrgyz Republic,2021,
+Kyrgyz Republic,2020,8.40132348907481
+Kyrgyz Republic,2019,8.55042518947586
+Kyrgyz Republic,2018,8.71143900520455
+Kyrgyz Republic,2017,9.04792385965054
+Kyrgyz Republic,2016,8.93166273580559
+Kyrgyz Republic,2015,8.02764876319961
+Kyrgyz Republic,2014,8.52347249743854
+Kyrgyz Republic,2013,9.23585115085107
+Kyrgyz Republic,2012,7.876461272381
+Kyrgyz Republic,2011-21W,
+Kyrgyz Republic,2011-21S,
+Kyrgyz Republic,2011,11.4082871112392
+Kyrgyz Republic,2010-20W,
+Kyrgyz Republic,2010-20S,
+Kyrgyz Republic,2010,
+Kyrgyz Republic,2009,
+Kyrgyz Republic,2008,
+Kyrgyz Republic,2007,
+Kyrgyz Republic,2006,14.0246951861571
+Kyrgyz Republic,2005,
+Kyrgyz Republic,2004,
+Kyrgyz Republic,2003,
+Kyrgyz Republic,2002,
+Kyrgyz Republic,2001,
+Kyrgyz Republic,2000,
+Lao PDR,2023,
+Lao PDR,2022,
+Lao PDR,2021,
+Lao PDR,2020,
+Lao PDR,2019,
+Lao PDR,2018,7.292267438737
+Lao PDR,2017,
+Lao PDR,2016,
+Lao PDR,2015,
+Lao PDR,2014,
+Lao PDR,2013,
+Lao PDR,2012,
+Lao PDR,2011-21W,
+Lao PDR,2011-21S,
+Lao PDR,2011,
+Lao PDR,2010-20W,
+Lao PDR,2010-20S,
+Lao PDR,2010,
+Lao PDR,2009,
+Lao PDR,2008,
+Lao PDR,2007,5.03986573081303
+Lao PDR,2006,
+Lao PDR,2005,
+Lao PDR,2004,
+Lao PDR,2003,
+Lao PDR,2002,
+Lao PDR,2001,
+Lao PDR,2000,
+Latvia,2023,
+Latvia,2022,
+Latvia,2021,
+Latvia,2020,
+Latvia,2019,
+Latvia,2018,
+Latvia,2017,
+Latvia,2016,
+Latvia,2015,
+Latvia,2014,
+Latvia,2013,
+Latvia,2012,
+Latvia,2011-21W,
+Latvia,2011-21S,
+Latvia,2011,
+Latvia,2010-20W,
+Latvia,2010-20S,
+Latvia,2010,
+Latvia,2009,39.8909215344994
+Latvia,2008,36.5661457011633
+Latvia,2007,
+Latvia,2006,
+Latvia,2005,
+Latvia,2004,
+Latvia,2003,
+Latvia,2002,
+Latvia,2001,
+Latvia,2000,
+Lebanon,2023,
+Lebanon,2022,
+Lebanon,2021,
+Lebanon,2020,
+Lebanon,2019,
+Lebanon,2018,
+Lebanon,2017,
+Lebanon,2016,
+Lebanon,2015,
+Lebanon,2014,
+Lebanon,2013,
+Lebanon,2012,
+Lebanon,2011-21W,
+Lebanon,2011-21S,
+Lebanon,2011,
+Lebanon,2010-20W,
+Lebanon,2010-20S,
+Lebanon,2010,
+Lebanon,2009,
+Lebanon,2008,
+Lebanon,2007,
+Lebanon,2006,
+Lebanon,2005,
+Lebanon,2004,
+Lebanon,2003,
+Lebanon,2002,
+Lebanon,2001,
+Lebanon,2000,
+Lesotho,2023,
+Lesotho,2022,
+Lesotho,2021,
+Lesotho,2020,
+Lesotho,2019,
+Lesotho,2018,
+Lesotho,2017,46.953645276055
+Lesotho,2016,
+Lesotho,2015,
+Lesotho,2014,
+Lesotho,2013,
+Lesotho,2012,
+Lesotho,2011-21W,
+Lesotho,2011-21S,
+Lesotho,2011,
+Lesotho,2010-20W,
+Lesotho,2010-20S,
+Lesotho,2010,11.9110253625654
+Lesotho,2009,
+Lesotho,2008,
+Lesotho,2007,
+Lesotho,2006,
+Lesotho,2005,
+Lesotho,2004,
+Lesotho,2003,
+Lesotho,2002,
+Lesotho,2001,
+Lesotho,2000,
+Liberia,2023,
+Liberia,2022,
+Liberia,2021,
+Liberia,2020,
+Liberia,2019,
+Liberia,2018,
+Liberia,2017,
+Liberia,2016,41.3956435423887
+Liberia,2015,
+Liberia,2014,31.0619204527446
+Liberia,2013,
+Liberia,2012,
+Liberia,2011-21W,
+Liberia,2011-21S,
+Liberia,2011,
+Liberia,2010-20W,
+Liberia,2010-20S,
+Liberia,2010,
+Liberia,2009,
+Liberia,2008,
+Liberia,2007,33.6254178615171
+Liberia,2006,
+Liberia,2005,
+Liberia,2004,
+Liberia,2003,
+Liberia,2002,
+Liberia,2001,
+Liberia,2000,
+Lithuania,2023,
+Lithuania,2022,
+Lithuania,2021,
+Lithuania,2020,
+Lithuania,2019,
+Lithuania,2018,
+Lithuania,2017,
+Lithuania,2016,
+Lithuania,2015,
+Lithuania,2014,
+Lithuania,2013,
+Lithuania,2012,
+Lithuania,2011-21W,
+Lithuania,2011-21S,
+Lithuania,2011,
+Lithuania,2010-20W,
+Lithuania,2010-20S,
+Lithuania,2010,
+Lithuania,2009,
+Lithuania,2008,4.84297709725203
+Lithuania,2007,
+Lithuania,2006,
+Lithuania,2005,
+Lithuania,2004,
+Lithuania,2003,
+Lithuania,2002,
+Lithuania,2001,
+Lithuania,2000,
+Madagascar,2023,
+Madagascar,2022,
+Madagascar,2021,
+Madagascar,2020,
+Madagascar,2019,
+Madagascar,2018,
+Madagascar,2017,
+Madagascar,2016,
+Madagascar,2015,
+Madagascar,2014,
+Madagascar,2013,
+Madagascar,2012,
+Madagascar,2011-21W,
+Madagascar,2011-21S,
+Madagascar,2011,
+Madagascar,2010-20W,
+Madagascar,2010-20S,
+Madagascar,2010,33.6472502006724
+Madagascar,2009,
+Madagascar,2008,
+Madagascar,2007,
+Madagascar,2006,
+Madagascar,2005,
+Madagascar,2004,
+Madagascar,2003,
+Madagascar,2002,
+Madagascar,2001,
+Madagascar,2000,
+Malawi,2023,
+Malawi,2022,
+Malawi,2021,
+Malawi,2020,
+Malawi,2019,51.7863458114263
+Malawi,2018,
+Malawi,2017,
+Malawi,2016,41.9206084692763
+Malawi,2015,
+Malawi,2014,
+Malawi,2013,55.0308521315531
+Malawi,2012,
+Malawi,2011-21W,
+Malawi,2011-21S,
+Malawi,2011,
+Malawi,2010-20W,
+Malawi,2010-20S,
+Malawi,2010,35.3480185111029
+Malawi,2009,
+Malawi,2008,
+Malawi,2007,
+Malawi,2006,
+Malawi,2005,
+Malawi,2004,74.504915496848
+Malawi,2003,
+Malawi,2002,
+Malawi,2001,
+Malawi,2000,
+Malaysia,2023,
+Malaysia,2022,
+Malaysia,2021,
+Malaysia,2020,
+Malaysia,2019,
+Malaysia,2018,
+Malaysia,2017,
+Malaysia,2016,93.7126437863181
+Malaysia,2015,
+Malaysia,2014,92.5509211649501
+Malaysia,2013,
+Malaysia,2012,85.4845011466059
+Malaysia,2011-21W,
+Malaysia,2011-21S,
+Malaysia,2011,
+Malaysia,2010-20W,
+Malaysia,2010-20S,
+Malaysia,2010,
+Malaysia,2009,
+Malaysia,2008,25.5223868063782
+Malaysia,2007,
+Malaysia,2006,
+Malaysia,2005,
+Malaysia,2004,
+Malaysia,2003,
+Malaysia,2002,
+Malaysia,2001,
+Malaysia,2000,
+Maldives,2023,
+Maldives,2022,
+Maldives,2021,
+Maldives,2020,
+Maldives,2019,32.6713550837949
+Maldives,2018,
+Maldives,2017,
+Maldives,2016,20.2821443359303
+Maldives,2015,
+Maldives,2014,
+Maldives,2013,
+Maldives,2012,
+Maldives,2011-21W,
+Maldives,2011-21S,
+Maldives,2011,
+Maldives,2010-20W,
+Maldives,2010-20S,
+Maldives,2010,
+Maldives,2009,24.9684960097286
+Maldives,2008,
+Maldives,2007,
+Maldives,2006,
+Maldives,2005,
+Maldives,2004,11.3551332669474
+Maldives,2003,
+Maldives,2002,
+Maldives,2001,
+Maldives,2000,
+Mali,2023,
+Mali,2022,
+Mali,2021,40.1989582982217
+Mali,2020,
+Mali,2019,
+Mali,2018,36.4389849656751
+Mali,2017,
+Mali,2016,
+Mali,2015,
+Mali,2014,
+Mali,2013,
+Mali,2012,
+Mali,2011-21W,
+Mali,2011-21S,
+Mali,2011,
+Mali,2010-20W,
+Mali,2010-20S,
+Mali,2010,
+Mali,2009,39.9161533976356
+Mali,2008,
+Mali,2007,
+Mali,2006,
+Mali,2005,
+Mali,2004,
+Mali,2003,
+Mali,2002,
+Mali,2001,
+Mali,2000,
+Marshall Islands,2023,
+Marshall Islands,2022,
+Marshall Islands,2021,
+Marshall Islands,2020,
+Marshall Islands,2019,47.8015422550382
+Marshall Islands,2018,
+Marshall Islands,2017,
+Marshall Islands,2016,
+Marshall Islands,2015,
+Marshall Islands,2014,
+Marshall Islands,2013,
+Marshall Islands,2012,
+Marshall Islands,2011-21W,
+Marshall Islands,2011-21S,
+Marshall Islands,2011,
+Marshall Islands,2010-20W,
+Marshall Islands,2010-20S,
+Marshall Islands,2010,
+Marshall Islands,2009,
+Marshall Islands,2008,
+Marshall Islands,2007,
+Marshall Islands,2006,
+Marshall Islands,2005,
+Marshall Islands,2004,
+Marshall Islands,2003,
+Marshall Islands,2002,
+Marshall Islands,2001,
+Marshall Islands,2000,
+Mauritania,2023,
+Mauritania,2022,
+Mauritania,2021,
+Mauritania,2020,
+Mauritania,2019,
+Mauritania,2018,
+Mauritania,2017,
+Mauritania,2016,
+Mauritania,2015,
+Mauritania,2014,30.9059283941823
+Mauritania,2013,
+Mauritania,2012,
+Mauritania,2011-21W,
+Mauritania,2011-21S,
+Mauritania,2011,
+Mauritania,2010-20W,
+Mauritania,2010-20S,
+Mauritania,2010,
+Mauritania,2009,
 Mauritania,2008,
+Mauritania,2007,
+Mauritania,2006,
+Mauritania,2005,
+Mauritania,2004,
+Mauritania,2003,
+Mauritania,2002,
+Mauritania,2001,
+Mauritania,2000,
+Mauritius,2023,
+Mauritius,2022,
+Mauritius,2021,
+Mauritius,2020,
+Mauritius,2019,
+Mauritius,2018,
+Mauritius,2017,8.64601981678906
+Mauritius,2016,
+Mauritius,2015,
+Mauritius,2014,
+Mauritius,2013,
+Mauritius,2012,14.6112255673656
+Mauritius,2011-21W,
+Mauritius,2011-21S,
+Mauritius,2011,
+Mauritius,2010-20W,
+Mauritius,2010-20S,
+Mauritius,2010,
+Mauritius,2009,
+Mauritius,2008,
+Mauritius,2007,
+Mauritius,2006,3.03232237940689
+Mauritius,2005,
+Mauritius,2004,
+Mauritius,2003,
+Mauritius,2002,
+Mauritius,2001,
+Mauritius,2000,
+Mexico,2023,
+Mexico,2022,25.0120398566408
+Mexico,2021,
+Mexico,2020,25.4919032018157
+Mexico,2019,
+Mexico,2018,26.4844725325004
+Mexico,2017,
+Mexico,2016,26.5849945102214
+Mexico,2015,
+Mexico,2014,18.8660456329874
+Mexico,2013,
+Mexico,2012,31.0718213286313
+Mexico,2011-21W,
+Mexico,2011-21S,
+Mexico,2011,
+Mexico,2010-20W,
+Mexico,2010-20S,
+Mexico,2010,21.9596750678813
+Mexico,2009,
+Mexico,2008,19.8114008059771
+Mexico,2007,
+Mexico,2006,
+Mexico,2005,
+Mexico,2004,
+Mexico,2003,
+Mexico,2002,
+Mexico,2001,
+Mexico,2000,
+"Micronesia, Fed. Sts.",2023,
+"Micronesia, Fed. Sts.",2022,
+"Micronesia, Fed. Sts.",2021,
+"Micronesia, Fed. Sts.",2020,
+"Micronesia, Fed. Sts.",2019,
+"Micronesia, Fed. Sts.",2018,
+"Micronesia, Fed. Sts.",2017,
+"Micronesia, Fed. Sts.",2016,
+"Micronesia, Fed. Sts.",2015,
+"Micronesia, Fed. Sts.",2014,
+"Micronesia, Fed. Sts.",2013,
+"Micronesia, Fed. Sts.",2012,
+"Micronesia, Fed. Sts.",2011-21W,
+"Micronesia, Fed. Sts.",2011-21S,
+"Micronesia, Fed. Sts.",2011,
+"Micronesia, Fed. Sts.",2010-20W,
+"Micronesia, Fed. Sts.",2010-20S,
+"Micronesia, Fed. Sts.",2010,
+"Micronesia, Fed. Sts.",2009,
+"Micronesia, Fed. Sts.",2008,
+"Micronesia, Fed. Sts.",2007,
+"Micronesia, Fed. Sts.",2006,
+"Micronesia, Fed. Sts.",2005,
+"Micronesia, Fed. Sts.",2004,
+"Micronesia, Fed. Sts.",2003,
+"Micronesia, Fed. Sts.",2002,
+"Micronesia, Fed. Sts.",2001,
+"Micronesia, Fed. Sts.",2000,51.2768817204301
+Moldova,2023,
+Moldova,2022,
+Moldova,2021,
+Moldova,2020,
+Moldova,2019,
+Moldova,2018,29.6958754408415
+Moldova,2017,28.013078271068
+Moldova,2016,
+Moldova,2015,
+Moldova,2014,
+Moldova,2013,30.7882147425708
+Moldova,2012,25.312848312071
+Moldova,2011-21W,
+Moldova,2011-21S,
+Moldova,2011,
+Moldova,2010-20W,
+Moldova,2010-20S,
+Moldova,2010,27.7858638404355
+Moldova,2009,
+Moldova,2008,
+Moldova,2007,
+Moldova,2006,
+Moldova,2005,
+Moldova,2004,
+Moldova,2003,
+Moldova,2002,
+Moldova,2001,
+Moldova,2000,
+Mongolia,2023,
+Mongolia,2022,
+Mongolia,2021,
+Mongolia,2020,13.8928400442804
+Mongolia,2019,
+Mongolia,2018,13.420172752597
+Mongolia,2017,
+Mongolia,2016,12.5214662478973
+Mongolia,2015,
+Mongolia,2014,14.6745777435971
+Mongolia,2013,
+Mongolia,2012,13.3766311849541
+Mongolia,2011-21W,
+Mongolia,2011-21S,
+Mongolia,2011,16.4063529946349
+Mongolia,2010-20W,
+Mongolia,2010-20S,
+Mongolia,2010,19.4758381613013
+Mongolia,2009,23.4813724918442
+Mongolia,2008,
+Mongolia,2007,16.3780165669257
+Mongolia,2006,
+Mongolia,2005,
+Mongolia,2004,
+Mongolia,2003,
+Mongolia,2002,
+Mongolia,2001,
+Mongolia,2000,
+Montenegro,2023,
+Montenegro,2022,
+Montenegro,2021,
+Montenegro,2020,
+Montenegro,2019,
+Montenegro,2018,
+Montenegro,2017,
+Montenegro,2016,
+Montenegro,2015,
+Montenegro,2014,5.46660480740443
 Montenegro,2013,
+Montenegro,2012,3.5541385000672
+Montenegro,2011-21W,
+Montenegro,2011-21S,
 Montenegro,2011,
+Montenegro,2010-20W,
+Montenegro,2010-20S,
+Montenegro,2010,
+Montenegro,2009,
+Montenegro,2008,
+Montenegro,2007,
+Montenegro,2006,
+Montenegro,2005,
+Montenegro,2004,
+Montenegro,2003,
+Montenegro,2002,
+Montenegro,2001,
+Montenegro,2000,
+Morocco,2023,
+Morocco,2022,
+Morocco,2021,
+Morocco,2020,
+Morocco,2019,
+Morocco,2018,
+Morocco,2017,
+Morocco,2016,
+Morocco,2015,
+Morocco,2014,
+Morocco,2013,
+Morocco,2012,
+Morocco,2011-21W,
+Morocco,2011-21S,
+Morocco,2011,
+Morocco,2010-20W,
+Morocco,2010-20S,
+Morocco,2010,
+Morocco,2009,6.4370512858265
+Morocco,2008,
+Morocco,2007,
+Morocco,2006,
+Morocco,2005,
+Morocco,2004,
+Morocco,2003,
+Morocco,2002,
+Morocco,2001,
+Morocco,2000,
+Mozambique,2023,
+Mozambique,2022,
+Mozambique,2021,
+Mozambique,2020,
+Mozambique,2019,43.5152153095769
+Mozambique,2018,
+Mozambique,2017,
+Mozambique,2016,
+Mozambique,2015,
+Mozambique,2014,23.6758789681332
+Mozambique,2013,
+Mozambique,2012,
+Mozambique,2011-21W,
+Mozambique,2011-21S,
+Mozambique,2011,
+Mozambique,2010-20W,
+Mozambique,2010-20S,
+Mozambique,2010,
+Mozambique,2009,
+Mozambique,2008,26.5721935418032
+Mozambique,2007,
+Mozambique,2006,
+Mozambique,2005,
+Mozambique,2004,
+Mozambique,2003,
+Mozambique,2002,
+Mozambique,2001,
+Mozambique,2000,
+Myanmar,2023,
+Myanmar,2022,
+Myanmar,2021,
+Myanmar,2020,
+Myanmar,2019,
+Myanmar,2018,
+Myanmar,2017,30.2657123423824
+Myanmar,2016,
+Myanmar,2015,
+Myanmar,2014,
+Myanmar,2013,
+Myanmar,2012,
+Myanmar,2011-21W,
+Myanmar,2011-21S,
+Myanmar,2011,
+Myanmar,2010-20W,
+Myanmar,2010-20S,
+Myanmar,2010,
+Myanmar,2009,9.84144474293251
+Myanmar,2008,
+Myanmar,2007,
+Myanmar,2006,
+Myanmar,2005,
+Myanmar,2004,
+Myanmar,2003,
+Myanmar,2002,
+Myanmar,2001,
+Myanmar,2000,
+Namibia,2023,
+Namibia,2022,
+Namibia,2021,
+Namibia,2020,
+Namibia,2019,
+Namibia,2018,
+Namibia,2017,
+Namibia,2016,
+Namibia,2015,48.8015334677233
+Namibia,2014,
+Namibia,2013,
+Namibia,2012,
+Namibia,2011-21W,
+Namibia,2011-21S,
+Namibia,2011,
+Namibia,2010-20W,
+Namibia,2010-20S,
+Namibia,2010,
+Namibia,2009,2.69426329348722
+Namibia,2008,
+Namibia,2007,
+Namibia,2006,
+Namibia,2005,
+Namibia,2004,
+Namibia,2003,
+Namibia,2002,
+Namibia,2001,
+Namibia,2000,
+Nepal,2023,
+Nepal,2022,
+Nepal,2021,
+Nepal,2020,
+Nepal,2019,
+Nepal,2018,
+Nepal,2017,
+Nepal,2016,
+Nepal,2015,
+Nepal,2014,
+Nepal,2013,
+Nepal,2012,
+Nepal,2011-21W,
+Nepal,2011-21S,
+Nepal,2011,
+Nepal,2010-20W,
+Nepal,2010-20S,
+Nepal,2010,51.9579909835447
+Nepal,2009,
+Nepal,2008,
+Nepal,2007,
+Nepal,2006,
+Nepal,2005,
+Nepal,2004,
+Nepal,2003,
+Nepal,2002,
+Nepal,2001,
+Nepal,2000,
+Nicaragua,2023,
+Nicaragua,2022,
+Nicaragua,2021,
+Nicaragua,2020,
+Nicaragua,2019,
+Nicaragua,2018,
+Nicaragua,2017,
+Nicaragua,2016,
+Nicaragua,2015,
+Nicaragua,2014,30.0140246792369
+Nicaragua,2013,
+Nicaragua,2012,
+Nicaragua,2011-21W,
+Nicaragua,2011-21S,
+Nicaragua,2011,
+Nicaragua,2010-20W,
+Nicaragua,2010-20S,
+Nicaragua,2010,
+Nicaragua,2009,19.2461410161597
+Nicaragua,2008,
+Nicaragua,2007,
+Nicaragua,2006,
+Nicaragua,2005,32.1970065875332
+Nicaragua,2004,
+Nicaragua,2003,
+Nicaragua,2002,
+Nicaragua,2001,
+Nicaragua,2000,
+Niger,2023,
+Niger,2022,
+Niger,2021,38.3421317286671
+Niger,2020,
+Niger,2019,
+Niger,2018,42.637317407688
+Niger,2017,
+Niger,2016,
+Niger,2015,
+Niger,2014,46.3795413841429
+Niger,2013,
+Niger,2012,
+Niger,2011-21W,
+Niger,2011-21S,
+Niger,2011,53.7736050190816
+Niger,2010-20W,
+Niger,2010-20S,
+Niger,2010,
+Niger,2009,
+Niger,2008,
+Niger,2007,
+Niger,2006,
+Niger,2005,
+Niger,2004,
+Niger,2003,
+Niger,2002,
+Niger,2001,
+Niger,2000,
+Nigeria,2023,
+Nigeria,2022,
+Nigeria,2021,
+Nigeria,2020,
+Nigeria,2019,
+Nigeria,2018,47.5201943995954
+Nigeria,2017,
+Nigeria,2016,
+Nigeria,2015,1.43304813756986
+Nigeria,2014,
+Nigeria,2013,
+Nigeria,2012,0.185431614944183
+Nigeria,2011-21W,
+Nigeria,2011-21S,
+Nigeria,2011,
+Nigeria,2010-20W,
+Nigeria,2010-20S,
+Nigeria,2010,0.404955498475239
+Nigeria,2009,
+Nigeria,2008,
+Nigeria,2007,
+Nigeria,2006,
+Nigeria,2005,
+Nigeria,2004,
+Nigeria,2003,
+Nigeria,2002,
+Nigeria,2001,
+Nigeria,2000,
+Pakistan,2023,
+Pakistan,2022,
+Pakistan,2021,
+Pakistan,2020,
+Pakistan,2019,
+Pakistan,2018,35.3323759545035
+Pakistan,2017,
+Pakistan,2016,
+Pakistan,2015,18.1988718482222
+Pakistan,2014,
+Pakistan,2013,13.5616666993258
+Pakistan,2012,
+Pakistan,2011-21W,
+Pakistan,2011-21S,
+Pakistan,2011,
+Pakistan,2010-20W,
+Pakistan,2010-20S,
+Pakistan,2010,
+Pakistan,2009,15.6556369928327
+Pakistan,2008,
+Pakistan,2007,14.7975969469844
+Pakistan,2006,
+Pakistan,2005,
+Pakistan,2004,
+Pakistan,2003,
+Pakistan,2002,
+Pakistan,2001,
+Pakistan,2000,
+Palau,2023,
+Palau,2022,
+Palau,2021,
+Palau,2020,
+Palau,2019,
+Palau,2018,
+Palau,2017,
+Palau,2016,
+Palau,2015,
+Palau,2014,
+Palau,2013,
+Palau,2012,
+Palau,2011-21W,
+Palau,2011-21S,
+Palau,2011,
+Palau,2010-20W,
+Palau,2010-20S,
+Palau,2010,
+Palau,2009,
+Palau,2008,
+Palau,2007,
+Palau,2006,21.7704536677805
+Palau,2005,
+Palau,2004,
+Palau,2003,
+Palau,2002,
+Palau,2001,
+Palau,2000,
+Panama,2023,27.7453655678817
+Panama,2022,
+Panama,2021,28.157295369643
+Panama,2020,
+Panama,2019,35.118515932628
+Panama,2018,35.1808164326511
+Panama,2017,28.162761720945
+Panama,2016,36.4553154663115
+Panama,2015,32.6452897564741
+Panama,2014,14.6951851855898
+Panama,2013,15.631315570465
+Panama,2012,15.9148257590594
+Panama,2011-21W,
+Panama,2011-21S,
+Panama,2011,13.8110943815968
+Panama,2010-20W,
+Panama,2010-20S,
+Panama,2010,14.0142871688295
+Panama,2009,12.9905472492423
+Panama,2008,34.5698926356718
+Panama,2007,
+Panama,2006,
+Panama,2005,
+Panama,2004,
+Panama,2003,
+Panama,2002,
+Panama,2001,
+Panama,2000,
+Papua New Guinea,2023,
+Papua New Guinea,2022,
+Papua New Guinea,2021,
+Papua New Guinea,2020,
+Papua New Guinea,2019,
+Papua New Guinea,2018,
+Papua New Guinea,2017,
+Papua New Guinea,2016,
+Papua New Guinea,2015,
+Papua New Guinea,2014,
+Papua New Guinea,2013,
+Papua New Guinea,2012,
+Papua New Guinea,2011-21W,
+Papua New Guinea,2011-21S,
+Papua New Guinea,2011,
+Papua New Guinea,2010-20W,
+Papua New Guinea,2010-20S,
+Papua New Guinea,2010,
+Papua New Guinea,2009,46.9087260955653
+Papua New Guinea,2008,
+Papua New Guinea,2007,
+Papua New Guinea,2006,
+Papua New Guinea,2005,
+Papua New Guinea,2004,
+Papua New Guinea,2003,
+Papua New Guinea,2002,
+Papua New Guinea,2001,
+Papua New Guinea,2000,
+Paraguay,2023,
+Paraguay,2022,23.859212322543
+Paraguay,2021,29.0788686110377
+Paraguay,2020,29.4378509219621
+Paraguay,2019,29.936159289748
+Paraguay,2018,34.8670085142966
+Paraguay,2017,29.0055359861062
+Paraguay,2016,26.0698196526093
+Paraguay,2015,30.0049115025582
+Paraguay,2014,27.7191090305506
+Paraguay,2013,27.3395275541409
+Paraguay,2012,33.4093472707108
+Paraguay,2011-21W,
+Paraguay,2011-21S,
+Paraguay,2011,25.1825492759701
+Paraguay,2010-20W,
+Paraguay,2010-20S,
+Paraguay,2010,29.0528554836517
+Paraguay,2009,30.3997059340589
+Paraguay,2008,27.6818864146068
+Paraguay,2007,29.3089227838249
+Paraguay,2006,
+Paraguay,2005,
+Paraguay,2004,
+Paraguay,2003,
+Paraguay,2002,
+Paraguay,2001,
+Paraguay,2000,
+Peru,2023,
+Peru,2022,24.3349366390867
+Peru,2021,23.6198223082918
+Peru,2020,21.2904420186418
+Peru,2019,24.769328625637
+Peru,2018,23.1091871630338
+Peru,2017,21.3946445320016
+Peru,2016,21.122555847916
+Peru,2015,20.5592802823753
+Peru,2014,21.3121606472867
+Peru,2013,20.9182602177731
+Peru,2012,21.4648186727025
+Peru,2011-21W,
+Peru,2011-21S,
+Peru,2011,24.1243660545863
+Peru,2010-20W,
+Peru,2010-20S,
+Peru,2010,24.9720240240748
+Peru,2009,21.172420361788
+Peru,2008,21.4861777751076
+Peru,2007,
+Peru,2006,
+Peru,2005,
+Peru,2004,
+Peru,2003,
+Peru,2002,
+Peru,2001,
+Peru,2000,
+Philippines,2023,
+Philippines,2022,
+Philippines,2021,
+Philippines,2020,
+Philippines,2019,
+Philippines,2018,69.745325865892
+Philippines,2017,
+Philippines,2016,
+Philippines,2015,68.0174799102135
+Philippines,2014,
+Philippines,2013,34.8220298867051
+Philippines,2012,
+Philippines,2011-21W,
+Philippines,2011-21S,
+Philippines,2011,
+Philippines,2010-20W,
+Philippines,2010-20S,
+Philippines,2010,
+Philippines,2009,
+Philippines,2008,
+Philippines,2007,
+Philippines,2006,93.4049170610345
+Philippines,2005,
+Philippines,2004,
+Philippines,2003,
+Philippines,2002,
+Philippines,2001,
+Philippines,2000,
+Poland,2023,
+Poland,2022,
+Poland,2021,
+Poland,2020,
+Poland,2019,26.8425332566124
+Poland,2018,
+Poland,2017,28.4904273734887
+Poland,2016,33.6242077984989
+Poland,2015,34.5738468620378
+Poland,2014,
+Poland,2013,
+Poland,2012,32.557332607227
+Poland,2011-21W,
+Poland,2011-21S,
+Poland,2011,31.0471986518022
+Poland,2010-20W,
+Poland,2010-20S,
+Poland,2010,30.9362253613351
+Poland,2009,31.8379822379767
+Poland,2008,31.5487548067239
+Poland,2007,33.4571123887194
+Poland,2006,37.543986305643
+Poland,2005,39.1373830955348
+Poland,2004,
+Poland,2003,
+Poland,2002,
+Poland,2001,
+Poland,2000,
+Romania,2023,
+Romania,2022,
+Romania,2021,4.66786710379234
+Romania,2020,3.60868586474573
+Romania,2019,4.17041318996948
+Romania,2018,
+Romania,2017,
+Romania,2016,6.15167670471151
+Romania,2015,
+Romania,2014,
+Romania,2013,
+Romania,2012,5.61750994340175
+Romania,2011-21W,
+Romania,2011-21S,
+Romania,2011,6.07398430733563
+Romania,2010-20W,
+Romania,2010-20S,
+Romania,2010,
+Romania,2009,
+Romania,2008,4.40552059072266
+Romania,2007,
+Romania,2006,
+Romania,2005,
+Romania,2004,
+Romania,2003,
+Romania,2002,
+Romania,2001,
+Romania,2000,
+Russian Federation,2023,
+Russian Federation,2022,
+Russian Federation,2021,
+Russian Federation,2020,
+Russian Federation,2019,
+Russian Federation,2018,
+Russian Federation,2017,51.465838333125
+Russian Federation,2016,52.4578968032131
+Russian Federation,2015,46.2131215089041
+Russian Federation,2014,46.1212367992826
+Russian Federation,2013,
+Russian Federation,2012,
+Russian Federation,2011-21W,
+Russian Federation,2011-21S,
+Russian Federation,2011,
+Russian Federation,2010-20W,
+Russian Federation,2010-20S,
+Russian Federation,2010,
+Russian Federation,2009,
+Russian Federation,2008,
+Russian Federation,2007,
+Russian Federation,2006,
+Russian Federation,2005,
+Russian Federation,2004,
+Russian Federation,2003,
+Russian Federation,2002,
+Russian Federation,2001,
+Russian Federation,2000,
+Rwanda,2023,
+Rwanda,2022,
+Rwanda,2021,
+Rwanda,2020,
+Rwanda,2019,
+Rwanda,2018,
+Rwanda,2017,
+Rwanda,2016,
+Rwanda,2015,
+Rwanda,2014,
+Rwanda,2013,96.022146041452
+Rwanda,2012,
+Rwanda,2011-21W,
+Rwanda,2011-21S,
+Rwanda,2011,
+Rwanda,2010-20W,
+Rwanda,2010-20S,
+Rwanda,2010,97.8119154332808
+Rwanda,2009,
+Rwanda,2008,
+Rwanda,2007,
+Rwanda,2006,
+Rwanda,2005,79.8690726099879
+Rwanda,2004,
+Rwanda,2003,
+Rwanda,2002,
+Rwanda,2001,
+Rwanda,2000,
+Samoa,2023,
+Samoa,2022,
+Samoa,2021,
+Samoa,2020,
+Samoa,2019,
+Samoa,2018,
+Samoa,2017,
+Samoa,2016,
+Samoa,2015,
+Samoa,2014,
+Samoa,2013,
+Samoa,2012,
+Samoa,2011-21W,
+Samoa,2011-21S,
+Samoa,2011,
+Samoa,2010-20W,
+Samoa,2010-20S,
+Samoa,2010,
+Samoa,2009,
+Samoa,2008,84.0459951380285
+Samoa,2007,
+Samoa,2006,
+Samoa,2005,
+Samoa,2004,
+Samoa,2003,
+Samoa,2002,
+Samoa,2001,
+Samoa,2000,
+Sao Tome and Principe,2023,
+Sao Tome and Principe,2022,
+Sao Tome and Principe,2021,
+Sao Tome and Principe,2020,
+Sao Tome and Principe,2019,
+Sao Tome and Principe,2018,
+Sao Tome and Principe,2017,16.1173769858566
+Sao Tome and Principe,2016,
+Sao Tome and Principe,2015,
+Sao Tome and Principe,2014,
+Sao Tome and Principe,2013,
+Sao Tome and Principe,2012,
+Sao Tome and Principe,2011-21W,
+Sao Tome and Principe,2011-21S,
+Sao Tome and Principe,2011,
+Sao Tome and Principe,2010-20W,
+Sao Tome and Principe,2010-20S,
+Sao Tome and Principe,2010,
+Sao Tome and Principe,2009,
+Sao Tome and Principe,2008,
+Sao Tome and Principe,2007,
+Sao Tome and Principe,2006,
+Sao Tome and Principe,2005,
+Sao Tome and Principe,2004,
+Sao Tome and Principe,2003,
+Sao Tome and Principe,2002,
+Sao Tome and Principe,2001,
+Sao Tome and Principe,2000,
+Senegal,2023,
+Senegal,2022,
+Senegal,2021,57.8142668577775
+Senegal,2020,
+Senegal,2019,
+Senegal,2018,65.5974717702189
+Senegal,2017,
+Senegal,2016,
+Senegal,2015,
+Senegal,2014,
+Senegal,2013,
+Senegal,2012,
+Senegal,2011-21W,
+Senegal,2011-21S,
+Senegal,2011,85.6005502208509
+Senegal,2010-20W,
+Senegal,2010-20S,
+Senegal,2010,
+Senegal,2009,
+Senegal,2008,
+Senegal,2007,
+Senegal,2006,
+Senegal,2005,
+Senegal,2004,
+Senegal,2003,
+Senegal,2002,
+Senegal,2001,
+Senegal,2000,
+Serbia,2023,
+Serbia,2022,8.59046779945084
+Serbia,2021,11.6842153898954
+Serbia,2020,
+Serbia,2019,4.50799751916592
+Serbia,2018,3.3327861316154
+Serbia,2017,
+Serbia,2016,
+Serbia,2015,3.15282853221497
+Serbia,2014,
+Serbia,2013,4.65837536441911
+Serbia,2012,
+Serbia,2011-21W,
+Serbia,2011-21S,
+Serbia,2011,
+Serbia,2010-20W,
+Serbia,2010-20S,
+Serbia,2010,4.40529949807368
+Serbia,2009,
+Serbia,2008,
+Serbia,2007,5.10051569553093
+Serbia,2006,
+Serbia,2005,
+Serbia,2004,
+Serbia,2003,
+Serbia,2002,
+Serbia,2001,
+Serbia,2000,
+Sierra Leone,2023,
+Sierra Leone,2022,
+Sierra Leone,2021,
+Sierra Leone,2020,
+Sierra Leone,2019,
+Sierra Leone,2018,26.9603545261167
+Sierra Leone,2017,
+Sierra Leone,2016,
+Sierra Leone,2015,
+Sierra Leone,2014,
+Sierra Leone,2013,
+Sierra Leone,2012,
+Sierra Leone,2011-21W,
+Sierra Leone,2011-21S,
+Sierra Leone,2011,24.8889644633046
+Sierra Leone,2010-20W,
+Sierra Leone,2010-20S,
+Sierra Leone,2010,
+Sierra Leone,2009,
+Sierra Leone,2008,
+Sierra Leone,2007,
+Sierra Leone,2006,
+Sierra Leone,2005,
+Sierra Leone,2004,
+Sierra Leone,2003,
+Sierra Leone,2002,
+Sierra Leone,2001,
+Sierra Leone,2000,
+Slovak Republic,2023,
+Slovak Republic,2022,
+Slovak Republic,2021,
+Slovak Republic,2020,
+Slovak Republic,2019,
+Slovak Republic,2018,
+Slovak Republic,2017,
+Slovak Republic,2016,
+Slovak Republic,2015,
+Slovak Republic,2014,
+Slovak Republic,2013,
+Slovak Republic,2012,
+Slovak Republic,2011-21W,
+Slovak Republic,2011-21S,
+Slovak Republic,2011,
+Slovak Republic,2010-20W,
+Slovak Republic,2010-20S,
+Slovak Republic,2010,
+Slovak Republic,2009,8.28091578032267
+Slovak Republic,2008,
+Slovak Republic,2007,
+Slovak Republic,2006,
+Slovak Republic,2005,
+Slovak Republic,2004,
+Slovak Republic,2003,
+Slovak Republic,2002,
+Slovak Republic,2001,
+Slovak Republic,2000,
+Solomon Islands,2023,
+Solomon Islands,2022,
+Solomon Islands,2021,
+Solomon Islands,2020,
+Solomon Islands,2019,
+Solomon Islands,2018,
+Solomon Islands,2017,
+Solomon Islands,2016,
+Solomon Islands,2015,
+Solomon Islands,2014,
+Solomon Islands,2013,
+Solomon Islands,2012,
+Solomon Islands,2011-21W,
+Solomon Islands,2011-21S,
+Solomon Islands,2011,
+Solomon Islands,2010-20W,
+Solomon Islands,2010-20S,
+Solomon Islands,2010,
+Solomon Islands,2009,
+Solomon Islands,2008,
+Solomon Islands,2007,
+Solomon Islands,2006,
+Solomon Islands,2005,37.183490551964
+Solomon Islands,2004,
+Solomon Islands,2003,
+Solomon Islands,2002,
+Solomon Islands,2001,
+Solomon Islands,2000,
+Somalia,2023,
+Somalia,2022,
+Somalia,2021,
+Somalia,2020,
+Somalia,2019,
+Somalia,2018,
+Somalia,2017,34.7536847446415
+Somalia,2016,
+Somalia,2015,
+Somalia,2014,
+Somalia,2013,
+Somalia,2012,
+Somalia,2011-21W,
+Somalia,2011-21S,
+Somalia,2011,
+Somalia,2010-20W,
+Somalia,2010-20S,
+Somalia,2010,
+Somalia,2009,
+Somalia,2008,
+Somalia,2007,
+Somalia,2006,
+Somalia,2005,
+Somalia,2004,
+Somalia,2003,
+Somalia,2002,
+Somalia,2001,
+Somalia,2000,
+South Africa,2023,
+South Africa,2022,
+South Africa,2021,22.7697208412734
+South Africa,2020,21.7786126246691
+South Africa,2019,27.7529825192154
+South Africa,2018,16.597090662099
+South Africa,2017,
+South Africa,2016,29.2988751018273
+South Africa,2015,
 South Africa,2014,14.6142973950775
-South Africa,2010,12.751621472190799
+South Africa,2013,
+South Africa,2012,
+South Africa,2011-21W,
+South Africa,2011-21S,
+South Africa,2011,
+South Africa,2010-20W,
+South Africa,2010-20S,
+South Africa,2010,12.7516214721907
+South Africa,2009,
+South Africa,2008,
+South Africa,2007,
+South Africa,2006,
+South Africa,2005,19.2145350593555
+South Africa,2004,
+South Africa,2003,
+South Africa,2002,
+South Africa,2001,
+South Africa,2000,
+South Sudan,2023,
+South Sudan,2022,
+South Sudan,2021,
+South Sudan,2020,
+South Sudan,2019,
+South Sudan,2018,
+South Sudan,2017,
+South Sudan,2016,
+South Sudan,2015,
+South Sudan,2014,
+South Sudan,2013,
+South Sudan,2012,
+South Sudan,2011-21W,
+South Sudan,2011-21S,
+South Sudan,2011,
+South Sudan,2010-20W,
+South Sudan,2010-20S,
+South Sudan,2010,
 South Sudan,2009,9.53185838949632
-Sudan,2009,10.300259409239
+South Sudan,2008,
+South Sudan,2007,
+South Sudan,2006,
+South Sudan,2005,
+South Sudan,2004,
+South Sudan,2003,
+South Sudan,2002,
+South Sudan,2001,
+South Sudan,2000,
+Sri Lanka,2023,
+Sri Lanka,2022,
+Sri Lanka,2021,
+Sri Lanka,2020,
+Sri Lanka,2019,15.4162133247257
+Sri Lanka,2018,
+Sri Lanka,2017,
+Sri Lanka,2016,17.1334791000057
+Sri Lanka,2015,
+Sri Lanka,2014,
+Sri Lanka,2013,
+Sri Lanka,2012,13.9731043518327
+Sri Lanka,2011-21W,
+Sri Lanka,2011-21S,
+Sri Lanka,2011,
+Sri Lanka,2010-20W,
+Sri Lanka,2010-20S,
+Sri Lanka,2010,
+Sri Lanka,2009,11.7533145827117
+Sri Lanka,2008,
+Sri Lanka,2007,
+Sri Lanka,2006,12.8282669585835
+Sri Lanka,2005,
+Sri Lanka,2004,
+Sri Lanka,2003,
+Sri Lanka,2002,
+Sri Lanka,2001,
+Sri Lanka,2000,
+Sudan,2023,
+Sudan,2022,
+Sudan,2021,
+Sudan,2020,
+Sudan,2019,
+Sudan,2018,
+Sudan,2017,
+Sudan,2016,
+Sudan,2015,
+Sudan,2014,
+Sudan,2013,
+Sudan,2012,
+Sudan,2011-21W,
+Sudan,2011-21S,
+Sudan,2011,
+Sudan,2010-20W,
+Sudan,2010-20S,
+Sudan,2010,
+Sudan,2009,10.3002594092389
+Sudan,2008,
+Sudan,2007,
+Sudan,2006,
+Sudan,2005,
+Sudan,2004,
+Sudan,2003,
+Sudan,2002,
+Sudan,2001,
+Sudan,2000,
+Syrian Arab Republic,2023,
+Syrian Arab Republic,2022,
+Syrian Arab Republic,2021,
+Syrian Arab Republic,2020,
+Syrian Arab Republic,2019,
+Syrian Arab Republic,2018,
+Syrian Arab Republic,2017,
+Syrian Arab Republic,2016,
+Syrian Arab Republic,2015,
+Syrian Arab Republic,2014,
+Syrian Arab Republic,2013,
+Syrian Arab Republic,2012,
+Syrian Arab Republic,2011-21W,
+Syrian Arab Republic,2011-21S,
+Syrian Arab Republic,2011,
+Syrian Arab Republic,2010-20W,
+Syrian Arab Republic,2010-20S,
+Syrian Arab Republic,2010,
+Syrian Arab Republic,2009,
+Syrian Arab Republic,2008,
+Syrian Arab Republic,2007,
+Syrian Arab Republic,2006,
+Syrian Arab Republic,2005,
+Syrian Arab Republic,2004,
+Syrian Arab Republic,2003,6.20058860869063
+Syrian Arab Republic,2002,
+Syrian Arab Republic,2001,
+Syrian Arab Republic,2000,
+Tajikistan,2023,
+Tajikistan,2022,
+Tajikistan,2021,
+Tajikistan,2020,
+Tajikistan,2019,
+Tajikistan,2018,
+Tajikistan,2017,
+Tajikistan,2016,
+Tajikistan,2015,
+Tajikistan,2014,
+Tajikistan,2013,
+Tajikistan,2012,
+Tajikistan,2011-21W,
+Tajikistan,2011-21S,
 Tajikistan,2011,
+Tajikistan,2010-20W,
+Tajikistan,2010-20S,
+Tajikistan,2010,
+Tajikistan,2009,
+Tajikistan,2008,
+Tajikistan,2007,
+Tajikistan,2006,
+Tajikistan,2005,
+Tajikistan,2004,
+Tajikistan,2003,
+Tajikistan,2002,
+Tajikistan,2001,
+Tajikistan,2000,
+Tanzania,2023,
+Tanzania,2022,
+Tanzania,2021,
+Tanzania,2020,
+Tanzania,2019,
+Tanzania,2018,
+Tanzania,2017,
+Tanzania,2016,
+Tanzania,2015,
+Tanzania,2014,33.8355878946727
+Tanzania,2013,
+Tanzania,2012,16.2221969106884
+Tanzania,2011-21W,
+Tanzania,2011-21S,
+Tanzania,2011,
+Tanzania,2010-20W,
+Tanzania,2010-20S,
 Tanzania,2010,
+Tanzania,2009,
+Tanzania,2008,24.0960245367263
+Tanzania,2007,
+Tanzania,2006,
+Tanzania,2005,
+Tanzania,2004,
+Tanzania,2003,
+Tanzania,2002,
+Tanzania,2001,
+Tanzania,2000,
+Thailand,2023,
+Thailand,2022,
+Thailand,2021,37.6895089826293
+Thailand,2020,
+Thailand,2019,39.9244444659356
+Thailand,2018,
+Thailand,2017,40.2896922836525
+Thailand,2016,
+Thailand,2015,
+Thailand,2014,
+Thailand,2013,40.1832616975258
+Thailand,2012,
+Thailand,2011-21W,
+Thailand,2011-21S,
+Thailand,2011,44.3421708427093
+Thailand,2010-20W,
+Thailand,2010-20S,
+Thailand,2010,
+Thailand,2009,44.2672375454913
+Thailand,2008,
+Thailand,2007,
+Thailand,2006,52.4899234859897
+Thailand,2005,
+Thailand,2004,
+Thailand,2003,
+Thailand,2002,
+Thailand,2001,
+Thailand,2000,
+Timor-Leste,2023,
+Timor-Leste,2022,
+Timor-Leste,2021,
+Timor-Leste,2020,
+Timor-Leste,2019,
+Timor-Leste,2018,
+Timor-Leste,2017,
+Timor-Leste,2016,
+Timor-Leste,2015,
+Timor-Leste,2014,
+Timor-Leste,2013,
+Timor-Leste,2012,
+Timor-Leste,2011-21W,
+Timor-Leste,2011-21S,
+Timor-Leste,2011,4.84571234358523
+Timor-Leste,2010-20W,
+Timor-Leste,2010-20S,
+Timor-Leste,2010,
+Timor-Leste,2009,
+Timor-Leste,2008,
+Timor-Leste,2007,19.5924631258493
+Timor-Leste,2006,
+Timor-Leste,2005,
+Timor-Leste,2004,
+Timor-Leste,2003,
+Timor-Leste,2002,
+Timor-Leste,2001,
+Timor-Leste,2000,
+Togo,2023,
+Togo,2022,
+Togo,2021,25.3010695225718
+Togo,2020,
+Togo,2019,
+Togo,2018,24.5546779995417
+Togo,2017,
+Togo,2016,
+Togo,2015,
+Togo,2014,
+Togo,2013,
+Togo,2012,
+Togo,2011-21W,
+Togo,2011-21S,
+Togo,2011,26.9022161751975
+Togo,2010-20W,
+Togo,2010-20S,
+Togo,2010,
+Togo,2009,
+Togo,2008,
+Togo,2007,
+Togo,2006,1.5205103217511
+Togo,2005,
+Togo,2004,
+Togo,2003,
+Togo,2002,
+Togo,2001,
+Togo,2000,
+Tonga,2023,
+Tonga,2022,
+Tonga,2021,
+Tonga,2020,
+Tonga,2019,
+Tonga,2018,
+Tonga,2017,
+Tonga,2016,
+Tonga,2015,
+Tonga,2014,
+Tonga,2013,
+Tonga,2012,
+Tonga,2011-21W,
+Tonga,2011-21S,
+Tonga,2011,
+Tonga,2010-20W,
+Tonga,2010-20S,
+Tonga,2010,
+Tonga,2009,39.5652915825745
+Tonga,2008,
+Tonga,2007,
+Tonga,2006,
+Tonga,2005,
+Tonga,2004,
+Tonga,2003,
+Tonga,2002,
+Tonga,2001,
+Tonga,2000,
+Tunisia,2023,
+Tunisia,2022,
+Tunisia,2021,1.31657688582396
+Tunisia,2020,
+Tunisia,2019,
+Tunisia,2018,
+Tunisia,2017,
+Tunisia,2016,
+Tunisia,2015,
+Tunisia,2014,
+Tunisia,2013,
+Tunisia,2012,
+Tunisia,2011-21W,
+Tunisia,2011-21S,
+Tunisia,2011,
+Tunisia,2010-20W,
+Tunisia,2010-20S,
 Tunisia,2010,
+Tunisia,2009,
+Tunisia,2008,
+Tunisia,2007,
+Tunisia,2006,
+Tunisia,2005,
+Tunisia,2004,
+Tunisia,2003,
+Tunisia,2002,
+Tunisia,2001,
+Tunisia,2000,
+Turkiye,2023,
+Turkiye,2022,
+Turkiye,2021,
+Turkiye,2020,
+Turkiye,2019,16.9563807704787
+Turkiye,2018,17.2753394719467
+Turkiye,2017,16.6742722822159
+Turkiye,2016,17.3837163198273
+Turkiye,2015,18.1982953238151
+Turkiye,2014,22.7479306262967
+Turkiye,2013,23.4413823310569
+Turkiye,2012,23.7611530665877
+Turkiye,2011-21W,
+Turkiye,2011-21S,
+Turkiye,2011,22.5687382697295
+Turkiye,2010-20W,
+Turkiye,2010-20S,
+Turkiye,2010,28.2822085804484
+Turkiye,2009,27.1115029644052
+Turkiye,2008,21.272148042835
+Turkiye,2007,14.9968565897993
+Turkiye,2006,19.7825734108356
+Turkiye,2005,15.4722523060484
+Turkiye,2004,14.4848476474921
+Turkiye,2003,
+Turkiye,2002,
+Turkiye,2001,
+Turkiye,2000,
+Uganda,2023,
+Uganda,2022,
+Uganda,2021,
+Uganda,2020,
+Uganda,2019,
+Uganda,2018,
+Uganda,2017,
+Uganda,2016,43.1629930493331
+Uganda,2015,
+Uganda,2014,
+Uganda,2013,
+Uganda,2012,43.6368023705577
+Uganda,2011-21W,
+Uganda,2011-21S,
+Uganda,2011,
+Uganda,2010-20W,
+Uganda,2010-20S,
+Uganda,2010,
+Uganda,2009,39.0602043948078
+Uganda,2008,
+Uganda,2007,
+Uganda,2006,
+Uganda,2005,42.4468770879561
+Uganda,2004,
+Uganda,2003,
+Uganda,2002,
+Uganda,2001,
+Uganda,2000,
+Ukraine,2023,
+Ukraine,2022,
+Ukraine,2021,
 Ukraine,2020,
+Ukraine,2019,
 Ukraine,2018,
+Ukraine,2017,
 Ukraine,2016,
 Ukraine,2015,
-Bhutan,2017,5.45889790920425
-Djibouti,2002,0.20475665665857
-Eswatini,2000,69.5507496586567
-Ethiopia,2004,1.10748045808108
-Morocco,2009,6.43705128582649
-Namibia,2009,2.69426329348722
-"Venezuela, RB",2006,12.945568891098999
+Ukraine,2014,
+Ukraine,2013,62.2668830882684
+Ukraine,2012,59.4837896992773
+Ukraine,2011-21W,
+Ukraine,2011-21S,
+Ukraine,2011,64.3987233737506
+Ukraine,2010-20W,
+Ukraine,2010-20S,
+Ukraine,2010,
+Ukraine,2009,
+Ukraine,2008,
+Ukraine,2007,
+Ukraine,2006,60.7766254857875
+Ukraine,2005,
+Ukraine,2004,
+Ukraine,2003,
+Ukraine,2002,
+Ukraine,2001,
+Ukraine,2000,
+Uruguay,2023,
+Uruguay,2022,22.1080577144006
+Uruguay,2021,21.7318964421406
+Uruguay,2020,20.1086108202146
+Uruguay,2019,23.7009390973007
+Uruguay,2018,24.1124758259123
+Uruguay,2017,25.444027606747
+Uruguay,2016,25.0233593136818
+Uruguay,2015,24.3142538548202
+Uruguay,2014,
+Uruguay,2013,
+Uruguay,2012,25.8823996627422
+Uruguay,2011-21W,
+Uruguay,2011-21S,
+Uruguay,2011,23.913033795611
+Uruguay,2010-20W,
+Uruguay,2010-20S,
+Uruguay,2010,25.0060877467022
+Uruguay,2009,26.5200320459767
+Uruguay,2008,27.2866046517822
+Uruguay,2007,
+Uruguay,2006,
+Uruguay,2005,
+Uruguay,2004,
+Uruguay,2003,
+Uruguay,2002,
+Uruguay,2001,
+Uruguay,2000,
+Uzbekistan,2023,
+Uzbekistan,2022,
+Uzbekistan,2021,
+Uzbekistan,2020,
+Uzbekistan,2019,
+Uzbekistan,2018,6.18525263828867
+Uzbekistan,2017,
+Uzbekistan,2016,
+Uzbekistan,2015,
+Uzbekistan,2014,
+Uzbekistan,2013,
+Uzbekistan,2012,
+Uzbekistan,2011-21W,
+Uzbekistan,2011-21S,
+Uzbekistan,2011,
+Uzbekistan,2010-20W,
+Uzbekistan,2010-20S,
+Uzbekistan,2010,
+Uzbekistan,2009,
+Uzbekistan,2008,
+Uzbekistan,2007,
+Uzbekistan,2006,
+Uzbekistan,2005,
+Uzbekistan,2004,
+Uzbekistan,2003,
+Uzbekistan,2002,
+Uzbekistan,2001,
+Uzbekistan,2000,
+Vanuatu,2023,
+Vanuatu,2022,
+Vanuatu,2021,
+Vanuatu,2020,
+Vanuatu,2019,26.5398711303011
+Vanuatu,2018,
+Vanuatu,2017,
+Vanuatu,2016,
+Vanuatu,2015,
+Vanuatu,2014,
+Vanuatu,2013,
+Vanuatu,2012,
+Vanuatu,2011-21W,
+Vanuatu,2011-21S,
+Vanuatu,2011,
+Vanuatu,2010-20W,
+Vanuatu,2010-20S,
+Vanuatu,2010,
+Vanuatu,2009,
+Vanuatu,2008,
+Vanuatu,2007,
+Vanuatu,2006,
+Vanuatu,2005,
+Vanuatu,2004,
+Vanuatu,2003,
+Vanuatu,2002,
+Vanuatu,2001,
+Vanuatu,2000,
+"Venezuela, RB",2023,
+"Venezuela, RB",2022,
+"Venezuela, RB",2021,
+"Venezuela, RB",2020,
+"Venezuela, RB",2019,
+"Venezuela, RB",2018,
+"Venezuela, RB",2017,
+"Venezuela, RB",2016,
+"Venezuela, RB",2015,
+"Venezuela, RB",2014,
+"Venezuela, RB",2013,
+"Venezuela, RB",2012,
+"Venezuela, RB",2011-21W,
+"Venezuela, RB",2011-21S,
+"Venezuela, RB",2011,
+"Venezuela, RB",2010-20W,
+"Venezuela, RB",2010-20S,
+"Venezuela, RB",2010,
+"Venezuela, RB",2009,
+"Venezuela, RB",2008,
+"Venezuela, RB",2007,
+"Venezuela, RB",2006,12.945568891099
+"Venezuela, RB",2005,
+"Venezuela, RB",2004,
+"Venezuela, RB",2003,
+"Venezuela, RB",2002,
+"Venezuela, RB",2001,
+"Venezuela, RB",2000,
+Viet Nam,2023,
+Viet Nam,2022,
+Viet Nam,2021,
+Viet Nam,2020,3.40739025163357
+Viet Nam,2019,
+Viet Nam,2018,0.659259813392698
+Viet Nam,2017,
+Viet Nam,2016,
+Viet Nam,2015,
+Viet Nam,2014,4.82292273781644
+Viet Nam,2013,
+Viet Nam,2012,5.41502958583197
+Viet Nam,2011-21W,
+Viet Nam,2011-21S,
+Viet Nam,2011,
+Viet Nam,2010-20W,
+Viet Nam,2010-20S,
+Viet Nam,2010,4.18401250297136
+Viet Nam,2009,
+Viet Nam,2008,
+Viet Nam,2007,
+Viet Nam,2006,90.6731244612985
+Viet Nam,2005,
+Viet Nam,2004,
+Viet Nam,2003,
+Viet Nam,2002,
+Viet Nam,2001,
+Viet Nam,2000,
+West Bank and Gaza,2023,
+West Bank and Gaza,2022,
+West Bank and Gaza,2021,
+West Bank and Gaza,2020,
+West Bank and Gaza,2019,
+West Bank and Gaza,2018,
+West Bank and Gaza,2017,
+West Bank and Gaza,2016,98.7932004709598
+West Bank and Gaza,2015,
+West Bank and Gaza,2014,
+West Bank and Gaza,2013,
+West Bank and Gaza,2012,
+West Bank and Gaza,2011-21W,
+West Bank and Gaza,2011-21S,
+West Bank and Gaza,2011,
+West Bank and Gaza,2010-20W,
+West Bank and Gaza,2010-20S,
+West Bank and Gaza,2010,
+West Bank and Gaza,2009,32.7940624220242
+West Bank and Gaza,2008,
+West Bank and Gaza,2007,15.9378419779085
+West Bank and Gaza,2006,
+West Bank and Gaza,2005,
+West Bank and Gaza,2004,
+West Bank and Gaza,2003,
+West Bank and Gaza,2002,
+West Bank and Gaza,2001,
+West Bank and Gaza,2000,
+"Yemen, Rep.",2023,
+"Yemen, Rep.",2022,
+"Yemen, Rep.",2021,
+"Yemen, Rep.",2020,
+"Yemen, Rep.",2019,
+"Yemen, Rep.",2018,
+"Yemen, Rep.",2017,
+"Yemen, Rep.",2016,
+"Yemen, Rep.",2015,
+"Yemen, Rep.",2014,41.3540184629178
+"Yemen, Rep.",2013,
+"Yemen, Rep.",2012,
+"Yemen, Rep.",2011-21W,
+"Yemen, Rep.",2011-21S,
+"Yemen, Rep.",2011,
+"Yemen, Rep.",2010-20W,
+"Yemen, Rep.",2010-20S,
+"Yemen, Rep.",2010,
+"Yemen, Rep.",2009,
+"Yemen, Rep.",2008,
+"Yemen, Rep.",2007,
+"Yemen, Rep.",2006,
+"Yemen, Rep.",2005,46.2648754105232
+"Yemen, Rep.",2004,
+"Yemen, Rep.",2003,
+"Yemen, Rep.",2002,
+"Yemen, Rep.",2001,
+"Yemen, Rep.",2000,
+Zambia,2023,
+Zambia,2022,
+Zambia,2021,
+Zambia,2020,
+Zambia,2019,
+Zambia,2018,
+Zambia,2017,
+Zambia,2016,
+Zambia,2015,15.1517448971944
+Zambia,2014,
+Zambia,2013,
+Zambia,2012,
+Zambia,2011-21W,
+Zambia,2011-21S,
+Zambia,2011,
+Zambia,2010-20W,
+Zambia,2010-20S,
+Zambia,2010,21.4432732589459
+Zambia,2009,
+Zambia,2008,
+Zambia,2007,
+Zambia,2006,
+Zambia,2005,
+Zambia,2004,
+Zambia,2003,
+Zambia,2002,
+Zambia,2001,
+Zambia,2000,
+Zimbabwe,2023,
+Zimbabwe,2022,
+Zimbabwe,2021,
+Zimbabwe,2020,
+Zimbabwe,2019,27.0239276885986
+Zimbabwe,2018,
+Zimbabwe,2017,26.0390635106843
+Zimbabwe,2016,
+Zimbabwe,2015,
+Zimbabwe,2014,
+Zimbabwe,2013,
+Zimbabwe,2012,
+Zimbabwe,2011-21W,
+Zimbabwe,2011-21S,
 Zimbabwe,2011,48.0061683654785
-Costa Rica,2009,
-Ethiopia,2010,
-India,2009,
-India,2004,
-Indonesia,2014,
-Indonesia,2012,
-Indonesia,2011,
-Indonesia,2009,
-Lebanon,2004,
-Namibia,2003,
-Russian Federation,2007,
-Thailand,2018,
+Zimbabwe,2010-20W,
+Zimbabwe,2010-20S,
+Zimbabwe,2010,
+Zimbabwe,2009,
+Zimbabwe,2008,
+Zimbabwe,2007,24.1663630480152
+Zimbabwe,2006,
+Zimbabwe,2005,
+Zimbabwe,2004,
+Zimbabwe,2003,
+Zimbabwe,2002,
+Zimbabwe,2001,
+Zimbabwe,2000,

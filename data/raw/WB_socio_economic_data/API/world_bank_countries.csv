@@ -1,6 +1,6 @@
 iso3,name,region,income_group
 ABW,Aruba,LAC,HICs
-AFG,Afghanistan,SAR,LICs
+AFG,Afghanistan,MNA,LICs
 AGO,Angola,SSA,LMICs
 ALB,Albania,ECA,UMICs
 AND,Andorra,ECA,HICs
@@ -17,7 +17,7 @@ BEL,Belgium,ECA,HICs
 BEN,Benin,SSA,LMICs
 BFA,Burkina Faso,SSA,LICs
 BGD,Bangladesh,SAR,LMICs
-BGR,Bulgaria,ECA,UMICs
+BGR,Bulgaria,ECA,HICs
 BHR,Bahrain,MNA,HICs
 BHS,"Bahamas, The",LAC,HICs
 BIH,Bosnia and Herzegovina,ECA,UMICs
@@ -42,8 +42,8 @@ COD,"Congo, Dem. Rep.",SSA,LICs
 COG,"Congo, Rep.",SSA,LMICs
 COL,Colombia,LAC,UMICs
 COM,Comoros,SSA,LMICs
-CPV,Cabo Verde,SSA,LMICs
-CRI,Costa Rica,LAC,UMICs
+CPV,Cabo Verde,SSA,UMICs
+CRI,Costa Rica,LAC,HICs
 CUB,Cuba,LAC,UMICs
 CUW,Curacao,LAC,HICs
 CYM,Cayman Islands,LAC,HICs
@@ -54,13 +54,13 @@ DJI,Djibouti,MNA,LMICs
 DMA,Dominica,LAC,UMICs
 DNK,Denmark,ECA,HICs
 DOM,Dominican Republic,LAC,UMICs
-DZA,Algeria,MNA,LMICs
+DZA,Algeria,MNA,UMICs
 ECU,Ecuador,LAC,UMICs
 EGY,"Egypt, Arab Rep.",MNA,LMICs
 ERI,Eritrea,SSA,LICs
 ESP,Spain,ECA,HICs
 EST,Estonia,ECA,HICs
-ETH,Ethiopia,SSA,LICs
+ETH,Ethiopia,SSA,INXs
 FIN,Finland,ECA,HICs
 FJI,Fiji,EAP,UMICs
 FRA,France,ECA,HICs
@@ -90,7 +90,7 @@ IDN,Indonesia,EAP,UMICs
 IMN,Isle of Man,ECA,HICs
 IND,India,SAR,LMICs
 IRL,Ireland,ECA,HICs
-IRN,"Iran, Islamic Rep.",MNA,LMICs
+IRN,"Iran, Islamic Rep.",MNA,UMICs
 IRQ,Iraq,MNA,UMICs
 ISL,Iceland,ECA,HICs
 ISR,Israel,MNA,HICs
@@ -131,14 +131,14 @@ MLI,Mali,SSA,LICs
 MLT,Malta,MNA,HICs
 MMR,Myanmar,EAP,LMICs
 MNE,Montenegro,ECA,UMICs
-MNG,Mongolia,EAP,LMICs
+MNG,Mongolia,EAP,UMICs
 MNP,Northern Mariana Islands,EAP,HICs
 MOZ,Mozambique,SSA,LICs
 MRT,Mauritania,SSA,LMICs
 MUS,Mauritius,SSA,UMICs
 MWI,Malawi,SSA,LICs
 MYS,Malaysia,EAP,UMICs
-NAM,Namibia,SSA,UMICs
+NAM,Namibia,SSA,LMICs
 NCL,New Caledonia,EAP,HICs
 NER,Niger,SSA,LICs
 NGA,Nigeria,SSA,LMICs
@@ -149,22 +149,22 @@ NPL,Nepal,SAR,LMICs
 NRU,Nauru,EAP,HICs
 NZL,New Zealand,EAP,HICs
 OMN,Oman,MNA,HICs
-PAK,Pakistan,SAR,LMICs
+PAK,Pakistan,MNA,LMICs
 PAN,Panama,LAC,HICs
 PER,Peru,LAC,UMICs
 PHL,Philippines,EAP,LMICs
-PLW,Palau,EAP,UMICs
+PLW,Palau,EAP,HICs
 PNG,Papua New Guinea,EAP,LMICs
 POL,Poland,ECA,HICs
-PRI,Puerto Rico,LAC,HICs
+PRI,Puerto Rico (US),LAC,HICs
 PRK,"Korea, Dem. People's Rep.",EAP,LICs
 PRT,Portugal,ECA,HICs
 PRY,Paraguay,LAC,UMICs
-PSE,West Bank and Gaza,MNA,UMICs
+PSE,West Bank and Gaza,MNA,LMICs
 PYF,French Polynesia,EAP,HICs
 QAT,Qatar,MNA,HICs
 ROU,Romania,ECA,HICs
-RUS,Russian Federation,ECA,UMICs
+RUS,Russian Federation,ECA,HICs
 RWA,Rwanda,SSA,LICs
 SAU,Saudi Arabia,MNA,HICs
 SDN,Sudan,SSA,LICs
@@ -200,7 +200,7 @@ TUR,Turkiye,ECA,UMICs
 TUV,Tuvalu,EAP,UMICs
 TZA,Tanzania,SSA,LMICs
 UGA,Uganda,SSA,LICs
-UKR,Ukraine,ECA,LMICs
+UKR,Ukraine,ECA,UMICs
 URY,Uruguay,LAC,HICs
 USA,United States,NMA,HICs
 UZB,Uzbekistan,ECA,LMICs
@@ -210,7 +210,7 @@ VGB,British Virgin Islands,LAC,HICs
 VIR,Virgin Islands (U.S.),LAC,HICs
 VNM,Viet Nam,EAP,LMICs
 VUT,Vanuatu,EAP,LMICs
-WSM,Samoa,EAP,LMICs
+WSM,Samoa,EAP,UMICs
 XKX,Kosovo,ECA,UMICs
 YEM,"Yemen, Rep.",MNA,LICs
 ZAF,South Africa,SSA,UMICs
