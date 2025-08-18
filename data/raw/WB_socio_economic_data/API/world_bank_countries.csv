@@ -1,218 +1,297 @@
 iso3,name,region,income_group
-ABW,Aruba,LAC,HICs
-AFG,Afghanistan,MNA,LICs
-AGO,Angola,SSA,LMICs
-ALB,Albania,ECA,UMICs
-AND,Andorra,ECA,HICs
-ARE,United Arab Emirates,MNA,HICs
-ARG,Argentina,LAC,UMICs
-ARM,Armenia,ECA,UMICs
-ASM,American Samoa,EAP,HICs
-ATG,Antigua and Barbuda,LAC,HICs
-AUS,Australia,EAP,HICs
-AUT,Austria,ECA,HICs
-AZE,Azerbaijan,ECA,UMICs
-BDI,Burundi,SSA,LICs
-BEL,Belgium,ECA,HICs
-BEN,Benin,SSA,LMICs
-BFA,Burkina Faso,SSA,LICs
-BGD,Bangladesh,SAR,LMICs
-BGR,Bulgaria,ECA,HICs
-BHR,Bahrain,MNA,HICs
-BHS,"Bahamas, The",LAC,HICs
-BIH,Bosnia and Herzegovina,ECA,UMICs
-BLR,Belarus,ECA,UMICs
-BLZ,Belize,LAC,UMICs
-BMU,Bermuda,NMA,HICs
-BOL,Bolivia,LAC,LMICs
-BRA,Brazil,LAC,UMICs
-BRB,Barbados,LAC,HICs
-BRN,Brunei Darussalam,EAP,HICs
-BTN,Bhutan,SAR,LMICs
-BWA,Botswana,SSA,UMICs
-CAF,Central African Republic,SSA,LICs
-CAN,Canada,NMA,HICs
-CHE,Switzerland,ECA,HICs
-CHI,Channel Islands,ECA,HICs
-CHL,Chile,LAC,HICs
-CHN,China,EAP,UMICs
-CIV,Cote d'Ivoire,SSA,LMICs
-CMR,Cameroon,SSA,LMICs
-COD,"Congo, Dem. Rep.",SSA,LICs
-COG,"Congo, Rep.",SSA,LMICs
-COL,Colombia,LAC,UMICs
-COM,Comoros,SSA,LMICs
-CPV,Cabo Verde,SSA,UMICs
-CRI,Costa Rica,LAC,HICs
-CUB,Cuba,LAC,UMICs
-CUW,Curacao,LAC,HICs
-CYM,Cayman Islands,LAC,HICs
-CYP,Cyprus,ECA,HICs
-CZE,Czechia,ECA,HICs
-DEU,Germany,ECA,HICs
-DJI,Djibouti,MNA,LMICs
-DMA,Dominica,LAC,UMICs
-DNK,Denmark,ECA,HICs
-DOM,Dominican Republic,LAC,UMICs
-DZA,Algeria,MNA,UMICs
-ECU,Ecuador,LAC,UMICs
-EGY,"Egypt, Arab Rep.",MNA,LMICs
-ERI,Eritrea,SSA,LICs
-ESP,Spain,ECA,HICs
-EST,Estonia,ECA,HICs
-ETH,Ethiopia,SSA,INXs
-FIN,Finland,ECA,HICs
-FJI,Fiji,EAP,UMICs
-FRA,France,ECA,HICs
-FRO,Faroe Islands,ECA,HICs
-FSM,"Micronesia, Fed. Sts.",EAP,LMICs
-GAB,Gabon,SSA,UMICs
-GBR,United Kingdom,ECA,HICs
-GEO,Georgia,ECA,UMICs
-GHA,Ghana,SSA,LMICs
-GIB,Gibraltar,ECA,HICs
-GIN,Guinea,SSA,LMICs
-GMB,"Gambia, The",SSA,LICs
-GNB,Guinea-Bissau,SSA,LICs
-GNQ,Equatorial Guinea,SSA,UMICs
-GRC,Greece,ECA,HICs
-GRD,Grenada,LAC,UMICs
-GRL,Greenland,ECA,HICs
-GTM,Guatemala,LAC,UMICs
-GUM,Guam,EAP,HICs
-GUY,Guyana,LAC,HICs
-HKG,"Hong Kong SAR, China",EAP,HICs
-HND,Honduras,LAC,LMICs
-HRV,Croatia,ECA,HICs
-HTI,Haiti,LAC,LMICs
-HUN,Hungary,ECA,HICs
-IDN,Indonesia,EAP,UMICs
-IMN,Isle of Man,ECA,HICs
-IND,India,SAR,LMICs
-IRL,Ireland,ECA,HICs
-IRN,"Iran, Islamic Rep.",MNA,UMICs
-IRQ,Iraq,MNA,UMICs
-ISL,Iceland,ECA,HICs
-ISR,Israel,MNA,HICs
-ITA,Italy,ECA,HICs
-JAM,Jamaica,LAC,UMICs
-JOR,Jordan,MNA,LMICs
-JPN,Japan,EAP,HICs
-KAZ,Kazakhstan,ECA,UMICs
-KEN,Kenya,SSA,LMICs
-KGZ,Kyrgyz Republic,ECA,LMICs
-KHM,Cambodia,EAP,LMICs
-KIR,Kiribati,EAP,LMICs
-KNA,St. Kitts and Nevis,LAC,HICs
-KOR,"Korea, Rep.",EAP,HICs
-KWT,Kuwait,MNA,HICs
-LAO,Lao PDR,EAP,LMICs
-LBN,Lebanon,MNA,LMICs
-LBR,Liberia,SSA,LICs
-LBY,Libya,MNA,UMICs
-LCA,St. Lucia,LAC,UMICs
-LIE,Liechtenstein,ECA,HICs
-LKA,Sri Lanka,SAR,LMICs
-LSO,Lesotho,SSA,LMICs
-LTU,Lithuania,ECA,HICs
-LUX,Luxembourg,ECA,HICs
-LVA,Latvia,ECA,HICs
-MAC,"Macao SAR, China",EAP,HICs
-MAF,St. Martin (French part),LAC,HICs
-MAR,Morocco,MNA,LMICs
-MCO,Monaco,ECA,HICs
-MDA,Moldova,ECA,UMICs
-MDG,Madagascar,SSA,LICs
-MDV,Maldives,SAR,UMICs
-MEX,Mexico,LAC,UMICs
-MHL,Marshall Islands,EAP,UMICs
-MKD,North Macedonia,ECA,UMICs
-MLI,Mali,SSA,LICs
-MLT,Malta,MNA,HICs
-MMR,Myanmar,EAP,LMICs
-MNE,Montenegro,ECA,UMICs
-MNG,Mongolia,EAP,UMICs
-MNP,Northern Mariana Islands,EAP,HICs
-MOZ,Mozambique,SSA,LICs
-MRT,Mauritania,SSA,LMICs
-MUS,Mauritius,SSA,UMICs
-MWI,Malawi,SSA,LICs
-MYS,Malaysia,EAP,UMICs
-NAM,Namibia,SSA,LMICs
-NCL,New Caledonia,EAP,HICs
-NER,Niger,SSA,LICs
-NGA,Nigeria,SSA,LMICs
-NIC,Nicaragua,LAC,LMICs
-NLD,Netherlands,ECA,HICs
-NOR,Norway,ECA,HICs
-NPL,Nepal,SAR,LMICs
-NRU,Nauru,EAP,HICs
-NZL,New Zealand,EAP,HICs
-OMN,Oman,MNA,HICs
-PAK,Pakistan,MNA,LMICs
-PAN,Panama,LAC,HICs
-PER,Peru,LAC,UMICs
-PHL,Philippines,EAP,LMICs
-PLW,Palau,EAP,HICs
-PNG,Papua New Guinea,EAP,LMICs
-POL,Poland,ECA,HICs
-PRI,Puerto Rico (US),LAC,HICs
-PRK,"Korea, Dem. People's Rep.",EAP,LICs
-PRT,Portugal,ECA,HICs
-PRY,Paraguay,LAC,UMICs
-PSE,West Bank and Gaza,MNA,LMICs
-PYF,French Polynesia,EAP,HICs
-QAT,Qatar,MNA,HICs
-ROU,Romania,ECA,HICs
-RUS,Russian Federation,ECA,HICs
-RWA,Rwanda,SSA,LICs
-SAU,Saudi Arabia,MNA,HICs
-SDN,Sudan,SSA,LICs
-SEN,Senegal,SSA,LMICs
-SGP,Singapore,EAP,HICs
-SLB,Solomon Islands,EAP,LMICs
-SLE,Sierra Leone,SSA,LICs
-SLV,El Salvador,LAC,UMICs
-SMR,San Marino,ECA,HICs
-SOM,Somalia,SSA,LICs
-SRB,Serbia,ECA,UMICs
-SSD,South Sudan,SSA,LICs
-STP,Sao Tome and Principe,SSA,LMICs
-SUR,Suriname,LAC,UMICs
-SVK,Slovak Republic,ECA,HICs
-SVN,Slovenia,ECA,HICs
-SWE,Sweden,ECA,HICs
-SWZ,Eswatini,SSA,LMICs
-SXM,Sint Maarten (Dutch part),LAC,HICs
-SYC,Seychelles,SSA,HICs
-SYR,Syrian Arab Republic,MNA,LICs
-TCA,Turks and Caicos Islands,LAC,HICs
-TCD,Chad,SSA,LICs
-TGO,Togo,SSA,LICs
-THA,Thailand,EAP,UMICs
-TJK,Tajikistan,ECA,LMICs
-TKM,Turkmenistan,ECA,UMICs
-TLS,Timor-Leste,EAP,LMICs
-TON,Tonga,EAP,UMICs
-TTO,Trinidad and Tobago,LAC,HICs
-TUN,Tunisia,MNA,LMICs
-TUR,Turkiye,ECA,UMICs
-TUV,Tuvalu,EAP,UMICs
-TZA,Tanzania,SSA,LMICs
-UGA,Uganda,SSA,LICs
-UKR,Ukraine,ECA,UMICs
-URY,Uruguay,LAC,HICs
-USA,United States,NMA,HICs
-UZB,Uzbekistan,ECA,LMICs
-VCT,St. Vincent and the Grenadines,LAC,UMICs
-VEN,"Venezuela, RB",LAC,UMICs
-VGB,British Virgin Islands,LAC,HICs
-VIR,Virgin Islands (U.S.),LAC,HICs
-VNM,Viet Nam,EAP,LMICs
-VUT,Vanuatu,EAP,LMICs
-WSM,Samoa,EAP,UMICs
-XKX,Kosovo,ECA,UMICs
-YEM,"Yemen, Rep.",MNA,LICs
-ZAF,South Africa,SSA,UMICs
-ZMB,Zambia,SSA,LMICs
-ZWE,Zimbabwe,SSA,LMICs
+ABW,Aruba,Latin America & Caribbean,HICs
+AFE,Africa Eastern and Southern,Aggregates,NAs
+AFG,Afghanistan,"Middle East, North Africa, Afghanistan & Pakistan",LICs
+AFR,Africa,Aggregates,NAs
+AFW,Africa Western and Central,Aggregates,NAs
+AGO,Angola,Sub-Saharan Africa,LMCs
+ALB,Albania,Europe & Central Asia,UMCs
+AND,Andorra,Europe & Central Asia,HICs
+ARB,Arab World,Aggregates,NAs
+ARE,United Arab Emirates,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+ARG,Argentina,Latin America & Caribbean,UMCs
+ARM,Armenia,Europe & Central Asia,UMCs
+ASM,American Samoa,East Asia & Pacific,HICs
+ATG,Antigua and Barbuda,Latin America & Caribbean,HICs
+AUS,Australia,East Asia & Pacific,HICs
+AUT,Austria,Europe & Central Asia,HICs
+AZE,Azerbaijan,Europe & Central Asia,UMCs
+BDI,Burundi,Sub-Saharan Africa,LICs
+BEA,East Asia & Pacific (IBRD-only countries),Aggregates,NAs
+BEC,Europe & Central Asia (IBRD-only countries),Aggregates,NAs
+BEL,Belgium,Europe & Central Asia,HICs
+BEN,Benin,Sub-Saharan Africa,LMCs
+BFA,Burkina Faso,Sub-Saharan Africa,LICs
+BGD,Bangladesh,South Asia,LMCs
+BGR,Bulgaria,Europe & Central Asia,HICs
+BHI,IBRD countries classified as high income,Aggregates,NAs
+BHR,Bahrain,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+BHS,"Bahamas, The",Latin America & Caribbean,HICs
+BIH,Bosnia and Herzegovina,Europe & Central Asia,UMCs
+BLA,Latin America & the Caribbean (IBRD-only countries),Aggregates,NAs
+BLR,Belarus,Europe & Central Asia,UMCs
+BLZ,Belize,Latin America & Caribbean,UMCs
+BMN,"Middle East, North Africa, Afghanistan & Pakistan (IBRD only)",Aggregates,NAs
+BMU,Bermuda,North America,HICs
+BOL,Bolivia,Latin America & Caribbean,LMCs
+BRA,Brazil,Latin America & Caribbean,UMCs
+BRB,Barbados,Latin America & Caribbean,HICs
+BRN,Brunei Darussalam,East Asia & Pacific,HICs
+BSS,Sub-Saharan Africa (IBRD-only countries),Aggregates,NAs
+BTN,Bhutan,South Asia,LMCs
+BWA,Botswana,Sub-Saharan Africa,UMCs
+CAA,Sub-Saharan Africa (IFC classification),Aggregates,NAs
+CAF,Central African Republic,Sub-Saharan Africa,LICs
+CAN,Canada,North America,HICs
+CEA,East Asia and the Pacific (IFC classification),Aggregates,NAs
+CEB,Central Europe and the Baltics,Aggregates,NAs
+CEU,Europe and Central Asia (IFC classification),Aggregates,NAs
+CHE,Switzerland,Europe & Central Asia,HICs
+CHI,Channel Islands,Europe & Central Asia,HICs
+CHL,Chile,Latin America & Caribbean,HICs
+CHN,China,East Asia & Pacific,UMCs
+CIV,Cote d'Ivoire,Sub-Saharan Africa,LMCs
+CLA,Latin America and the Caribbean (IFC classification),Aggregates,NAs
+CME,Middle East and North Africa (IFC classification),Aggregates,NAs
+CMR,Cameroon,Sub-Saharan Africa,LMCs
+COD,"Congo, Dem. Rep.",Sub-Saharan Africa,LICs
+COG,"Congo, Rep.",Sub-Saharan Africa,LMCs
+COL,Colombia,Latin America & Caribbean,UMCs
+COM,Comoros,Sub-Saharan Africa,LMCs
+CPV,Cabo Verde,Sub-Saharan Africa,UMCs
+CRI,Costa Rica,Latin America & Caribbean,HICs
+CSA,South Asia (IFC classification),Aggregates,NAs
+CSS,Caribbean small states,Aggregates,NAs
+CUB,Cuba,Latin America & Caribbean,UMCs
+CUW,Curacao,Latin America & Caribbean,HICs
+CYM,Cayman Islands,Latin America & Caribbean,HICs
+CYP,Cyprus,Europe & Central Asia,HICs
+CZE,Czechia,Europe & Central Asia,HICs
+DEA,East Asia & Pacific (IDA-eligible countries),Aggregates,NAs
+DEC,Europe & Central Asia (IDA-eligible countries),Aggregates,NAs
+DEU,Germany,Europe & Central Asia,HICs
+DJI,Djibouti,"Middle East, North Africa, Afghanistan & Pakistan",LMCs
+DLA,Latin America & the Caribbean (IDA-eligible countries),Aggregates,NAs
+DMA,Dominica,Latin America & Caribbean,UMCs
+DMN,"Middle East, North Africa, Afghanistan & Pakistan (IDA total)",Aggregates,NAs
+DNK,Denmark,Europe & Central Asia,HICs
+DNS,IDA countries in Sub-Saharan Africa not classified as fragile situations,Aggregates,NAs
+DOM,Dominican Republic,Latin America & Caribbean,UMCs
+DSA,South Asia (IDA-eligible countries),Aggregates,NAs
+DSF,IDA countries in Sub-Saharan Africa classified as fragile situations,Aggregates,NAs
+DSS,Sub-Saharan Africa (IDA-eligible countries),Aggregates,NAs
+DZA,Algeria,"Middle East, North Africa, Afghanistan & Pakistan",UMCs
+EAP,East Asia & Pacific (excluding high income),Aggregates,NAs
+EAR,Early-demographic dividend,Aggregates,NAs
+EAS,East Asia & Pacific,Aggregates,NAs
+ECA,Europe & Central Asia (excluding high income),Aggregates,NAs
+ECS,Europe & Central Asia,Aggregates,NAs
+ECU,Ecuador,Latin America & Caribbean,UMCs
+EGY,"Egypt, Arab Rep.","Middle East, North Africa, Afghanistan & Pakistan",LMCs
+EMU,Euro area,Aggregates,NAs
+ERI,Eritrea,Sub-Saharan Africa,LICs
+ESP,Spain,Europe & Central Asia,HICs
+EST,Estonia,Europe & Central Asia,HICs
+ETH,Ethiopia,Sub-Saharan Africa,INXs
+EUU,European Union,Aggregates,NAs
+FCS,Fragile and conflict affected situations,Aggregates,NAs
+FIN,Finland,Europe & Central Asia,HICs
+FJI,Fiji,East Asia & Pacific,UMCs
+FRA,France,Europe & Central Asia,HICs
+FRO,Faroe Islands,Europe & Central Asia,HICs
+FSM,"Micronesia, Fed. Sts.",East Asia & Pacific,LMCs
+FXS,"IDA countries classified as fragile situations, excluding Sub-Saharan Africa",Aggregates,NAs
+GAB,Gabon,Sub-Saharan Africa,UMCs
+GBR,United Kingdom,Europe & Central Asia,HICs
+GEO,Georgia,Europe & Central Asia,UMCs
+GHA,Ghana,Sub-Saharan Africa,LMCs
+GIB,Gibraltar,Europe & Central Asia,HICs
+GIN,Guinea,Sub-Saharan Africa,LMCs
+GMB,"Gambia, The",Sub-Saharan Africa,LICs
+GNB,Guinea-Bissau,Sub-Saharan Africa,LICs
+GNQ,Equatorial Guinea,Sub-Saharan Africa,UMCs
+GRC,Greece,Europe & Central Asia,HICs
+GRD,Grenada,Latin America & Caribbean,UMCs
+GRL,Greenland,Europe & Central Asia,HICs
+GTM,Guatemala,Latin America & Caribbean,UMCs
+GUM,Guam,East Asia & Pacific,HICs
+GUY,Guyana,Latin America & Caribbean,HICs
+HIC,High income,Aggregates,NAs
+HKG,"Hong Kong SAR, China",East Asia & Pacific,HICs
+HND,Honduras,Latin America & Caribbean,LMCs
+HPC,Heavily indebted poor countries (HIPC),Aggregates,NAs
+HRV,Croatia,Europe & Central Asia,HICs
+HTI,Haiti,Latin America & Caribbean,LMCs
+HUN,Hungary,Europe & Central Asia,HICs
+IBB,"IBRD, including blend",Aggregates,NAs
+IBD,IBRD only,Aggregates,NAs
+IBT,IDA & IBRD total,Aggregates,NAs
+IDA,IDA total,Aggregates,NAs
+IDB,IDA blend,Aggregates,NAs
+IDN,Indonesia,East Asia & Pacific,UMCs
+IDX,IDA only,Aggregates,NAs
+IMN,Isle of Man,Europe & Central Asia,HICs
+IND,India,South Asia,LMCs
+INX,Not classified,Aggregates,NAs
+IRL,Ireland,Europe & Central Asia,HICs
+IRN,"Iran, Islamic Rep.","Middle East, North Africa, Afghanistan & Pakistan",UMCs
+IRQ,Iraq,"Middle East, North Africa, Afghanistan & Pakistan",UMCs
+ISL,Iceland,Europe & Central Asia,HICs
+ISR,Israel,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+ITA,Italy,Europe & Central Asia,HICs
+JAM,Jamaica,Latin America & Caribbean,UMCs
+JOR,Jordan,"Middle East, North Africa, Afghanistan & Pakistan",LMCs
+JPN,Japan,East Asia & Pacific,HICs
+KAZ,Kazakhstan,Europe & Central Asia,UMCs
+KEN,Kenya,Sub-Saharan Africa,LMCs
+KGZ,Kyrgyz Republic,Europe & Central Asia,LMCs
+KHM,Cambodia,East Asia & Pacific,LMCs
+KIR,Kiribati,East Asia & Pacific,LMCs
+KNA,St. Kitts and Nevis,Latin America & Caribbean,HICs
+KOR,"Korea, Rep.",East Asia & Pacific,HICs
+KWT,Kuwait,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+LAC,Latin America & Caribbean (excluding high income),Aggregates,NAs
+LAO,Lao PDR,East Asia & Pacific,LMCs
+LBN,Lebanon,"Middle East, North Africa, Afghanistan & Pakistan",LMCs
+LBR,Liberia,Sub-Saharan Africa,LICs
+LBY,Libya,"Middle East, North Africa, Afghanistan & Pakistan",UMCs
+LCA,St. Lucia,Latin America & Caribbean,UMCs
+LCN,Latin America & Caribbean,Aggregates,NAs
+LDC,Least developed countries: UN classification,Aggregates,NAs
+LIC,Low income,Aggregates,NAs
+LIE,Liechtenstein,Europe & Central Asia,HICs
+LKA,Sri Lanka,South Asia,LMCs
+LMC,Lower middle income,Aggregates,NAs
+LMY,Low & middle income,Aggregates,NAs
+LSO,Lesotho,Sub-Saharan Africa,LMCs
+LTE,Late-demographic dividend,Aggregates,NAs
+LTU,Lithuania,Europe & Central Asia,HICs
+LUX,Luxembourg,Europe & Central Asia,HICs
+LVA,Latvia,Europe & Central Asia,HICs
+MAC,"Macao SAR, China",East Asia & Pacific,HICs
+MAF,St. Martin (French part),Latin America & Caribbean,HICs
+MAR,Morocco,"Middle East, North Africa, Afghanistan & Pakistan",LMCs
+MCO,Monaco,Europe & Central Asia,HICs
+MDA,Moldova,Europe & Central Asia,UMCs
+MDE,Middle East (developing only),Aggregates,NAs
+MDG,Madagascar,Sub-Saharan Africa,LICs
+MDV,Maldives,South Asia,UMCs
+MEA,"Middle East, North Africa, Afghanistan & Pakistan",Aggregates,NAs
+MEX,Mexico,Latin America & Caribbean,UMCs
+MHL,Marshall Islands,East Asia & Pacific,UMCs
+MIC,Middle income,Aggregates,NAs
+MKD,North Macedonia,Europe & Central Asia,UMCs
+MLI,Mali,Sub-Saharan Africa,LICs
+MLT,Malta,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+MMR,Myanmar,East Asia & Pacific,LMCs
+MNA,"Middle East, North Africa, Afghanistan & Pakistan (excluding high income)",Aggregates,NAs
+MNE,Montenegro,Europe & Central Asia,UMCs
+MNG,Mongolia,East Asia & Pacific,UMCs
+MNP,Northern Mariana Islands,East Asia & Pacific,HICs
+MOZ,Mozambique,Sub-Saharan Africa,LICs
+MRT,Mauritania,Sub-Saharan Africa,LMCs
+MUS,Mauritius,Sub-Saharan Africa,UMCs
+MWI,Malawi,Sub-Saharan Africa,LICs
+MYS,Malaysia,East Asia & Pacific,UMCs
+NAC,North America,Aggregates,NAs
+NAF,North Africa,Aggregates,NAs
+NAM,Namibia,Sub-Saharan Africa,LMCs
+NCL,New Caledonia,East Asia & Pacific,HICs
+NER,Niger,Sub-Saharan Africa,LICs
+NGA,Nigeria,Sub-Saharan Africa,LMCs
+NIC,Nicaragua,Latin America & Caribbean,LMCs
+NLD,Netherlands,Europe & Central Asia,HICs
+NOR,Norway,Europe & Central Asia,HICs
+NPL,Nepal,South Asia,LMCs
+NRS,Non-resource rich Sub-Saharan Africa countries,Aggregates,NAs
+NRU,Nauru,East Asia & Pacific,HICs
+NXS,"IDA countries not classified as fragile situations, excluding Sub-Saharan Africa",Aggregates,NAs
+NZL,New Zealand,East Asia & Pacific,HICs
+OED,OECD members,Aggregates,NAs
+OMN,Oman,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+OSS,Other small states,Aggregates,NAs
+PAK,Pakistan,"Middle East, North Africa, Afghanistan & Pakistan",LMCs
+PAN,Panama,Latin America & Caribbean,HICs
+PER,Peru,Latin America & Caribbean,UMCs
+PHL,Philippines,East Asia & Pacific,LMCs
+PLW,Palau,East Asia & Pacific,HICs
+PNG,Papua New Guinea,East Asia & Pacific,LMCs
+POL,Poland,Europe & Central Asia,HICs
+PRE,Pre-demographic dividend,Aggregates,NAs
+PRI,Puerto Rico (US),Latin America & Caribbean,HICs
+PRK,"Korea, Dem. People's Rep.",East Asia & Pacific,LICs
+PRT,Portugal,Europe & Central Asia,HICs
+PRY,Paraguay,Latin America & Caribbean,UMCs
+PSE,West Bank and Gaza,"Middle East, North Africa, Afghanistan & Pakistan",LMCs
+PSS,Pacific island small states,Aggregates,NAs
+PST,Post-demographic dividend,Aggregates,NAs
+PYF,French Polynesia,East Asia & Pacific,HICs
+QAT,Qatar,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+ROU,Romania,Europe & Central Asia,HICs
+RRS,Resource rich Sub-Saharan Africa countries,Aggregates,NAs
+RUS,Russian Federation,Europe & Central Asia,HICs
+RWA,Rwanda,Sub-Saharan Africa,LICs
+SAS,South Asia,Aggregates,NAs
+SAU,Saudi Arabia,"Middle East, North Africa, Afghanistan & Pakistan",HICs
+SDN,Sudan,Sub-Saharan Africa,LICs
+SEN,Senegal,Sub-Saharan Africa,LMCs
+SGP,Singapore,East Asia & Pacific,HICs
+SLB,Solomon Islands,East Asia & Pacific,LMCs
+SLE,Sierra Leone,Sub-Saharan Africa,LICs
+SLV,El Salvador,Latin America & Caribbean,UMCs
+SMR,San Marino,Europe & Central Asia,HICs
+SOM,Somalia,Sub-Saharan Africa,LICs
+SRB,Serbia,Europe & Central Asia,UMCs
+SSA,Sub-Saharan Africa (excluding high income),Aggregates,NAs
+SSD,South Sudan,Sub-Saharan Africa,LICs
+SSF,Sub-Saharan Africa,Aggregates,NAs
+SST,Small states,Aggregates,NAs
+STP,Sao Tome and Principe,Sub-Saharan Africa,LMCs
+SUR,Suriname,Latin America & Caribbean,UMCs
+SVK,Slovak Republic,Europe & Central Asia,HICs
+SVN,Slovenia,Europe & Central Asia,HICs
+SWE,Sweden,Europe & Central Asia,HICs
+SWZ,Eswatini,Sub-Saharan Africa,LMCs
+SXM,Sint Maarten (Dutch part),Latin America & Caribbean,HICs
+SXZ,Sub-Saharan Africa excluding South Africa,Aggregates,NAs
+SYC,Seychelles,Sub-Saharan Africa,HICs
+SYR,Syrian Arab Republic,"Middle East, North Africa, Afghanistan & Pakistan",LICs
+TCA,Turks and Caicos Islands,Latin America & Caribbean,HICs
+TCD,Chad,Sub-Saharan Africa,LICs
+TEA,East Asia & Pacific (IDA & IBRD countries),Aggregates,NAs
+TEC,Europe & Central Asia (IDA & IBRD countries),Aggregates,NAs
+TGO,Togo,Sub-Saharan Africa,LICs
+THA,Thailand,East Asia & Pacific,UMCs
+TJK,Tajikistan,Europe & Central Asia,LMCs
+TKM,Turkmenistan,Europe & Central Asia,UMCs
+TLA,Latin America & the Caribbean (IDA & IBRD countries),Aggregates,NAs
+TLS,Timor-Leste,East Asia & Pacific,LMCs
+TMN,"Middle East, North Africa, Afghanistan & Pakistan (IDA & IBRD)",Aggregates,NAs
+TON,Tonga,East Asia & Pacific,UMCs
+TSA,South Asia (IDA & IBRD),Aggregates,NAs
+TSS,Sub-Saharan Africa (IDA & IBRD countries),Aggregates,NAs
+TTO,Trinidad and Tobago,Latin America & Caribbean,HICs
+TUN,Tunisia,"Middle East, North Africa, Afghanistan & Pakistan",LMCs
+TUR,Turkiye,Europe & Central Asia,UMCs
+TUV,Tuvalu,East Asia & Pacific,UMCs
+TZA,Tanzania,Sub-Saharan Africa,LMCs
+UGA,Uganda,Sub-Saharan Africa,LICs
+UKR,Ukraine,Europe & Central Asia,UMCs
+UMC,Upper middle income,Aggregates,NAs
+URY,Uruguay,Latin America & Caribbean,HICs
+USA,United States,North America,HICs
+UZB,Uzbekistan,Europe & Central Asia,LMCs
+VCT,St. Vincent and the Grenadines,Latin America & Caribbean,UMCs
+VEN,"Venezuela, RB",Latin America & Caribbean,INXs
+VGB,British Virgin Islands,Latin America & Caribbean,HICs
+VIR,Virgin Islands (U.S.),Latin America & Caribbean,HICs
+VNM,Viet Nam,East Asia & Pacific,LMCs
+VUT,Vanuatu,East Asia & Pacific,LMCs
+WLD,World,Aggregates,NAs
+WSM,Samoa,East Asia & Pacific,UMCs
+XKX,Kosovo,Europe & Central Asia,UMCs
+XZN,Sub-Saharan Africa excluding South Africa and Nigeria,Aggregates,NAs
+YEM,"Yemen, Rep.","Middle East, North Africa, Afghanistan & Pakistan",LICs
+ZAF,South Africa,Sub-Saharan Africa,UMCs
+ZMB,Zambia,Sub-Saharan Africa,LMCs
+ZWE,Zimbabwe,Sub-Saharan Africa,LMCs

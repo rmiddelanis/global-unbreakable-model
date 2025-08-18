@@ -30,9 +30,9 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 import argparse
-from src.misc.helpers import get_population_scope_indices
-from src.scenario.prepare_scenario import prepare_scenario
-from src.model.lib_compute_resilience_and_risk import *
+from unbreakable.misc.helpers import get_population_scope_indices
+from unbreakable.scenario.prepare_scenario import prepare_scenario
+from unbreakable.model.lib_compute_resilience_and_risk import *
 import os
 import warnings
 import pandas as pd

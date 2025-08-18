@@ -27,8 +27,8 @@
 import copy
 import numpy as np
 import pandas as pd
-from src.misc.helpers import concat_categories, average_over_rp
-from src.model.recovery_optimizer import optimize_data, recompute_data_with_tax
+from unbreakable.misc.helpers import concat_categories, average_over_rp
+from unbreakable.model.recovery_optimizer import optimize_data, recompute_data_with_tax
 
 
 def reshape_input(macro, cat_info, hazard_ratios, event_level):

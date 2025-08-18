@@ -7,7 +7,7 @@ import xarray as xr
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.misc.helpers import xr_average_over_rp, calculate_average_recovery_duration, average_over_rp
+from unbreakable.misc.helpers import xr_average_over_rp, calculate_average_recovery_duration, average_over_rp
 
 
 def compute_poverty_increase(cat_info_data_, results_data_, hazard_protection_):
@@ -51,10 +51,10 @@ def preprocess_simulation_data(simulation_outputs_dir_, store_preprocessed=False
             except ValueError:
                 scenario = dir
             scenario_path = os.path.join(simulation_outputs_dir_, dir)
-            if 'baseline' in scenario:
-                simulation_paths[(scenario, 0, 0, 0)] = scenario_path
-            elif exclude_scenarios is not None and scenario in exclude_scenarios:
+            if exclude_scenarios is not None and scenario in exclude_scenarios:
                 continue
+            elif os.path.exists(os.path.join(scenario_path, "results.csv")):
+                simulation_paths[(scenario, 0, 0, 0)] = scenario_path
             else:
                 horizontal_scopes = sorted(os.listdir(scenario_path))
                 for horizontal_scope in horizontal_scopes:
@@ -165,6 +165,22 @@ def preprocess_simulation_data(simulation_outputs_dir_, store_preprocessed=False
     cat_info_sc_ = xr.concat(cat_info_sc_, dim='concat_dim').unstack('concat_dim')
     macro_sc_ = xr.concat(macro_sc_, dim='concat_dim').unstack('concat_dim')
     hazard_ratios_sc_ = xr.concat(hazard_ratios_sc_, dim='concat_dim').unstack('concat_dim')
+
+    drop_vars = []
+    if (np.unique(cat_info_res_.hs) == 0).all():
+        drop_vars.append('hs') 
+    if (np.unique(cat_info_sc_.vs) == 0).all():
+        drop_vars.append('vs')
+        drop_vars.append('vs_sign')
+        
+    cat_info_res_ = cat_info_res_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
+    event_res_ = event_res_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
+    macro_res_ = macro_res_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
+    poverty_res_ = poverty_res_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
+    hazard_prot_sc_ = hazard_prot_sc_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
+    cat_info_sc_ = cat_info_sc_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
+    macro_sc_ = macro_sc_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
+    hazard_ratios_sc_ = hazard_ratios_sc_.drop_vars(drop_vars).squeeze(drop_vars, drop=True)
 
     if store_preprocessed:
         outpath = os.path.join(simulation_outputs_dir_, '_preprocessed_simulation_output')

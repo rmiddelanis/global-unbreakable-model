@@ -38,8 +38,8 @@ import matplotlib.colors as mcolors
 from matplotlib.transforms import blended_transform_factory
 import numpy as np
 import pandas as pd
-from src.misc.helpers import average_over_rp, get_population_scope_indices, calculate_average_recovery_duration
-from src.post_processing.post_processing import preprocess_simulation_data
+from unbreakable.misc.helpers import average_over_rp, get_population_scope_indices, calculate_average_recovery_duration
+from unbreakable.post_processing.post_processing import preprocess_simulation_data
 import seaborn as sns
 import xarray as xr
 from scipy.interpolate import RegularGridInterpolator

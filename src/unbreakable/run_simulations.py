@@ -6,18 +6,18 @@ model_outpath = os.path.join(root_dir, "results/simulation_output")
 gadm_path = os.path.join(root_dir, "data/raw/GADM/gadm_410-levels.gpkg")
 figure_outpath = os.path.join(root_dir, "results/figures")
 model_path = os.path.join(root_dir, "src/model/run_model.py")
-force_recompute_on_first_simulation = True
+recompute_on_first_simulation = True
 force_download_on_first_simulation = False
 
 def run_simulation(simulation_path_, settings_):
     if not os.path.exists(simulation_path_):
         os.makedirs(simulation_path_)
-    global force_recompute_on_first_simulation, force_download_on_first_simulation
-    settings_['scenario_params']['run_params']['force_recompute'] = force_recompute_on_first_simulation
+    global recompute_on_first_simulation, force_download_on_first_simulation
+    settings_['scenario_params']['run_params']['recompute'] = recompute_on_first_simulation
     settings_['scenario_params']['run_params']['download'] = force_download_on_first_simulation
     with open(os.path.join(simulation_path_, 'settings.yml'), 'w') as f:
         yaml.dump(settings_, f)
-    force_recompute_on_first_simulation = False
+    recompute_on_first_simulation = False
     force_download_on_first_simulation = False
     execute = f"python {model_path} {simulation_path_}/settings.yml"
     execute_res = os.system(execute)
@@ -44,7 +44,7 @@ def default_settings():
         'scenario_params': {
             'run_params': {
                 'outpath': '',
-                'force_recompute': False,
+                'recompute': False,
                 'download': False,
                 'verbose': False,
                 'countries': 'all',

@@ -13,7 +13,8 @@ model_params:
 scenario_params:
   run_params:
     outpath: './results/example'
-    force_recompute: False
+    recompute: True
+    recompute_hazard_protection: False
     download: False
     verbose: False
     countries: 'all'
@@ -27,7 +28,7 @@ scenario_params:
     discount_rate_rho: .06
     axfin_impact: .1
     reduction_vul: .2
-    early_warning_file: "/Users/robin/Documents/Karriere/Jobs/2023_The_World_Bank/03_projects/02_Hydromet/04_code/global-unbreakable-model/data/processed/ew/3__ALL_ODA+SIDS:S+UA_ew.csv"
+#    early_warning_file: "/Users/robin/Documents/Karriere/Jobs/2023_The_World_Bank/03_projects/02_Hydromet/04_code/global-unbreakable-model/data/processed/ew/3__ALL_ODA+SIDS:S+UA_ew.csv"
   hazard_params:
     hazard_protection: 'FLOPROS'
     no_exposure_bias: False

@@ -29,7 +29,7 @@ import os
 import pandas as pd
 from pandas_datareader import wb
 import statsmodels.api as sm
-from src.misc.helpers import get_country_name_dicts, df_to_iso3, update_data_coverage, get_world_bank_countries
+from unbreakable.misc.helpers import get_country_name_dicts, df_to_iso3, update_data_coverage, get_world_bank_countries
 import numpy as np
 
 from datetime import date
@@ -53,7 +53,7 @@ AGG_REGIONS = ['Africa Eastern and Southern', 'Africa Western and Central', 'Ara
                'Upper middle income', 'World']
 
 
-def get_wb_series(wb_name, colname, wb_raw_data_path, download):
+def get_wb_series(wb_name, colname, wb_raw_data_path, download, start=2000):
     """
     Retrieves a World Bank series and renames its column.
 
@@ -64,7 +64,7 @@ def get_wb_series(wb_name, colname, wb_raw_data_path, download):
     Returns:
         pd.DataFrame: DataFrame containing the World Bank series.
     """
-    return get_wb_df(wb_name, colname, wb_raw_data_path, download)[colname]
+    return get_wb_df(wb_name, colname, wb_raw_data_path, download, start)[colname]
 
 
 def get_wb_mrv(wb_name, colname, wb_raw_data_path, download):
@@ -82,7 +82,7 @@ def get_wb_mrv(wb_name, colname, wb_raw_data_path, download):
     return get_most_recent_value(get_wb_df(wb_name, colname, wb_raw_data_path, download), drop_year=True)
 
 
-def get_most_recent_value(data, drop_year=True):
+def get_most_recent_value(data, drop_year=True, dropna=True):
     """
     Extracts the most recent value for each group in the data.
 
@@ -95,7 +95,10 @@ def get_most_recent_value(data, drop_year=True):
     """
     if 'year' in data.index.names:
         levels_new = data.index.droplevel('year').names
-        res = data.dropna().reset_index()
+        if dropna:
+            res = data.dropna().reset_index()
+        else:
+            res = data.reset_index()
         if drop_year:
             res = res.loc[res.groupby(levels_new)['year'].idxmax()].drop(columns='year').set_index(levels_new).squeeze()
         else:
@@ -106,7 +109,7 @@ def get_most_recent_value(data, drop_year=True):
     return data
 
 
-def get_wb_df(wb_name, colname, wb_raw_data_path, download):
+def get_wb_df(wb_name, colname, wb_raw_data_path, download, start=2000):
     """
     Downloads a World Bank dataset and renames its column.
 
@@ -120,7 +123,7 @@ def get_wb_df(wb_name, colname, wb_raw_data_path, download):
     wb_raw_path = os.path.join(wb_raw_data_path, f"{wb_name}.csv")
     if download or not os.path.exists(wb_raw_path):
         # return all values
-        wb_raw = wb.download(indicator=wb_name, start=2000, end=YEAR_TODAY, country="all")
+        wb_raw = wb.download(indicator=wb_name, start=1900, end=YEAR_TODAY, country="all")
         wb_raw.to_csv(wb_raw_path)
     else:
         wb_raw = pd.read_csv(wb_raw_path)
@@ -129,8 +132,11 @@ def get_wb_df(wb_name, colname, wb_raw_data_path, download):
         # make year index an integer
         wb_raw = wb_raw[~wb_raw.index.get_level_values('year').astype(str).str.contains('W|S')]
         wb_raw.rename(index={y: int(y) for y in wb_raw.index.get_level_values('year').unique()}, level='year', inplace=True)
-    # sensible name for the column
-    return wb_raw.rename(columns={wb_raw.columns[0]: colname})
+    if start is not None:
+        # filter for start year
+        wb_raw = wb_raw[wb_raw.index.get_level_values('year') >= start]
+    wb_raw.rename(columns={wb_raw.columns[0]: colname}, inplace=True)
+    return wb_raw
 
 
 def broadcast_to_population_resolution(data, resolution):
@@ -275,7 +281,7 @@ def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, wb_raw_data_
 
 
 def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False,
-                drop_incomplete=True, force_recompute=True, verbose=True, save=True, include_spl=False, resolution=.2,
+                drop_incomplete=True, recompute=True, verbose=True, save=True, include_spl=False, resolution=.2,
                 download=False):
     """
     Downloads and processes World Bank socio-economic data, including macroeconomic and income-level data.
@@ -286,7 +292,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         include_remittances (bool): Whether to include remittance data. Defaults to True.
         impute_missing_data (bool): Whether to impute missing data. Defaults to False.
         drop_incomplete (bool): Whether to drop countries with incomplete data. Defaults to True.
-        force_recompute (bool): Whether to force recomputation of data. Defaults to True.
+        recompute (bool): Whether to force recomputation of data. Defaults to True.
         verbose (bool): Whether to print verbose output. Defaults to True.
         save (bool): Whether to save the processed data. Defaults to True.
         include_spl (bool): Whether to include shared prosperity line data. Defaults to False.
@@ -302,12 +308,12 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     rem_ade_path = os.path.join(root_dir, "data/processed/adequacy_remittances.csv")
     transfers_regr_data_path = os.path.join(root_dir, "data/processed/social_shares_regressors.csv")
     wb_raw_data_path = os.path.join(root_dir, "data/raw/WB_socio_economic_data/API")
-    if not force_recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
+    if not recompute and os.path.exists(macro_path) and os.path.exists(cat_info_path):
         print("Loading World Bank data from file...")
         macro_df = pd.read_csv(macro_path, index_col='iso3')
         cat_info_df = pd.read_csv(cat_info_path, index_col=['iso3', 'income_cat'])
         return macro_df, cat_info_df
-    print("Downloading World Bank data...")
+    print(f"Recomputing World Bank data with{'out' if not download else ''} downloading data...")
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
     # World Development Indicators

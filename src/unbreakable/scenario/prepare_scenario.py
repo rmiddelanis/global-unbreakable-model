@@ -30,17 +30,17 @@ import os
 import numpy as np
 import yaml
 from scipy.optimize import curve_fit
-from src.scenario.data_processing.gather_findex_data import get_liquidity_from_findex, gather_axfin_data
-from src.scenario.data_processing.gather_gem_data import gather_gem_data
-from src.scenario.data_processing.gather_gir_data import load_giri_hazard_loss_rel
-from src.scenario.data_processing.get_wb_data import get_wb_data, get_wb_mrv, broadcast_to_population_resolution
+from unbreakable.scenario.data_processing.gather_findex_data import get_liquidity_from_findex, gather_axfin_data
+from unbreakable.scenario.data_processing.gather_gem_data import gather_gem_data
+from unbreakable.scenario.data_processing.gather_gir_data import load_giri_hazard_loss_rel
+from unbreakable.scenario.data_processing.get_wb_data import get_wb_data, get_wb_mrv, broadcast_to_population_resolution
 import pandas as pd
-from src.misc.helpers import get_country_name_dicts, df_to_iso3, load_income_groups, update_data_coverage, \
+from unbreakable.misc.helpers import get_country_name_dicts, df_to_iso3, load_income_groups, update_data_coverage, \
     get_population_scope_indices
 from time import time
 
-from src.scenario.data_processing.process_flopros_data import process_flopros_data
-from src.scenario.data_processing.process_peb_data import process_peb_data
+from unbreakable.scenario.data_processing.process_flopros_data import process_flopros_data
+from unbreakable.scenario.data_processing.process_peb_data import process_peb_data
 
 
 def get_cat_info_and_tau_tax(cat_info_, wb_data_macro_, avg_prod_k_, resolution, axfin_impact_,
@@ -107,7 +107,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
                     protection_level_assumptions_file="WB_country_classification/protection_level_assumptions.csv",
                     income_groups_file="WB_country_classification/country_classification.xlsx",
                     income_groups_file_historical="WB_country_classification/country_classification_historical.xlsx",
-                    force_recompute_=True):
+                    recompute_=True):
     """
     Loads and processes protection level data for countries based on the specified protection data source.
 
@@ -126,7 +126,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
         pd.Series: A Series indexed by country and hazard, containing protection levels.
     """
     protection_path = os.path.join(root_dir_, "data/processed/", flopros_protection_file)
-    if force_recompute_ or not os.path.exists(protection_path):
+    if recompute_ or not os.path.exists(protection_path):
         process_flopros_data(
             flopros_path=os.path.join(root_dir_, "data/raw/FLOPROS"),
             population_path=os.path.join(root_dir_, "data/raw/GPW/gpw_v4_population_density_adjusted_rev11_2pt5_min.nc"),
@@ -185,7 +185,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     return prot
 
 
-def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, resolution, force_recompute_=True, verbose_=True, scale_liquidity_=None):
+def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, resolution, recompute_=True, verbose_=True, scale_liquidity_=None):
     """
     Loads or computes liquidity and access to finance (axfin) data from FINDEX.
 
@@ -194,7 +194,7 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, resolution
         any_to_wb_ (dict): Mapping of country names to World Bank codes.
         gni_pc_pp (pd.Series): Gross national income per capita (PPP).
         resolution (float): Population resolution for broadcasting data.
-        force_recompute_ (bool): Whether to force recomputation of data. Defaults to True. Method loads data from file if False.
+        recompute_ (bool): Whether to force recomputation of data. Defaults to True. Method loads data from file if False.
         verbose_ (bool): Whether to print verbose output. Defaults to True.
         scale_liquidity_ (dict, optional): Scaling parameters for liquidity. Defaults to None.
 
@@ -203,7 +203,7 @@ def load_findex_liquidity_and_axfin(root_dir_, any_to_wb_, gni_pc_pp, resolution
     """
 
     outpath = os.path.join(root_dir_, 'data', 'processed', 'findex_liquidity_and_axfin.csv')
-    if not force_recompute_ and os.path.exists(outpath):
+    if not recompute_ and os.path.exists(outpath):
         print("Loading liquidity and axfin data from file...")
         liquidity_and_axfin = pd.read_csv(outpath)
         liquidity_and_axfin.set_index(['iso3', 'income_cat'], inplace=True)
@@ -389,7 +389,7 @@ def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb, verbose):
 
 
 def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
-                      verbose=True, force_recompute=True, download=True,
+                      verbose=True, recompute=True, download=True,
                       guess_missing_countries=False):
     """
     Calculates asset shares, including private, household, and owner-occupied shares.
@@ -399,14 +399,14 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
         any_to_wb_ (dict): Mapping of country names to World Bank codes.
         scale_self_employment (dict, optional): Scaling parameters for self-employment. Defaults to None.
         verbose (bool): Whether to print verbose output. Defaults to True.
-        force_recompute (bool): Whether to force recomputation of data. Defaults to True.
+        recompute (bool): Whether to force recomputation of data. Defaults to True.
         guess_missing_countries (bool): Whether to guess missing data for countries. Defaults to False.
 
     Returns:
         pd.DataFrame: Asset shares indexed by country.
     """
     capital_shares_before_adjustment_path = os.path.join(root_dir_, "data/processed/capital_shares.csv")
-    if not force_recompute and os.path.exists(capital_shares_before_adjustment_path):
+    if not recompute and os.path.exists(capital_shares_before_adjustment_path):
         print("Loading capital shares from file...")
         capital_shares = pd.read_csv(capital_shares_before_adjustment_path, index_col='iso3')
     else:
@@ -477,7 +477,7 @@ def calc_asset_shares(root_dir_, any_to_wb_, scale_self_employment=None,
 
 
 def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missing_countries, population_data_=None,
-                                peb_data_path="exposure_bias_per_quintile.csv", force_recompute_=True):
+                                peb_data_path="exposure_bias_per_quintile.csv", recompute_=True):
     """
     Applies poverty exposure bias to exposure data.
 
@@ -493,7 +493,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missi
         pd.Series: Exposure data with poverty exposure bias applied.
     """
     bias_path = os.path.join(root_dir_, "data/processed/", peb_data_path)
-    if force_recompute_ or not os.path.exists(bias_path):
+    if recompute_ or not os.path.exists(bias_path):
         print("Recomputing poverty exposure biases...")
         process_peb_data(
             root_dir=root_dir_,
@@ -540,7 +540,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missi
     return exposure_fa_with_peb_
 
 
-def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, verbose=True, force_recompute_=False,
+def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, verbose=True, recompute_=False,
                                        apply_exposure_bias=True, population_data=None, scale_exposure=None,
                                        scale_vulnerability=None, early_warning_data=None, reduction_vul=.2,
                                        no_ew_hazards="Earthquake+Tsunami"):
@@ -552,7 +552,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
         fa_threshold_ (float): Threshold for exposure data. Specified in settings yml file. Should be lower or equal to 1.
         resolution (float): Population resolution for broadcasting data.
         verbose (bool): Whether to print verbose output. Defaults to True.
-        force_recompute_ (bool): Whether to force recomputation of data. Defaults to False.
+        recompute_ (bool): Whether to force recomputation of data. Defaults to False.
         apply_exposure_bias (bool): Whether to apply poverty exposure bias. Defaults to True.
         population_data (pd.DataFrame, optional): Population data. Defaults to None.
         scale_exposure (dict, optional): Scaling parameters for exposure. Defaults to None.
@@ -565,7 +565,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
         pd.DataFrame: Exposure and vulnerability data indexed by country, hazard, and income category.
     """
     hazard_ratios_path = os.path.join(root_dir_, 'data', 'processed', 'hazard_ratios.csv')
-    if not force_recompute_ and os.path.exists(hazard_ratios_path):
+    if not recompute_ and os.path.exists(hazard_ratios_path):
             print("Loading exposure and vulnerability from file...")
             hazard_ratios = pd.read_csv(hazard_ratios_path, index_col=[0, 1, 2, 3]).squeeze()
     else:
@@ -615,7 +615,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
             resolution=resolution,
             guess_missing_countries=True,
             population_data_=population_data,
-            force_recompute_=force_recompute_,
+            recompute_=recompute_,
         ).clip(lower=0, upper=fa_threshold_).values
 
     for policy_dict, col_name in zip([scale_vulnerability, scale_exposure], ['v', 'fa']):
@@ -754,7 +754,7 @@ def process_vulnerability_data(
 
 
 def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None, cat_ddo_filepath="CatDDO/catddo.csv",
-                              verbose=True, force_recompute=True):
+                              verbose=True, recompute=True):
     """
     Processes vulnerability data for different building classes and income categories.
 
@@ -772,7 +772,7 @@ def compute_borrowing_ability(root_dir_, any_to_wb_, finance_preparedness_=None,
         pd.DataFrame: Processed vulnerability data indexed by country, hazard, and income category.
     """
     outpath = os.path.join(root_dir_, "data/processed/borrowing_ability.csv")
-    if not force_recompute and os.path.exists(outpath):
+    if not recompute and os.path.exists(outpath):
         print("Loading borrowing ability data from file...")
         borrowing_ability_ = pd.read_csv(outpath, index_col='iso3')
         return borrowing_ability_
@@ -1012,7 +1012,7 @@ def load_credit_ratings(root_dir_, any_to_wb_, tradingecon_ratings_path="credit_
 
 
 def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True, guess_missing_countries=True,
-                                    force_recompute=True, verbose=True, early_warning_file=None):
+                                    recompute=True, verbose=True, early_warning_file=None):
     """
     Loads and processes disaster preparedness data, including HFA and WRP data.
 
@@ -1021,7 +1021,7 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
         any_to_wb_ (dict): Mapping of country names to World Bank ISO3 codes.
         include_hfa_data (bool): Whether to include HFA data. Default is True.
         guess_missing_countries (bool): Whether to guess missing data based on income groups and regions. Default is True.
-        force_recompute (bool): Whether to force recomputation of data. Default is True.
+        recompute (bool): Whether to force recomputation of data. Default is True.
         verbose (bool): Whether to print verbose output. Default is True.
         early_warning_file (str): Filepath for alternative early warning data (optional).
 
@@ -1030,7 +1030,7 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
     """
     dp_path = os.path.join(root_dir_, "data/processed/disaster_preparedness.csv")
 
-    if not force_recompute and os.path.exists(dp_path):
+    if (not recompute or early_warning_file) and os.path.exists(dp_path):
         print("Loading disaster preparedness data from file...")
         disaster_preparedness_ = pd.read_csv(dp_path, index_col='iso3').drop(columns='ew')
         early_warning_ = pd.read_csv(early_warning_file if early_warning_file else dp_path)
@@ -1119,13 +1119,13 @@ def load_gem_data(
     return residential_share, gem_building_classes
 
 
-def get_average_capital_productivity(root_dir_, force_recompute=True):
+def get_average_capital_productivity(root_dir_, recompute=True):
     """
     Computes the average productivity of capital using Penn World Table data.
 
     Args:
         root_dir_ (str): Root directory of the project.
-        force_recompute (bool): Whether to force recomputation of data. Default is True.
+        recompute (bool): Whether to force recomputation of data. Default is True.
 
     Returns:
         pd.Series: Average productivity of capital indexed by ISO3 country codes.
@@ -1133,7 +1133,7 @@ def get_average_capital_productivity(root_dir_, force_recompute=True):
 
     # Penn World Table data. Accessible from https://www.rug.nl/ggdc/productivity/pwt/
     outpath = os.path.join(root_dir_, "data/processed/avg_prod_k.csv")
-    if not force_recompute and os.path.exists(outpath):
+    if not recompute and os.path.exists(outpath):
         print("Loading capital data from file...")
         return pd.read_csv(outpath, index_col='iso3').squeeze()
 
@@ -1203,7 +1203,7 @@ def prepare_scenario(scenario_params):
             - pd.DataFrame: Hazard ratios data.
             - pd.DataFrame: Hazard protection data.
     """
-    root_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 
     if not os.path.exists(os.path.join(root_dir, 'data/processed')):
         os.makedirs(os.path.join(root_dir, 'data/processed'))
@@ -1222,7 +1222,8 @@ def prepare_scenario(scenario_params):
 
     # Set defaults
     run_params['outpath'] = run_params.get('outpath', None)
-    run_params['force_recompute'] = run_params.get('force_recompute', False)
+    run_params['recompute'] = run_params.get('recompute', False)
+    run_params['recompute_hazard_protection'] = run_params.get('recompute_hazard_protection', False)
     run_params['download'] = run_params.get('download', False)
     run_params['verbose'] = run_params.get('verbose', True)
     run_params['countries'] = run_params.get('countries', 'all')
@@ -1249,7 +1250,7 @@ def prepare_scenario(scenario_params):
         include_remittances=True,
         impute_missing_data=True,
         drop_incomplete=True,
-        force_recompute=run_params['force_recompute'],
+        recompute=run_params['recompute'],
         download=run_params['download'],
         verbose=run_params['verbose'],
         include_spl=run_params['include_spl'],
@@ -1257,7 +1258,7 @@ def prepare_scenario(scenario_params):
     )
 
     # print duration
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -1267,11 +1268,11 @@ def prepare_scenario(scenario_params):
         any_to_wb_=any_to_wb,
         gni_pc_pp=wb_data_macro.gni_pc_pp,
         resolution=run_params['resolution'],
-        force_recompute_=run_params['force_recompute'],
+        recompute_=run_params['recompute'],
         verbose_=run_params['verbose'],
         scale_liquidity_=policy_params.pop('scale_liquidity', None),
     )
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -1282,11 +1283,11 @@ def prepare_scenario(scenario_params):
         any_to_wb_=any_to_wb,
         include_hfa_data=True,
         guess_missing_countries=True,
-        force_recompute=run_params['force_recompute'],
+        recompute=run_params['recompute'],
         verbose=run_params['verbose'],
         early_warning_file=macro_params['early_warning_file'],
     )
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -1297,19 +1298,19 @@ def prepare_scenario(scenario_params):
             any_to_wb_=any_to_wb,
             finance_preparedness_=disaster_preparedness.finance_pre,
             verbose=run_params['verbose'],
-            force_recompute=run_params['force_recompute'],
+            recompute=run_params['recompute'],
         )
         disaster_preparedness = pd.merge(disaster_preparedness, borrowing_ability, left_index=True, right_index=True, how='left')
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
     # load average productivity of capital
     avg_prod_k = get_average_capital_productivity(
         root_dir_=root_dir,
-        force_recompute=run_params['force_recompute']
+        recompute=run_params['recompute']
     )
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -1319,18 +1320,18 @@ def prepare_scenario(scenario_params):
         any_to_wb_=any_to_wb,
         scale_self_employment=policy_params.pop('scale_self_employment', None),
         verbose=run_params['verbose'],
-        force_recompute=run_params['force_recompute'],
+        recompute=run_params['recompute'],
         download=run_params['download'],
         guess_missing_countries=True,
     )
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
     # compute exposure and vulnerability
     hazard_ratios = compute_exposure_and_vulnerability(
         root_dir_=root_dir,
-        force_recompute_=run_params['force_recompute'],
+        recompute_=run_params['recompute'],
         resolution=run_params['resolution'],
         verbose=run_params['verbose'],
         fa_threshold_=hazard_params['fa_threshold'],
@@ -1342,7 +1343,7 @@ def prepare_scenario(scenario_params):
         no_ew_hazards="Earthquake+Tsunami",
         reduction_vul=macro_params['reduction_vul'],
     )
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -1358,7 +1359,7 @@ def prepare_scenario(scenario_params):
         scale_income_=policy_params.pop('scale_income', None),
         scale_gini_index_=policy_params.pop('scale_gini_index', None),
     )
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -1367,9 +1368,9 @@ def prepare_scenario(scenario_params):
         root_dir_=root_dir,
         protection_data=hazard_params['hazard_protection'],
         min_rp=0,
-        force_recompute_=run_params['force_recompute'],
+        recompute_=run_params['recompute_hazard_protection'],
     )
-    if run_params['force_recompute']:
+    if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
         timestamp = time()
 
@@ -1381,6 +1382,12 @@ def prepare_scenario(scenario_params):
     macro = macro.join(capital_shares, how='left')
     macro['rho'] = macro_params['discount_rate_rho']
     macro['income_elasticity_eta'] = macro_params['income_elasticity_eta']
+
+    # retain selected hazards only
+    if run_params['hazards'] != 'all':
+        hazards = run_params['hazards']
+        hazard_ratios = hazard_ratios[hazard_ratios.index.get_level_values('hazard').isin(hazards)]
+        hazard_protection = hazard_protection[hazard_protection.index.get_level_values('hazard').isin(hazards)]
 
     # clean and harmonize data frames
     macro.dropna(inplace=True)
@@ -1407,12 +1414,6 @@ def prepare_scenario(scenario_params):
     cat_info = cat_info.loc[countries]
     hazard_ratios = hazard_ratios.loc[countries]
     hazard_protection = hazard_protection.loc[countries]
-
-    # retain selected hazards only
-    if run_params['hazards'] != 'all':
-        hazards = run_params['hazards']
-        hazard_ratios = hazard_ratios[hazard_ratios.index.get_level_values('hazard').isin(hazards)]
-        hazard_protection = hazard_protection[hazard_protection.index.get_level_values('hazard').isin(hazards)]
 
     # Save all data
     print(macro.shape[0], 'countries in analysis')

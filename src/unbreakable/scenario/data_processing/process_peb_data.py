@@ -55,6 +55,7 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
 
     exposure_data_path = os.path.join(root_dir, exposure_data_path)
     poverty_data_path = os.path.join(root_dir, poverty_data_path)
+    wb_macro_data_path = os.path.join(root_dir, wb_macro_path)
 
     # load exposure data
     exposure = pd.read_stata(exposure_data_path)
@@ -143,7 +144,7 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
     excess_countries = exposure[exposure['pop_a'] > exposure['pop']].index.get_level_values('iso3').unique()
     if len(excess_countries) > 0:
         print(f"Using more recent population data for {len(excess_countries)} countries with f_a > 1")
-        wb_pop = pd.read_csv(wb_macro_path).set_index('iso3')['pop']
+        wb_pop = pd.read_csv(wb_macro_data_path).set_index('iso3')['pop']
         wb_pop = wb_pop.loc[np.intersect1d(wb_pop.index, excess_countries)].rename('pop')
         new_pop = (exposure.pov_headcount * wb_pop).dropna()
         exposure.loc[new_pop.index, 'pop'] = new_pop

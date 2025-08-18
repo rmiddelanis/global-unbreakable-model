@@ -41,8 +41,8 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import cartopy.crs as ccrs
-from src.misc.helpers import average_over_rp, get_country_name_dicts, calculate_average_recovery_duration
-from src.model.recovery_optimizer import baseline_consumption_c_h, delta_c_h_of_t, delta_k_h_eff_of_t
+from unbreakable.misc.helpers import average_over_rp, get_country_name_dicts, calculate_average_recovery_duration
+from unbreakable.model.recovery_optimizer import baseline_consumption_c_h, delta_c_h_of_t, delta_k_h_eff_of_t
 import seaborn as sns
 
 INCOME_GROUP_COLORS = {

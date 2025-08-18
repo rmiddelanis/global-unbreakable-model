@@ -25,8 +25,6 @@
 """
 
 import os
-import time
-
 import requests
 import xarray as xr
 import numpy as np
@@ -56,18 +54,22 @@ def get_world_bank_countries(wb_raw_data_path, download):
         country_data = {country['id']: (str.strip(country['name']), str.strip(country['region']['value']), str.strip(country['incomeLevel']['id'] + 's')) for country in countries if 'id' in country}
         country_df = pd.DataFrame.from_dict(country_data, orient='index', columns=['name', 'region', 'income_group'])
         country_df.index.name = 'iso3'
-        country_df = country_df[country_df.region != 'Aggregates']
-        country_df['region'] = country_df.region.replace(
-            {'East Asia & Pacific': 'EAP', 'Europe & Central Asia': 'ECA', 'Latin America & Caribbean': 'LAC',
-             'Middle East, North Africa, Afghanistan & Pakistan': 'MNA', 'North America': 'NMA', 'South Asia': 'SAR', 'Sub-Saharan Africa': 'SSA'}
-        )
-        country_df['income_group'] = country_df.income_group.replace({'LMCs': 'LMICs', 'UMCs': 'UMICs'})
-        if country_df.loc['VEN', 'income_group'] == 'INXs': # use most recent available value for VEN
-            country_df.loc['VEN', 'income_group'] = 'UMICs'
         country_df.to_csv(wb_raw_path)
-        return country_df
     else:
         country_df = pd.read_csv(wb_raw_path, index_col='iso3')
+
+    country_df = country_df[country_df.region != 'Aggregates']
+    country_df['region'] = country_df.region.replace(
+        {'East Asia & Pacific': 'EAP', 'Europe & Central Asia': 'ECA', 'Latin America & Caribbean': 'LAC',
+         'Middle East, North Africa, Afghanistan & Pakistan': 'MNA', 'North America': 'NMA', 'South Asia': 'SAR',
+         'Sub-Saharan Africa': 'SSA'}
+    )
+    country_df['income_group'] = country_df.income_group.replace({'LMCs': 'LMICs', 'UMCs': 'UMICs'})
+
+    if country_df.loc['VEN', 'income_group'] == 'INXs':  # use most recent available value for VEN
+        country_df.loc['VEN', 'income_group'] = 'UMICs'
+    if country_df.loc['ETH', 'income_group'] == 'INXs':  # use most recent available value for ETH
+        country_df.loc['ETH', 'income_group'] = 'LICs'
     return country_df
 
 
@@ -257,6 +259,7 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
         'côte d’ivoire': 'CIV',
         'côte d\'ivoire': 'CIV',
         'cote d\'ivoire': 'CIV',
+        'ivory coast': 'CIV',
         'ethiopia pdr': 'ETH',
         'hong kong sar, china': 'HKG',
         'china, hong kong special administrative region': 'HKG',
@@ -303,6 +306,7 @@ def df_to_iso3(df_, column_name_, any_to_wb_=None, verbose_=True):
         'egypt, arab rep.': 'EGY',
         'gambia, the': 'GMB',
         'lao pdr': 'LAO',
+        'laos': 'LAO',
         'turkiye': 'TUR',
         'turkey (turkiye)': 'TUR',
         'turkey': 'TUR',
