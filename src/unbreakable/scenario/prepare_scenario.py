@@ -543,7 +543,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missi
 def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, verbose=True, recompute_=False,
                                        apply_exposure_bias=True, population_data=None, scale_exposure=None,
                                        scale_vulnerability=None, early_warning_data=None, reduction_vul=.2,
-                                       no_ew_hazards="Earthquake+Tsunami"):
+                                       no_ew_hazards="Earthquake+Tsunami", extrapolate_rp_=False):
     """
     Computes exposure and vulnerability data for countries and hazards.
 
@@ -573,7 +573,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
         # load total hazard losses per return period (on the country level)
         hazard_loss_rel = load_giri_hazard_loss_rel(
             gir_filepath_=os.path.join(root_dir_, "data/raw/GIR_hazard_loss_data/export_all_metrics.csv.zip"),
-            extrapolate_rp_=False,
+            extrapolate_rp_=extrapolate_rp_,
             climate_scenario="Existing climate",
             verbose=verbose,
         )
@@ -1228,8 +1228,8 @@ def prepare_scenario(scenario_params):
     run_params['verbose'] = run_params.get('verbose', True)
     run_params['countries'] = run_params.get('countries', 'all')
     run_params['hazards'] = run_params.get('hazards', 'all')
-    run_params['ppp_reference_year'] = run_params.get('ppp_reference_year', 2021)
-    run_params['include_spl'] = run_params.get('include_spl', False)
+    run_params['pip_reference_year'] = run_params.get('pip_reference_year', 2021)
+    run_params['include_poverty_data'] = run_params.get('include_poverty_data', False)
 
     macro_params['income_elasticity_eta'] = macro_params.get('income_elasticity_eta', 1.5)
     macro_params['discount_rate_rho'] = macro_params.get('discount_rate_rho', .06)
@@ -1241,20 +1241,23 @@ def prepare_scenario(scenario_params):
     hazard_params['hazard_protection'] = hazard_params.get('hazard_protection', 'FLOPROS')
     hazard_params['no_exposure_bias'] = hazard_params.get('no_exposure_bias', False)
     hazard_params['fa_threshold'] = hazard_params.get('fa_threshold', .9)
+    hazard_params['extrapolate_return_periods'] = hazard_params.get('extrapolate_return_periods', False)
 
     timestamp = time()
     # read WB data
     wb_data_macro, wb_data_cat_info = get_wb_data(
         root_dir=root_dir,
-        ppp_reference_year=run_params['ppp_reference_year'],
+        pip_reference_year=run_params['pip_reference_year'],
         include_remittances=True,
         impute_missing_data=True,
         drop_incomplete=True,
         recompute=run_params['recompute'],
         download=run_params['download'],
         verbose=run_params['verbose'],
-        include_spl=run_params['include_spl'],
+        include_poverty_data=run_params['include_poverty_data'],
         resolution=run_params['resolution'],
+        poverty_line=run_params['poverty_line'],
+        match_years=False,
     )
 
     # print duration
@@ -1342,6 +1345,7 @@ def prepare_scenario(scenario_params):
         early_warning_data=early_warning,
         no_ew_hazards="Earthquake+Tsunami",
         reduction_vul=macro_params['reduction_vul'],
+        extrapolate_rp_=hazard_params['extrapolate_return_periods'],
     )
     if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")

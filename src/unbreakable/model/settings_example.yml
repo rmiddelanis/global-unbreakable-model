@@ -1,7 +1,7 @@
 model_params:
   run_params:
     append_date: False
-    outpath: './results/example'
+    outpath: './results/res-0.1'
     verbose: False
   pds_params:
     pds_variant: 'no'
@@ -12,7 +12,7 @@ model_params:
     covered_loss_share: 0.4
 scenario_params:
   run_params:
-    outpath: './results/example'
+    outpath: './results/res-0.1'
     recompute: True
     recompute_hazard_protection: False
     download: False
@@ -20,19 +20,20 @@ scenario_params:
     countries: 'all'
     exclude_countries: ['THA']
     hazards: 'all'
-    ppp_reference_year: 2021
-    include_spl: False
-    resolution: .2
+    pip_reference_year: 2021
+    include_poverty_data: True
+    poverty_line: 3.0
+    resolution: .1
   macro_params:
     income_elasticity_eta: 1.5
     discount_rate_rho: .06
     axfin_impact: .1
     reduction_vul: .2
-#    early_warning_file: "/Users/robin/Documents/Karriere/Jobs/2023_The_World_Bank/03_projects/02_Hydromet/04_code/global-unbreakable-model/data/processed/ew/3__ALL_ODA+SIDS:S+UA_ew.csv"
   hazard_params:
     hazard_protection: 'FLOPROS'
     no_exposure_bias: False
     fa_threshold: .99
+    extrapolate_return_periods: True
   policy_params:
     scale_self_employment:
       parameter: 1
