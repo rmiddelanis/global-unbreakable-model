@@ -543,7 +543,7 @@ def apply_poverty_exposure_bias(root_dir_, exposure_fa_, resolution, guess_missi
 def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, verbose=True, recompute_=False,
                                        apply_exposure_bias=True, population_data=None, scale_exposure=None,
                                        scale_vulnerability=None, early_warning_data=None, reduction_vul=.2,
-                                       no_ew_hazards="Earthquake+Tsunami", extrapolate_rp_=False, new_min_rp_=1.0):
+                                       no_ew_hazards="Earthquake+Tsunami"):
     """
     Computes exposure and vulnerability data for countries and hazards.
 
@@ -573,10 +573,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
         # load total hazard losses per return period (on the country level)
         hazard_loss_rel = load_giri_hazard_loss_rel(
             gir_filepath_=os.path.join(root_dir_, "data/raw/GIR_hazard_loss_data/export_all_metrics.csv.zip"),
-            extrapolate_rp_=extrapolate_rp_,
             climate_scenario="Existing climate",
-            verbose=verbose,
-            new_min_rp_=new_min_rp_
         )
         update_data_coverage(root_dir_, 'hazard_loss', hazard_loss_rel.index.get_level_values('iso3').unique(), None)
 
@@ -1347,8 +1344,6 @@ def prepare_scenario(scenario_params):
         early_warning_data=early_warning,
         no_ew_hazards="Earthquake+Tsunami",
         reduction_vul=macro_params['reduction_vul'],
-        extrapolate_rp_=hazard_params['extrapolate_return_periods'],
-        new_min_rp_=hazard_params['new_min_rp']
     )
     if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")

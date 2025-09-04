@@ -1,7 +1,7 @@
 model_params:
   run_params:
     append_date: False
-    outpath: './results/res-0.1'
+    outpath: './results/test'
     verbose: False
   pds_params:
     pds_variant: 'no'
@@ -12,7 +12,7 @@ model_params:
     covered_loss_share: 0.4
 scenario_params:
   run_params:
-    outpath: './results/res-0.1'
+    outpath: './results/test'
     recompute: True
     recompute_hazard_protection: False
     download: False
@@ -23,7 +23,7 @@ scenario_params:
     pip_reference_year: 2021
     include_poverty_data: True
     poverty_line: 3.0
-    resolution: .1
+    resolution: .2
   macro_params:
     income_elasticity_eta: 1.5
     discount_rate_rho: .06
@@ -33,7 +33,6 @@ scenario_params:
     hazard_protection: 'FLOPROS'
     no_exposure_bias: False
     fa_threshold: .99
-    extrapolate_return_periods: True
   policy_params:
     scale_self_employment:
       parameter: 1

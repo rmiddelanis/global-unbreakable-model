@@ -30,8 +30,7 @@ import pandas as pd
 from unbreakable.misc.helpers import average_over_rp
 
 
-def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scenario='Existing climate', verbose=True,
-                              new_min_rp_ = 1.0, allow_max_rp_adjustment_=True):
+def load_giri_hazard_loss_rel(gir_filepath_, climate_scenario='Existing climate'):
     """
     Loads and processes GIRI (Global Infrastructure Risk Model and Resilience Index) hazard loss data.
 
@@ -40,9 +39,7 @@ def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scena
 
     Args:
         gir_filepath_ (str): Path to the GIR hazard loss data file (compressed CSV).
-        extrapolate_rp_ (bool): Whether to extrapolate return periods. Defaults to True.
         climate_scenario (str): Climate scenario to filter the data. Defaults to 'Existing climate'.
-        verbose (bool): Whether to print warnings and additional information. Defaults to True.
 
     Returns:
         pd.Series: A pandas Series with a MultiIndex of ['iso3', 'hazard', 'rp'] and values representing the
@@ -103,7 +100,7 @@ def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scena
     # set empty return (=AAL) periods to 0
     gir_data.rp = gir_data.rp.astype(object)
     gir_data.rp.fillna('AAL', inplace=True)
-    
+
     gir_data[['cap_stock', 'gdp']] = gir_data[['cap_stock_capita', 'gdp_capita']].mul(gir_data['pop'], axis=0)
     gir_macro = gir_data[['iso3', 'country', 'pop', 'cap_stock', 'gdp']].drop_duplicates().groupby(['iso3', 'country']).sum().reset_index('country')
     gir_loss = gir_data.groupby(['iso3', 'hazard', 'rp']).loss.sum().to_frame()
@@ -114,71 +111,7 @@ def load_giri_hazard_loss_rel(gir_filepath_, extrapolate_rp_=True, climate_scena
     frac_value_destroyed_pml = gir_loss.frac_value_destroyed.drop('AAL', level='rp')
     frac_value_destroyed_aal = gir_loss.frac_value_destroyed.xs('AAL', level='rp')
 
-    # check for incoherences
-    loss_incoherences = frac_value_destroyed_aal - average_over_rp(frac_value_destroyed_pml) < 0
-    if loss_incoherences.any():
-        print(f"Warning: AAL is smaller than the average loss over all return periods for"
-              f"{loss_incoherences.sum()} tuples. This will result "
-              f"in negative losses for additional return periods.")
-
-    if not extrapolate_rp_:
-        frac_value_destroyed_result = frac_value_destroyed_pml
-    else:
-        def add_rp(aal_data_, pml_data_, new_rp_, clip_lower=None):
-            smallest_rp = min(pml_data_.index.get_level_values('rp'))
-            largest_rp = max(pml_data_.index.get_level_values('rp'))
-            if new_rp_ < smallest_rp:
-                new_probability = 1 / new_rp_ - 1 / smallest_rp
-            elif new_rp_ > largest_rp:
-                new_probability = 1 / new_rp_
-            else:
-                raise ValueError("new_rp should be smaller than the smallest or larger than the largest return period in "
-                                 "pml_data")
-            # average_over_rp() averages return period losses, weighted with the probability of each return period, i.e.
-            # the inverse of the return period
-            res = pml_data_.unstack('rp')
-            res[new_rp_] = 0
-            res = res.stack('rp').sort_index()
-            res.loc[pd.IndexSlice[:, :, new_rp_]] = ((aal_data_ - average_over_rp(pml_data_).squeeze()) / new_probability).values
-            negative_results = res < 0
-            if np.any(negative_results):
-                print(f"Setting negative losses for return period {new_rp_} to 0 for {len(res[negative_results])} "
-                      f"entries.")
-                res[res < 0] = 0
-            if clip_lower is not None:
-                res.loc[pd.IndexSlice[:, :, new_rp_]] = res.loc[pd.IndexSlice[:, :, new_rp_]].clip(lower=clip_lower).values
-            # check that the new data is consistent with the overall AAL. Values should be 0 (tolerance 1e-10)
-            max_deviation = (average_over_rp(res).squeeze() - aal_data_).abs().max()
-            if max_deviation > 1e-10 and verbose:
-                print(f"Warning: new data is not consistent with the overall AAL, which may be due to the new return "
-                      f"period, or an original mismatch between AAL and PML."
-                      f" The difference of the AAL to the return period average is up to {max_deviation}.")
-            return res
-
-        # add frequent events
-        min_pml_rp = min(frac_value_destroyed_pml.index.get_level_values('rp'))
-        frac_value_destroyed_completed = add_rp(frac_value_destroyed_aal, frac_value_destroyed_pml, new_min_rp_)
-
-        # find countries where the loss for the new return period is higher than the loss for the previously smallest rp
-        overflow_factor = 0.8
-        overflow_countries = (frac_value_destroyed_completed.loc[:, :, new_min_rp_]
-                              > overflow_factor * frac_value_destroyed_completed.loc[:, :, min_pml_rp])
-        overflow_countries = overflow_countries[overflow_countries].index.values
-
-        # add infrequent events for overflow countries
-        if len(overflow_countries) > 0:
-            print("overflow in {n} (iso3, event) tuples.".format(n=len(overflow_countries)))
-            # clip the new return period loss s.th. it is not higher than the loss for the previously smallest rp times
-            # the overflow_factor
-            frac_value_destroyed_completed.loc[:, :, new_min_rp_] = frac_value_destroyed_completed.loc[:, :, new_min_rp_].clip(
-                upper=frac_value_destroyed_completed.loc[:, :, min_pml_rp] * overflow_factor
-            )
-            if allow_max_rp_adjustment_:
-                # add the remaining loss to the new maximum return period
-                max_rp = frac_value_destroyed_completed.index.get_level_values('rp').max()
-                print("Adjusting maximum return period {rp}.".format(rp=max_rp))
-                frac_value_destroyed_completed = add_rp(frac_value_destroyed_aal, frac_value_destroyed_completed.drop(max_rp, level='rp'), max_rp, clip_lower=frac_value_destroyed_completed.xs(max_rp, level='rp'))
-        frac_value_destroyed_result = frac_value_destroyed_completed
+    frac_value_destroyed_result = frac_value_destroyed_pml
 
     # drop zero values
     zero_values = frac_value_destroyed_result.groupby(['iso3', 'hazard']).apply(lambda x: (x == 0).all())
@@ -191,8 +124,6 @@ if __name__ == '__main__':
     root_dir = os.getcwd()
     gir_filepath = os.path.join(root_dir, "data/raw/GIR_hazard_loss_data/export_all_metrics.csv.zip")
     default_rp = "default_rp"
-    extrapolate_rp = False
     load_giri_hazard_loss_rel(
         gir_filepath_=gir_filepath,
-        extrapolate_rp_=extrapolate_rp,
     )
