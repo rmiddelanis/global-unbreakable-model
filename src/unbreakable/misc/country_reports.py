@@ -39,7 +39,7 @@ from matplotlib.transforms import blended_transform_factory
 import numpy as np
 import pandas as pd
 from unbreakable.misc.helpers import average_over_rp, get_population_scope_indices, calculate_average_recovery_duration
-from unbreakable.post_processing.post_processing import preprocess_simulation_data
+from unbreakable.post_processing.post_processing import process_simulation_ensemble
 import seaborn as sns
 import xarray as xr
 from scipy.interpolate import RegularGridInterpolator
@@ -1449,7 +1449,7 @@ if __name__ == '__main__':
     report_outpath = args.report_outpath
 
     # Preprocess simulation data
-    cat_info_res, event_res, macro_res, poverty_res, hazard_prot_sc, cat_info_sc, macro_sc, hazard_ratios_sc = preprocess_simulation_data(simulation_outputs_dir, store_preprocessed, concat_policy_parameters=concat_policy_params)
+    cat_info_res, event_res, macro_res, poverty_res, hazard_prot_sc, cat_info_sc, macro_sc, hazard_ratios_sc = process_simulation_ensemble(simulation_outputs_dir, store_preprocessed, concat_policy_parameters=concat_policy_params)
 
     # Load preprocessed inputs
     capital_shares, data_coverage, gini_index, poverty_rates = load_model_data(preprocessed_inputs_dir, raw_data_dir)
