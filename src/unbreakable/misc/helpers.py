@@ -142,69 +142,76 @@ def concat_categories(p, np, index):
     return y.squeeze()
 
 
-def xr_average_over_rp(da, protection=None):
-    """
-    Compute the average of an xarray object over return periods, weighted by probabilities.
-
-    Args:
-        da (xr.DataArray or xr.Dataset): Input xarray object.
-        protection (optional): Protection levels to adjust probabilities. Can be a pandas Series, DataFrame, or xarray object.
-
-    Returns:
-        xr.DataArray or xr.Dataset: Averaged xarray object.
-
-    Raises:
-        ValueError: If the input is not an xarray object.
-    """
-    if type(da) not in (xr.DataArray, xr.Dataset):
-        raise ValueError("da should be an xarray data object. Use average_over_rp for pandas objects.")
-    return_periods = da.coords['rp']
-    rp_probabilities = 1 / return_periods - np.append(1 / return_periods, 0)[1:]
-    probabilities = rp_probabilities.broadcast_like(da)
-
-    if protection is not None:
-        if type(protection) is pd.Series:
-            protection = xr.DataArray.from_series(protection)
-        elif type(protection) is pd.DataFrame:
-            protection = xr.DataArray.from_series(protection.squeeze())
-        elif type(protection) is xr.Dataset:
-            protection = protection.broadcast_like(da).protection
-        protection = protection.broadcast_like(da).fillna(0)
-        probabilities = probabilities.where(protection < return_periods.broadcast_like(da), 0)
-
-    return (da * probabilities).sum('rp')
-
-
-def average_over_rp(df, protection=None):
+def average_over_rp(d_in, protection_=None, zero_rp=1):
     """
     Aggregate outputs over return periods, weighted by probabilities.
 
     Args:
-        df (pd.DataFrame or pd.Series): Input DataFrame or Series with a 'rp' level in the index.
-        protection (optional): Protection levels to adjust probabilities. Can be a pandas Series or DataFrame.
+        d_in (pd.DataFrame or pd.Series): Input DataFrame or Series with a 'rp' level in the index.
+        protection_ (optional): Protection levels to adjust probabilities. Can be a pandas Series or DataFrame.
 
     Returns:
         pd.DataFrame or pd.Series: Aggregated object with probabilities applied.
     """
 
-    # compute probability of each return period
-    return_periods = df.index.get_level_values('rp').unique()
-    rp_probabilities = pd.Series(1 / return_periods - np.append(1 / return_periods, 0)[1:], index=return_periods)
+    if isinstance(d_in, pd.Series):
+        df_in = d_in.to_frame()
+    else:
+        df_in = d_in.copy()
 
-    # match return periods and their frequency
-    probabilities = pd.Series(data=df.reset_index('rp').rp.replace(rp_probabilities).values, index=df.index,
-                              name='probability')
+    if 'rp' not in df_in.index.names:
+        raise ValueError("Need index level 'rp' to average over return periods.")
+
+    if zero_rp is not None:
+        if zero_rp <= 0:
+            raise ValueError("zero_rp should be > 0")
+        elif zero_rp not in df_in.index.get_level_values('rp'):
+            pairs = df_in.index.droplevel("rp").unique()
+            new_index = pd.MultiIndex.from_arrays(
+                [pairs.get_level_values(0), pairs.get_level_values(1), [zero_rp] * len(pairs)],
+                names=df_in.index.names
+            )
+            new_rows = pd.DataFrame(0, index=new_index, columns=df_in.columns)
+            df = pd.concat([df_in, new_rows]).sort_index().copy()
+        else:
+            print(f"Warning: zero_rp={zero_rp} was provided for return period averaging, but return period is "
+                  f"already in df_in. Ignoring zero_rp.")
+            df = df_in.copy()
+    else:
+        df = df_in.copy()
+
+    group_cols = [c for c in df.reset_index().columns if c not in df.columns and c != "rp"]
 
     # removes events below the protection level
-    if protection is not None:
-        protection_index = pd.merge(probabilities, protection, left_index=True, right_index=True, how='left').protection.values >= probabilities.reset_index('rp').rp.values
-        probabilities.loc[protection_index] = 0
+    if protection_ is not None:
+        if isinstance(protection_, pd.DataFrame):
+            protection = protection_.protection.copy().round(3)
+        else:
+            protection = protection_.copy().round(3)
+        protection = protection[protection > min(df.index.get_level_values('rp').unique())]
+        protected_index = protection.rename('rp').to_frame().set_index('rp', append=True).index
+        protected_levels = pd.DataFrame(np.nan, index=protected_index.difference(df.index), columns=df.columns)
+        df = pd.concat([df, protected_levels]).sort_index()
 
-    # average weighted by probability
-    res = df.mul(probabilities, axis=0).reset_index('rp', drop=True)
-    res = res.groupby(level=list(range(res.index.nlevels))).sum()
-    if type(df) is pd.Series:
-        res.name = df.name
+        if group_cols:
+            df = df.reset_index().set_index(group_cols).groupby(group_cols).apply(lambda g: g.reset_index().drop(columns=group_cols).set_index('rp').interpolate(method='index'))
+        else:
+            df = df.sort_index().interpolate(method='index')
+
+        df = df[((df.reset_index('rp').rp - protection).fillna(0) >= 0).values]
+
+    def calculate_rp_average(g):
+        g_ = g.sort_index().copy()
+        g_.loc[np.inf] = g_.iloc[-1]
+        rp_weights = pd.Series(1 / g_.index, index=g_.index).diff(-1).loc[g.sort_index().index]
+        return pd.DataFrame((g_.values[:-1] + g_.values[1:]) / 2, index=g.sort_index().index, columns=g_.columns).mul(rp_weights, axis=0).sum()
+
+    res = df.groupby(group_cols, group_keys=False).apply(lambda g: calculate_rp_average(g.droplevel(group_cols)))
+    res.loc[d_in.droplevel('rp').index.unique().difference(res.index)] = 0
+
+    if isinstance(d_in, pd.Series):
+        res.name = d_in.name
+        res = res.squeeze()
     return res
 
 

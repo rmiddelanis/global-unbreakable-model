@@ -573,9 +573,7 @@ def compute_exposure_and_vulnerability(root_dir_, fa_threshold_, resolution, ver
         # load total hazard losses per return period (on the country level)
         hazard_loss_rel = load_giri_hazard_loss_rel(
             gir_filepath_=os.path.join(root_dir_, "data/raw/GIR_hazard_loss_data/export_all_metrics.csv.zip"),
-            extrapolate_rp_=False,
             climate_scenario="Existing climate",
-            verbose=verbose,
         )
         update_data_coverage(root_dir_, 'hazard_loss', hazard_loss_rel.index.get_level_values('iso3').unique(), None)
 
@@ -1228,8 +1226,8 @@ def prepare_scenario(scenario_params):
     run_params['verbose'] = run_params.get('verbose', True)
     run_params['countries'] = run_params.get('countries', 'all')
     run_params['hazards'] = run_params.get('hazards', 'all')
-    run_params['ppp_reference_year'] = run_params.get('ppp_reference_year', 2021)
-    run_params['include_spl'] = run_params.get('include_spl', False)
+    run_params['pip_reference_year'] = run_params.get('pip_reference_year', 2021)
+    run_params['include_poverty_data'] = run_params.get('include_poverty_data', False)
 
     macro_params['income_elasticity_eta'] = macro_params.get('income_elasticity_eta', 1.5)
     macro_params['discount_rate_rho'] = macro_params.get('discount_rate_rho', .06)
@@ -1241,20 +1239,24 @@ def prepare_scenario(scenario_params):
     hazard_params['hazard_protection'] = hazard_params.get('hazard_protection', 'FLOPROS')
     hazard_params['no_exposure_bias'] = hazard_params.get('no_exposure_bias', False)
     hazard_params['fa_threshold'] = hazard_params.get('fa_threshold', .9)
+    hazard_params['extrapolate_return_periods'] = bool(hazard_params.get('extrapolate_to_rp', False))
+    hazard_params['new_min_rp'] = hazard_params.get('extrapolate_to_rp', None)
 
     timestamp = time()
     # read WB data
     wb_data_macro, wb_data_cat_info = get_wb_data(
         root_dir=root_dir,
-        ppp_reference_year=run_params['ppp_reference_year'],
+        pip_reference_year=run_params['pip_reference_year'],
         include_remittances=True,
         impute_missing_data=True,
         drop_incomplete=True,
         recompute=run_params['recompute'],
         download=run_params['download'],
         verbose=run_params['verbose'],
-        include_spl=run_params['include_spl'],
+        include_poverty_data=run_params['include_poverty_data'],
         resolution=run_params['resolution'],
+        poverty_line=run_params['poverty_line'],
+        match_years=False,
     )
 
     # print duration

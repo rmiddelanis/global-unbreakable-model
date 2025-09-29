@@ -29,6 +29,9 @@ import os
 import pandas as pd
 from pandas_datareader import wb
 import statsmodels.api as sm
+from scipy.stats import norm
+from scipy.optimize import minimize
+from scipy.interpolate import PchipInterpolator
 from unbreakable.misc.helpers import get_country_name_dicts, df_to_iso3, update_data_coverage, get_world_bank_countries
 import numpy as np
 
@@ -167,8 +170,61 @@ def broadcast_to_population_resolution(data, resolution):
     return data_
 
 
-def guess_missing_transfers_shares(cat_info_df_, root_dir_, country_classification_, any_to_wb, wb_raw_data_path,
-                                   download, verbose=True, reg_data_outpath=None):
+def lorenz_lognormal(p_, sigma_):
+    """Lorenz curve for lognormal distribution"""
+    # Lorenz curve for lognormal distribution: L(p) = Φ(Φ^(-1)(p) - σ)
+    # Irwin, R. J., & Hautus, M. J. (2015). Lognormal Lorenz and normal receiver operating characteristic curves as mirror images. Royal Society Open Science, 2(2), 140280.
+    return norm.cdf(norm.ppf(p_) - sigma_)
+
+
+def lorenz_derivative(p_, sigma_):
+    z = norm.ppf(p_)
+    return np.exp(sigma_ * z - 0.5 * sigma_ * sigma_)
+
+
+def upscale_income_resolution(income_shares_, num_quantiles=100):
+    def fit_lorenz_sigma(p_, cum_income_):
+        """Fit sigma for one country given cumulative points"""
+
+        def objective(sigma):
+            pred = lorenz_lognormal(p_[:-1], sigma)  # exclude p=1
+            return np.sum((cum_income_[:-1] - pred) ** 2)
+
+        res = minimize(objective, x0=np.array([1]), bounds=[(1e-3, 10)])
+        return res.x[0]
+
+    def upscale_country(shares_, p_target_):
+        """Upscale from quintiles to arbitrary resolution using Lorenz lognormal"""
+        # cumulative income shares
+        cum_income = shares_.cumsum().values
+        p_data = shares_.index.values.astype(float)
+
+        # fit sigma
+        sigma_hat = fit_lorenz_sigma(p_data, cum_income)
+
+        # predict Lorenz curve on target grid
+        cum_income_pred = lorenz_lognormal(p_target_, sigma_hat)
+        income_pred = np.diff(np.insert(cum_income_pred, 0, 0))  # non-cumulative shares
+
+        return pd.Series(income_pred, index=np.round(p_target, 3)), sigma_hat
+
+    p_target = np.linspace(1 / num_quantiles, 1, num_quantiles)
+    res = []
+    sigma_values = []
+    for iso3, country_data in income_shares_.groupby(level=0):
+        country_data = country_data.droplevel('iso3')
+        shares_pred, sigma_pred = upscale_country(country_data, p_target)
+        shares_pred = pd.DataFrame({"iso3": iso3, "income_cat": p_target.round(3), "income_share": shares_pred})
+        sigma_pred = pd.DataFrame({"iso3": [iso3], "sigma": [sigma_pred]})
+        res.append(shares_pred)
+        sigma_values.append(sigma_pred)
+    res = pd.concat(res, ignore_index=True).set_index(['iso3', 'income_cat']).squeeze()
+    sigma_values = pd.concat(sigma_values, ignore_index=True).set_index(['iso3']).squeeze()
+    return res, sigma_values
+
+
+def estimate_missing_transfer_shares(cat_info_df_, root_dir_, country_classification_, any_to_wb, wb_raw_data_path,
+                                     download, verbose=True, reg_data_outpath=None):
     """
     Predicts missing transfer shares using regression models. Regression specification is hard-coded.
 
@@ -280,22 +336,38 @@ def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, wb_raw_data_
     return data
 
 
-def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, impute_missing_data=False,
-                drop_incomplete=True, recompute=True, verbose=True, save=True, include_spl=False, resolution=.2,
-                download=False):
+def load_pip_data(wb_raw_data_path_, download_, poverty_line_, pip_reference_year_):
+    pip_data_path = os.path.join(wb_raw_data_path_, f"pip_data_ppp{pip_reference_year_}_povline{poverty_line_}.csv")
+    if download_ or not os.path.exists(pip_data_path):
+        pip_url = f"https://api.worldbank.org/pip/v1/pip?country=all&year=all&povline={poverty_line_}&fill_gaps=false&welfare_type=+++welfare_type+++&reporting_level=national&additional_ind=false&ppp_version={pip_reference_year_}&identity=PROD&format=csv"
+        pip_data = pd.concat(
+            [pd.read_csv(pip_url.replace("+++welfare_type+++", welfare_type)) for welfare_type in
+             ['income', 'consumption']],
+            ignore_index=True
+        )
+        pip_data.to_csv(pip_data_path, index=False)
+    else:
+        pip_data = pd.read_csv(pip_data_path)
+    pip_data = pip_data.rename(columns={'country_code': 'iso3', 'reporting_year': 'year'})
+    pip_data = pip_data.set_index(['iso3', 'year', 'welfare_type'])
+    return pip_data
+
+
+def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, match_years=False,
+                drop_incomplete=True, recompute=True, verbose=True, include_poverty_data=False, resolution=.2,
+                download=False, poverty_line=3.0, pip_reference_year=2021):
     """
     Downloads and processes World Bank socio-economic data, including macroeconomic and income-level data.
 
     Args:
         root_dir (str): Root directory of the project.
-        ppp_reference_year (int): Reference year for PPP data. Defaults to 2021.
+        pip_reference_year (int): Reference year for PPP data. Defaults to 2021.
         include_remittances (bool): Whether to include remittance data. Defaults to True.
         impute_missing_data (bool): Whether to impute missing data. Defaults to False.
         drop_incomplete (bool): Whether to drop countries with incomplete data. Defaults to True.
         recompute (bool): Whether to force recomputation of data. Defaults to True.
         verbose (bool): Whether to print verbose output. Defaults to True.
-        save (bool): Whether to save the processed data. Defaults to True.
-        include_spl (bool): Whether to include shared prosperity line data. Defaults to False.
+        include_poverty_data (bool): Whether to include shared prosperity line data. Defaults to False.
         resolution (float): Resolution for income shares. Defaults to 0.2.
 
     Returns:
@@ -313,97 +385,95 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         macro_df = pd.read_csv(macro_path, index_col='iso3')
         cat_info_df = pd.read_csv(cat_info_path, index_col=['iso3', 'income_cat'])
         return macro_df, cat_info_df
+
     print(f"Recomputing World Bank data with{'out' if not download else ''} downloading data...")
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
-    # World Development Indicators
-    if ppp_reference_year == 2021:
-        gdp_pc_pp = get_wb_series('NY.GDP.PCAP.PP.KD', "gdp_pc_pp", wb_raw_data_path, download)  # Gdp per capita ppp (source: International Comparison Program)
-        gni_pc_pp = get_wb_series('NY.GNP.PCAP.PP.KD', 'gni_pc_pp', wb_raw_data_path, download)
-    elif ppp_reference_year == 2017:
-        wb_wdi = pd.read_excel(os.path.join(root_dir, "./data/raw/WB_socio_economic_data/WB-WDI.xlsx"), sheet_name='Data')
-        wb_wdi = wb_wdi.rename({'Economy Name': 'country'}, axis=1)
-        wb_wdi['country'] = wb_wdi['country'].replace({'Vietnam': 'Viet Nam'})
-
-        gni_pc_pp = wb_wdi[wb_wdi['Indicator ID'] == 'WB.WDI.NY.GNP.PCAP.PP.KD'].set_index('country').iloc[:, 8:]
-        gni_pc_pp.columns.name = 'year'
-        gni_pc_pp = gni_pc_pp.stack().rename('gni_pc_pp')
-
-        gdp_pc_pp = wb_wdi[wb_wdi['Indicator ID'] == 'WB.WDI.NY.GDP.PCAP.PP.KD'].set_index('country').iloc[:, 8:]
-        gdp_pc_pp.columns.name = 'year'
-        gdp_pc_pp = gdp_pc_pp.stack().rename('gdp_pc_pp')
-    else:
-        raise ValueError("PPP reference year not supported")
-    gdp_pc_pp = gdp_pc_pp.drop(np.intersect1d(gdp_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if gdp_pc_pp.index.nlevels > 1 else None)
-    gdp_pc_pp = df_to_iso3(gdp_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
-    gdp_pc_pp = gdp_pc_pp.set_index(list(np.intersect1d(['iso3', 'year'], gdp_pc_pp.columns))).drop('country', axis=1)
-
-    gni_pc_pp = gni_pc_pp.drop(np.intersect1d(gni_pc_pp.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if gni_pc_pp.index.nlevels > 1 else None)
-    gni_pc_pp = df_to_iso3(gni_pc_pp.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
-    gni_pc_pp = gni_pc_pp.set_index(list(np.intersect1d(['iso3', 'year'], gni_pc_pp.columns))).drop('country', axis=1)
-
-    pop = get_wb_series('SP.POP.TOTL', "pop", wb_raw_data_path, download)  # population (source: World Development Indicators)
-    pop = pop.drop(np.intersect1d(pop.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if pop.index.nlevels > 1 else None)
-    pop = df_to_iso3(pop.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
-    pop = pop.set_index(list(np.intersect1d(['iso3', 'year'], pop.columns))).drop('country', axis=1)
-
-    gini_index = get_wb_series('SI.POV.GINI', 'gini_index', wb_raw_data_path, download)
-    gini_index = gini_index.drop(np.intersect1d(gini_index.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if gini_index.index.nlevels > 1 else None).dropna()
-    gini_index = df_to_iso3(gini_index.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
-    gini_index = gini_index.set_index(list(np.intersect1d(['iso3', 'year'], gini_index.columns))).drop('country', axis=1)
-
-    country_classification = get_world_bank_countries(wb_raw_data_path, download)
-
-    # if include_spl, make sure that years of macro data points match
-    if include_spl:
-        pip_data = pd.read_csv(os.path.join(root_dir, "data/raw/WB_socio_economic_data/2025-03-07_pip_data.csv"))
-        pip_data = pip_data.rename({'country_code': 'iso3', 'reporting_year': 'year'}, axis=1)
-        pip_data.year = pip_data.year.astype(str)
-        pip_data.set_index(['iso3', 'year', 'reporting_level', 'welfare_type'], inplace=True)
-        pip_data = pip_data.xs('national', level='reporting_level')
-        spl = pd.merge(
-            pip_data.xs('income', level='welfare_type').spl,
-            pip_data.xs('consumption', level='welfare_type').spl,
-            left_index=True, right_index=True, how='outer'
-        )
-        spl = spl.spl_x.fillna(spl.spl_y).rename('spl').to_frame()
-
-        macro_df = pd.concat([gdp_pc_pp, gni_pc_pp, pop, spl, country_classification], axis=1).dropna()
-        macro_df = get_most_recent_value(macro_df)
-    else:
-        macro_df = pd.concat([get_most_recent_value(gdp_pc_pp), get_most_recent_value(gni_pc_pp), get_most_recent_value(pop), get_most_recent_value(gini_index), country_classification], axis=1)
-
-    # income shares (source: Poverty and Inequality Platform)
+    # Load income shares by quintile or decile, upscale depending on resolution
     if resolution == .2:
-        income_shares = download_quintile_data(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
+        # income shares (source: Poverty and Inequality Platform)
+        income_shares_unscaled = download_quintile_data(name='income_share', id_q1='SI.DST.FRST.20', id_q2='SI.DST.02nd.20',
                                                id_q3='SI.DST.03rd.20', id_q4='SI.DST.04th.20', id_q5='SI.DST.05th.20',
                                                wb_raw_data_path=wb_raw_data_path, download=download,
                                                most_recent_value=False, upper_bound=100, lower_bound=0) / 100
         # make sure income shares add up to 1
-        income_shares /= income_shares.unstack('income_cat').sum(axis=1)
-        income_shares = df_to_iso3(income_shares.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3').set_index(['iso3', 'year', 'income_cat']).drop('country', axis=1)
-        income_shares = get_most_recent_value(income_shares.dropna())
-    elif resolution == .1:
-        pip_data = pd.read_csv(os.path.join(root_dir, "data/raw/WB_socio_economic_data/2025-03-07_pip_data.csv"))
-        pip_data = pip_data.rename({'country_code': 'iso3', 'reporting_year': 'year'}, axis=1)
-        pip_data.year = pip_data.year.astype(str)
-        pip_data.set_index(['iso3', 'year', 'reporting_level', 'welfare_type'], inplace=True)
-        pip_data = pip_data.xs('national', level='reporting_level')
-        pip_data = pip_data[[f'decile{i + 1}' for i in range(10)]].dropna()
-        pip_data.columns = np.round(np.linspace(.1, 1, 10), 1)
-        pip_data = pip_data.stack()
-        pip_data.index.names = ['iso3', 'year', 'welfare_type', 'income_cat']
-        income_shares = pd.merge(
-            pip_data.xs('income', level='welfare_type').rename('income_welfare'),
-            pip_data.xs('consumption', level='welfare_type').rename('consumption_welfare'),
+        income_shares_unscaled /= income_shares_unscaled.unstack('income_cat').sum(axis=1)
+        income_shares_unscaled = df_to_iso3(income_shares_unscaled.reset_index(), 'country', any_to_wb, verbose).dropna(
+            subset='iso3').set_index(['iso3', 'year', 'income_cat']).drop('country', axis=1)
+        income_shares_unscaled = get_most_recent_value(income_shares_unscaled.dropna())
+        income_shares = income_shares_unscaled
+    elif resolution < .2:
+        pip_data = load_pip_data(wb_raw_data_path, download, poverty_line, pip_reference_year)
+
+        income_shares_unscaled = pip_data[[f"decile{i}" for i in range(1, 11)]]
+        income_shares_unscaled.columns = [round(i / 10, 1) for i in range(1, 11)]
+        income_shares_unscaled = income_shares_unscaled.stack().rename('income_share')
+        income_shares_unscaled.index.names = ['iso3', 'year', 'welfare_type', 'income_cat']
+        income_shares_unscaled = pd.merge(
+            income_shares_unscaled.xs('income', level='welfare_type'),
+            income_shares_unscaled.xs('consumption', level='welfare_type'),
             left_index=True, right_index=True, how='outer'
         )
-        income_shares = income_shares.income_welfare.fillna(income_shares.consumption_welfare).rename('income_share').to_frame()
-        income_shares = get_most_recent_value(income_shares)
-    else:
-        raise ValueError(f"Resolution {resolution} not supported")
-    # ASPIRE
+        income_shares_unscaled = income_shares_unscaled.income_share_x.fillna(income_shares_unscaled.income_share_y).rename(
+            'income_share').to_frame()
+        income_shares_unscaled.sort_values(by=['iso3', 'year', 'income_share'])
+        income_shares_unscaled = get_most_recent_value(income_shares_unscaled.dropna())
 
+        if resolution != .1:
+            income_shares, _ = upscale_income_resolution(income_shares_unscaled, int(1 / resolution))
+        else:
+            income_shares = income_shares_unscaled
+    else:
+        raise ValueError("Resolution downscaling not supported")
+
+    # World Development Indicators
+    load_indices = {
+        'gdp_pc_pp': 'NY.GDP.PCAP.PP.KD',  # Gdp per capita ppp (source: International Comparison Program)
+        'gni_pc_pp': 'NY.GNP.PCAP.PP.KD',  # Gni per capita ppp (source: World Development Indicators)
+        'pop': 'SP.POP.TOTL',  # population (source: World Development Indicators)
+    }
+
+    wb_datasets = []
+    for key, wb_id in load_indices.items():
+        ds = get_wb_series(wb_id, key, wb_raw_data_path, download)
+        ds = ds.drop(np.intersect1d(ds.index.get_level_values('country').unique(), AGG_REGIONS), level='country' if ds.index.nlevels > 1 else None)
+        ds = df_to_iso3(ds.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
+        ds = ds.set_index(list(np.intersect1d(['iso3', 'year'], ds.columns))).drop('country', axis=1)
+        wb_datasets.append(ds)
+
+    if include_poverty_data:
+        pip_data = load_pip_data(wb_raw_data_path, download, poverty_line, pip_reference_year)
+        pip_cols = {
+            'headcount': 'extr_pov_rate',
+            'poverty_line': 'extr_pov_line',
+            'spr': 'soc_pov_rate',
+            'spl': 'soc_pov_line'
+        }
+        for col, var_name in pip_cols.items():
+            pip_var_data = pd.merge(
+                pip_data.xs('income', level='welfare_type')[col],
+                pip_data.xs('consumption', level='welfare_type')[col],
+                left_index=True, right_index=True, how='outer'
+            )
+            pip_var_data = pip_var_data[col+'_x'].fillna(pip_var_data[col+'_y']).rename(var_name).to_frame()
+            wb_datasets.append(pip_var_data)
+
+    if not match_years:
+        macro_df = pd.concat([get_most_recent_value(wb_ds) if 'year' in wb_ds.index.names else wb_ds for wb_ds in wb_datasets], axis=1)
+    else:
+        macro_df = get_most_recent_value(pd.concat(wb_datasets, axis=1))
+
+    country_classification = get_world_bank_countries(wb_raw_data_path, download)
+    macro_df = pd.concat([macro_df, country_classification], axis=1)
+
+    # calculate adjusted poverty lines that match reported poverty rates
+    if include_poverty_data:
+        _, sigma_vals = upscale_income_resolution(income_shares_unscaled, num_quantiles=100)
+        common_countries = np.intersect1d(macro_df.index.get_level_values('iso3').unique(), sigma_vals.index)
+        macro_df['extr_pov_line_adj'] = (lorenz_derivative(macro_df['extr_pov_rate'].loc[common_countries], sigma_vals.loc[common_countries]) * macro_df.loc[common_countries, 'gdp_pc_pp']).clip(lower=poverty_line) / 365
+        macro_df['soc_pov_line_adj'] = (lorenz_derivative(macro_df['soc_pov_rate'].loc[common_countries], sigma_vals.loc[common_countries]) * macro_df.loc[common_countries, 'gdp_pc_pp']).clip(lower=macro_df['soc_pov_line']) / 365
+
+    # ASPIRE
     # Adequacies
     # Total transfer amount received by all beneficiaries in a population group as a share of the total welfare of
     # beneficiaries in that group
@@ -452,7 +522,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
     update_data_coverage(root_dir, 'transfers', transfers.unstack('income_cat').dropna().index.unique(), None)
 
     if impute_missing_data:
-        transfers = guess_missing_transfers_shares(transfers.to_frame(), root_dir, country_classification, any_to_wb, wb_raw_data_path, download, verbose, transfers_regr_data_path).squeeze()
+        transfers = estimate_missing_transfer_shares(transfers.to_frame(), root_dir, country_classification, any_to_wb, wb_raw_data_path, download, verbose, transfers_regr_data_path).squeeze()
 
     transfers = broadcast_to_population_resolution(transfers, resolution)
 
@@ -471,8 +541,7 @@ def get_wb_data(root_dir, ppp_reference_year=2021, include_remittances=True, imp
         macro_df = macro_df.loc[complete_countries]
         cat_info_df = cat_info_df.loc[complete_countries]
 
-    if save:
-        macro_df.to_csv(macro_path)
-        cat_info_df.to_csv(cat_info_path)
-        pd.concat([adequacy_remittances, adequacy_all_prot_lab, coverage_remittances, coverage_all_prot_lab], axis=1).to_csv(rem_ade_path)
+    macro_df.to_csv(macro_path)
+    cat_info_df.to_csv(cat_info_path)
+    pd.concat([adequacy_remittances, adequacy_all_prot_lab, coverage_remittances, coverage_all_prot_lab], axis=1).to_csv(rem_ade_path)
     return macro_df, cat_info_df
