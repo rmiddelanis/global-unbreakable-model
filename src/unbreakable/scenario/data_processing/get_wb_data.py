@@ -31,7 +31,12 @@ from pandas_datareader import wb
 import statsmodels.api as sm
 from scipy.stats import norm
 from scipy.optimize import minimize
-from scipy.interpolate import PchipInterpolator
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import LassoCV
+from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+
 from unbreakable.misc.helpers import get_country_name_dicts, df_to_iso3, update_data_coverage, get_world_bank_countries
 import numpy as np
 
@@ -223,13 +228,13 @@ def upscale_income_resolution(income_shares_, num_quantiles=100):
     return res, sigma_values
 
 
-def estimate_missing_transfer_shares(cat_info_df_, regression_spec_, root_dir_, any_to_wb, wb_raw_data_path, verbose=True,
+def estimate_missing_transfer_shares(transfers_, regression_params_, root_dir_, any_to_wb, wb_raw_data_path, verbose=True,
                                      reg_data_outpath=None, tables_outpath=None, download=False):
     """
     Predicts missing transfer shares using regression models. Regression specification is hard-coded.
 
     Args:
-        cat_info_df_ (pd.DataFrame): DataFrame containing category information with transfer shares.
+        transfers_ (pd.DataFrame): DataFrame containing category information with transfer shares.
         root_dir_ (str): Root directory of the project.
         any_to_wb (dict): Mapping of country names to World Bank ISO3 codes.
         verbose (bool): Whether to print verbose output. Defaults to True.
@@ -239,9 +244,9 @@ def estimate_missing_transfer_shares(cat_info_df_, regression_spec_, root_dir_, 
         pd.DataFrame: Updated category information with predicted transfer shares.
     """
 
-    if regression_spec_ is None:
+    if regression_params_ is None:
         print("No regression specification provided, skipping transfer share estimation.")
-        return cat_info_df_
+        return transfers_
 
     load_indices = {
         'REM': 'BX.TRF.PWKR.DT.GD.ZS',
@@ -264,15 +269,14 @@ def estimate_missing_transfer_shares(cat_info_df_, regression_spec_, root_dir_, 
 
     ilo_sp_exp = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/ILO_WSPR_SP_exp.csv'),
                              index_col='iso3', na_values=['...', '…']).drop('country', axis=1).rename(columns={'exp_SP_GDP': 'SOC'})
-    x = pd.concat([wb_datasets, ilo_sp_exp, pd.get_dummies(wb_countries['region'].apply(lambda x_: "I_{" + f"{x_}" + "}")),
-                   pd.get_dummies(wb_countries['income_group'].apply(lambda x_: "I_{" + f"{x_}" + "}"))], axis=1)
+    x = pd.concat([wb_datasets, ilo_sp_exp, wb_countries], axis=1)
 
     x['FSY'] = False
     fsy_countries = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/fsy_countries.csv'),
                                 header=None)
     fsy_countries = df_to_iso3(fsy_countries, 0, any_to_wb, verbose).iso3.values
     x.loc[fsy_countries, 'FSY'] = True
-    y = cat_info_df_.transfers.unstack('income_cat') * 100
+    y = transfers_.transfers.unstack('income_cat') * 100
     regression_data = pd.concat([x, y], axis=1).dropna(how='all')
 
     if reg_data_outpath is not None:
@@ -286,125 +290,294 @@ def estimate_missing_transfer_shares(cat_info_df_, regression_spec_, root_dir_, 
         1.0: r'$\gamma_{q=5}^{sp,pt}$',
     }
 
-    var_order = ['GDP_{pc}', 'SOC', 'REM', 'UNE', 'I_{FSY}', 'I_{HICs}', 'I_{UMICs}', 'I_{LMICs}', 'I_{LICs}',
-                 'I_{ECA}', 'I_{LAC}', 'I_{NMA}', 'I_{EAP}', 'I_{SAR}', 'I_{SSA}', 'I_{MNA}', 'const']
-
-    model_results = {}
     transfers_predicted = None
 
-    for income_cat, spec in regression_spec_.items():
-        variables = spec.split('~')[1].strip().split(' + ')
-        regression_data_ = regression_data[variables + [income_cat]].dropna().copy()
-        model = sm.OLS(
-            endog=regression_data_[[income_cat]].astype(float),
-            exog=sm.add_constant(regression_data_.drop(columns=income_cat)).astype(float)
-        ).fit()
+    if regression_params_['type'] == 'OLS':
+        regression_data = pd.concat(
+            [regression_data.drop(columns=['region', 'income_group']),
+             pd.get_dummies(regression_data['region'].apply(lambda x_: "I_{" + f"{x_}" + "}")),
+             pd.get_dummies(regression_data['income_group'].apply(lambda x_: "I_{" + f"{x_}" + "}"))],
+            axis=1
+        )
 
-        # Store model results
-        model_results[income_cat] = model
+        if 'GDP_{pc}' in regression_data.columns:
+            regression_data['GDP_{pc}'] /= 1000  # scale to 1000 USD
 
-        # Print model summary
-        print(f"############ Regression for {income_cat} ############")
-        print(model.summary())
+        ols_spec = regression_params_['specification']
 
-        # Predict missing values
-        prediction_data_ = regression_data[variables].dropna()
-        predicted = model.predict(sm.add_constant(prediction_data_).astype(float)).rename(income_cat)
-        if transfers_predicted is None:
-            transfers_predicted = predicted
-        else:
-            transfers_predicted = pd.concat([transfers_predicted, predicted], axis=1)
+        var_order = ['GDP_{pc}', 'SOC', 'REM', 'UNE', 'I_{FSY}', 'I_{HICs}', 'I_{UMICs}', 'I_{LMICs}', 'I_{LICs}',
+                     'I_{ECA}', 'I_{LAC}', 'I_{NMA}', 'I_{EAP}', 'I_{SAR}', 'I_{SSA}', 'I_{MNA}', 'const']
 
-    # store LaTeX table
-    if tables_outpath is not None:
-        all_vars = set()
-        for model in model_results.values():
-            all_vars.update(model.params.index)
-        # Sort all_vars according to the order in var_labels
-        all_vars = [var for var in var_order if var in all_vars]
+        model_results = {}
 
-        latex_lines = [
-            r'\begin{table}[htb]',
-            r'\centering',
-            r'\small',
-            r'  \caption{\textbf{Regression results for imputed income share from social protection and transfers.} Values are in percent.}',
-            r'  \label[suptable]{suptab:suptable_7_transfers_regression}',
-            r'\smallskip',
-            r'\begin{tabular}{l ' + ' '.join(['c'] * len(regression_spec_)) + '}',
-            r'\toprule',
-        ]
+        for income_cat, spec in ols_spec.items():
+            variables = spec.split('~')[1].strip().split(' + ')
+            regression_data_ = regression_data[variables + [income_cat]].dropna().copy()
+            model = sm.OLS(
+                endog=regression_data_[[income_cat]].astype(float),
+                exog=sm.add_constant(regression_data_.drop(columns=income_cat)).astype(float)
+            ).fit()
 
-        # Column headers
-        header_cols = ' & '.join([column_labels[k] for k in sorted(regression_spec_.keys())])
-        latex_lines.append(f'& {header_cols} \\\\')
-        latex_lines.append(r'\midrule')
+            # Store model results
+            model_results[income_cat] = model
 
-        # Rows
-        for var in all_vars:
-            # First row: coefficients with stars
-            coef_row = [f"${var}$"]
-            se_row = ['']  # row for standard errors
-            for key in sorted(regression_spec_.keys()):
-                model = model_results.get(key)
-                if model is not None and var in model.params.index:
-                    coef = model.params[var]
-                    se = model.bse[var]
-                    p = model.pvalues[var]
-                    # significance stars
-                    if p < 0.001:
-                        stars = r'\textsuperscript{***}'
-                    elif p < 0.01:
-                        stars = r'\textsuperscript{**}'
-                    elif p < 0.05:
-                        stars = r'\textsuperscript{*}'
-                    else:
-                        stars = ''
-                    coef_row.append(f'{coef:.4f}{stars}')
-                    se_row.append(f'({se:.3f})')
-                else:
-                    coef_row.append('')
-                    se_row.append('')
-            latex_lines.append(' & '.join(coef_row) + r'\\')
-            latex_lines.append(' & '.join(se_row) + r'\\ [1ex]')
+            # Print model summary
+            print(f"############ Regression for {income_cat} ############")
+            print(model.summary())
 
-        # R^2 and N rows
-        r2_row = ['$R^2$']
-        n_row = ['$N$']
-        for key in sorted(regression_spec_.keys()):
-            model = model_results.get(key)
-            if model is not None:
-                r2_row.append(f'{model.rsquared:.3f}')
-                n_row.append(f'{int(model.nobs)}')
+            # Predict missing values
+            prediction_data_ = regression_data[variables].dropna()
+            predicted = model.predict(sm.add_constant(prediction_data_).astype(float)).rename(income_cat)
+            if transfers_predicted is None:
+                transfers_predicted = predicted
             else:
-                r2_row.append('')
-                n_row.append('')
-        latex_lines += [
-            r'\midrule',
-            ' & '.join(r2_row) + r'\\',
-            ' & '.join(n_row) + r'\\',
-            r'\bottomrule',
-            r'\multicolumn{3}{@{}l@{}}{\footnotesize Note: $^{*}\, p<0.05$; $^{**}\, p<0.01$; $^{***}\, p<0.001$}',
-            r'\end{tabular}',
-            r'\end{table}',
-        ]
-        if not os.path.exists(tables_outpath):
-            os.makedirs(tables_outpath)
-        with open(os.path.join(tables_outpath, 'transfers_regression.tex'), 'w') as f:
-            f.write('\n'.join(latex_lines))
+                transfers_predicted = pd.concat([transfers_predicted, predicted], axis=1)
+
+        # store LaTeX table
+        if tables_outpath is not None:
+            all_vars = set()
+            for model in model_results.values():
+                all_vars.update(model.params.index)
+            # Sort all_vars according to the order in var_labels
+            all_vars = [var for var in var_order if var in all_vars]
+
+            latex_lines = [
+                r'\begin{table}[htb]',
+                r'\centering',
+                r'\small',
+                r'  \caption{\textbf{Regression results for imputed income share from social protection and transfers.} Values are in percent.}',
+                r'  \label[suptable]{suptab:suptable_7_transfers_regression}',
+                r'\smallskip',
+                r'\begin{tabular}{l ' + ' '.join(['c'] * len(ols_spec)) + '}',
+                r'\toprule',
+            ]
+
+            # Column headers
+            header_cols = ' & '.join([column_labels[k] for k in sorted(ols_spec.keys())])
+            latex_lines.append(f'& {header_cols} \\\\')
+            latex_lines.append(r'\midrule')
+
+            # Rows
+            for var in all_vars:
+                # First row: coefficients with stars
+                coef_row = [f"${var}$"]
+                se_row = ['']  # row for standard errors
+                for key in sorted(ols_spec.keys()):
+                    model = model_results.get(key)
+                    if model is not None and var in model.params.index:
+                        coef = model.params[var]
+                        se = model.bse[var]
+                        p = model.pvalues[var]
+                        # significance stars
+                        if p < 0.001:
+                            stars = r'\textsuperscript{***}'
+                        elif p < 0.01:
+                            stars = r'\textsuperscript{**}'
+                        elif p < 0.05:
+                            stars = r'\textsuperscript{*}'
+                        else:
+                            stars = ''
+                        coef_row.append(f'{coef:.4f}{stars}')
+                        se_row.append(f'({se:.3f})')
+                    else:
+                        coef_row.append('')
+                        se_row.append('')
+                latex_lines.append(' & '.join(coef_row) + r'\\')
+                latex_lines.append(' & '.join(se_row) + r'\\ [1ex]')
+
+            # R^2 and N rows
+            r2_row = ['$R^2$']
+            n_row = ['$N$']
+            for key in sorted(ols_spec.keys()):
+                model = model_results.get(key)
+                if model is not None:
+                    r2_row.append(f'{model.rsquared:.3f}')
+                    n_row.append(f'{int(model.nobs)}')
+                else:
+                    r2_row.append('')
+                    n_row.append('')
+            latex_lines += [
+                r'\midrule',
+                ' & '.join(r2_row) + r'\\',
+                ' & '.join(n_row) + r'\\',
+                r'\bottomrule',
+                r'\multicolumn{3}{@{}l@{}}{\footnotesize Note: $^{*}\, p<0.05$; $^{**}\, p<0.01$; $^{***}\, p<0.001$}',
+                r'\end{tabular}',
+                r'\end{table}',
+            ]
+            if not os.path.exists(tables_outpath):
+                os.makedirs(tables_outpath)
+            with open(os.path.join(tables_outpath, 'transfers_regression_ols.tex'), 'w') as f:
+                f.write('\n'.join(latex_lines))
+    elif regression_params_['type'] == 'LassoCV':
+        x_cols = regression_params_['features']
+        var_order = ['GDP_{pc}', 'SOC', 'REM', 'UNE', 'FSY', 'HICs', 'UMICs', 'LMICs', 'LICs', 'ECA', 'LAC', 'NMA',
+                     'EAP', 'SAR', 'SSA', 'MNA']
+
+        categorical_features = np.intersect1d(x_cols, ['region', 'income_group'])
+        numeric_features = np.setdiff1d(x_cols, categorical_features) # treat FSY (binary) as numerical
+
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', StandardScaler(), numeric_features),
+                ('cat', OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore'), categorical_features)
+            ]
+        )
+
+        models = {}  # stores fitted pipelines
+        results = {}  # stores alpha & coefficient tables
+
+        for target in y.columns:
+            print(f"\nRunning LassoCV for target: {target}")
+            regression_data_ = regression_data[[target] + x_cols].dropna().copy()
+            x_ = regression_data_.drop(columns=target)
+            y_ = regression_data_[target].astype(float)
+
+            # LassoCV with 5-fold cross-validation
+            lasso_cv = LassoCV(
+                cv=5,
+                random_state=0,
+                max_iter=10000
+            )
+
+            # Pipeline: preprocessing + Lasso
+            model = Pipeline(steps=[
+                ('preprocessor', preprocessor),
+                ('lasso_cv', lasso_cv)
+            ])
+
+            # Fit model
+            model.fit(x_, y_)
+            models[target] = model
+
+            # Retrieve alpha and coefficients
+            best_alpha = model.named_steps['lasso_cv'].alpha_
+            coefs = model.named_steps['lasso_cv'].coef_
+
+            # Feature names after preprocessing
+            encoder = model.named_steps['preprocessor'].named_transformers_['cat']
+            cat_feature_names = encoder.get_feature_names_out(categorical_features)
+            feature_names = list(numeric_features) + list(cat_feature_names)
+
+            coef_table = pd.DataFrame({
+                'feature': feature_names,
+                'coefficient': coefs
+            })
+
+            results[target] = {
+                'alpha': best_alpha,
+                'coef_table': coef_table
+            }
+
+            # Predict missing values
+            prediction_data_ = regression_data[x_cols].dropna().copy()
+            predicted = model.predict(prediction_data_)
+            predicted = pd.Series(predicted, index=prediction_data_.index, name=target)
+            if transfers_predicted is None:
+                transfers_predicted = predicted
+            else:
+                transfers_predicted = pd.concat([transfers_predicted, predicted], axis=1)
+
+        # store LaTeX table
+        if tables_outpath is not None:
+            latex_lines = [
+                r'\begin{table}[htb]',
+                r'\centering',
+                r'\small',
+                r'  \caption{\textbf{Lasso regression results for imputed income share from social protection and'
+                r' transfers.} 5-fold cross-validation was used to select $\alpha$. Numerical predictors were'
+                r' standardized (mean=0, SD=1) and coefficients represent change in the outcome per 1 standard deviation'
+                r' increase in the predictor. Zero coefficients are omitted. Variables with all-zero coefficients are'
+                r' omitted entirely.}',
+                r'  \label[suptable]{suptab:suptable_7_transfers_regression}',
+                r'\smallskip',
+                r'\begin{tabular}{l ' + ' '.join(['c'] * len(results)) + '}',
+                r'\toprule',
+            ]
+
+            # Column headers
+            header_cols = ' & '.join([column_labels[k] for k in sorted(results.keys())])
+            latex_lines.append(f'& {header_cols} \\\\')
+            latex_lines.append(r'\midrule')
+
+            # Collect all features that have non-zero coefficients in any model
+            all_features = set()
+            for res in results.values():
+                non_zero_features = res['coef_table'][res['coef_table']['coefficient'] != 0]['feature']
+                all_features.update(non_zero_features)
+            all_features = sorted(all_features)
+
+            # Rows
+            for feature in all_features:
+                coef_row = [f"${feature}$"]
+                for key in sorted(results.keys()):
+                    coef_table = results[key]['coef_table']
+                    coef_value = coef_table.loc[coef_table['feature'] == feature, 'coefficient']
+                    if not coef_value.empty and coef_value.values[0] != 0:
+                        coef_row.append(f'{coef_value.values[0]:.4f}')
+                    else:
+                        coef_row.append('')
+                latex_lines.append(' & '.join(coef_row) + r'\\')
+
+            # Const. row
+            const_row = [r'const.']
+            for key in sorted(results.keys()):
+                model = models[key]
+                const_value = model.named_steps['lasso_cv'].intercept_
+                const_row.append(f'{const_value:.4f}')
+
+            # Alpha row
+            alpha_row = [r'$\alpha$']
+            for key in sorted(results.keys()):
+                alpha_value = results[key]['alpha']
+                alpha_row.append(f'{alpha_value:.4f}')
+
+            in_sample_r2_row = [r'$R^2$ (full sample)']
+            for key in sorted(results.keys()):
+                model = models[key]
+                in_sample_r2 = model.score(regression_data[x_cols + [key]].dropna()[x_cols], regression_data[x_cols + [key]].dropna()[key])
+                in_sample_r2_row.append(f'{in_sample_r2:.3f}')
+
+            cv_r2_row = [r'$R^2$ (cross-validated)']
+            for key in sorted(results.keys()):
+                model = models[key]
+                cv_r2 = cross_val_score(model, regression_data[x_cols + [key]].dropna()[x_cols], regression_data[x_cols + [key]].dropna()[key], cv=5, scoring='r2').mean()
+                cv_r2_row.append(f'{cv_r2:.3f}')
+
+            n_row = [r'$N$']
+            for key in sorted(results.keys()):
+                n_row.append(f'{len(regression_data[x_cols + [key]].dropna())}')
+
+            latex_lines += [
+                ' & '.join(const_row) + r'\\',
+                r'\midrule',
+                ' & '.join(alpha_row) + r'\\',
+                r'\midrule',
+                ' & '.join(in_sample_r2_row) + r'\\',
+                ' & '.join(cv_r2_row) + r'\\',
+                ' & '.join(n_row) + r'\\',
+                r'\bottomrule',
+                r'\end{tabular}',
+                r'\end{table}',
+            ]
+            if not os.path.exists(tables_outpath):
+                os.makedirs(tables_outpath)
+            with open(os.path.join(tables_outpath, 'transfers_regression_lassoCV.tex'), 'w') as f:
+                f.write('\n'.join(latex_lines))
 
     transfers_predicted.columns.name = 'income_cat'
     transfers_predicted = transfers_predicted.stack().dropna().sort_index().rename('transfers_predicted')
     transfers_predicted = transfers_predicted.clip(0, 100) / 100
 
-    cat_info_df_ = pd.concat([cat_info_df_, transfers_predicted], axis=1)
-    imputed_countries = cat_info_df_[cat_info_df_.transfers.isna() & cat_info_df_.transfers_predicted.notna()].index.get_level_values('iso3').unique()
-    available_countries = np.setdiff1d(cat_info_df_.index.get_level_values('iso3').unique(), imputed_countries)
+    transfers_ = pd.concat([transfers_, transfers_predicted], axis=1)
+    imputed_countries = transfers_[transfers_.transfers.isna() & transfers_.transfers_predicted.notna()].index.get_level_values('iso3').unique()
+    available_countries = np.setdiff1d(transfers_.index.get_level_values('iso3').unique(), imputed_countries)
     update_data_coverage(root_dir_, 'transfers', available_countries, imputed_countries)
 
-    cat_info_df_['transfers'] = cat_info_df_['transfers'].fillna(cat_info_df_['transfers_predicted'])
-    cat_info_df_.drop('transfers_predicted', axis=1, inplace=True)
+    transfers_['transfers'] = transfers_['transfers'].fillna(transfers_['transfers_predicted'])
+    transfers_.drop('transfers_predicted', axis=1, inplace=True)
 
-    return cat_info_df_
+    return transfers_
 
 
 def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, wb_raw_data_path, download, most_recent_value=True,
@@ -460,7 +633,7 @@ def load_pip_data(wb_raw_data_path_, download_, poverty_line_, pip_reference_yea
     return pip_data
 
 
-def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, regression_spec_=None,
+def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, regression_params_=None,
                 tables_outpath=None, match_years=False, drop_incomplete=True, recompute=True, verbose=True,
                 include_poverty_data=False, resolution=.2, download=False, poverty_line=3.0, pip_reference_year=2021):
     """
@@ -631,8 +804,8 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, r
 
     if impute_missing_data:
         transfers = estimate_missing_transfer_shares(
-            cat_info_df_=transfers.to_frame(),
-            regression_spec_=regression_spec_,
+            transfers_=transfers.to_frame(),
+            regression_params_=regression_params_,
             root_dir_=root_dir,
             any_to_wb=any_to_wb,
             wb_raw_data_path=wb_raw_data_path,

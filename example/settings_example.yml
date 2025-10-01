@@ -1,5 +1,5 @@
 model_params:
-  outpath: './output/test'
+  outpath: './example_output'
   run_params:
     append_date: False
     verbose: False
@@ -33,12 +33,16 @@ scenario_params:
     no_exposure_bias: False
     fa_threshold: .99
   data_params:
-    transfers_regression_spec:
-      .2: 'transfers ~ GDP_{pc} + REM + SOC + UNE + I_{ECA}'
-      .4: 'transfers ~ GDP_{pc} + REM + SOC + UNE'
-      .6: 'transfers ~ GDP_{pc} + REM + SOC + UNE'
-      .8: 'transfers ~ GDP_{pc} + REM + SOC + I_{EAP}'
-      1.: 'transfers ~ GDP_{pc} + REM + SOC + I_{EAP}'
+    transfers_regression_params:
+#      type: 'OLS'
+#      specification:
+#        .2: 'transfers ~ GDP_{pc} + REM + SOC + UNE + I_{ECA}'
+#        .4: 'transfers ~ GDP_{pc} + REM + SOC + UNE'
+#        .6: 'transfers ~ GDP_{pc} + REM + SOC + UNE'
+#        .8: 'transfers ~ GDP_{pc} + REM + SOC + I_{EAP}'
+#        1.: 'transfers ~ GDP_{pc} + REM + SOC + I_{EAP}'
+      type: 'LassoCV'
+      features: ['GDP_{pc}', 'REM', 'SOC', 'UNE', 'income_group', 'region', 'FSY']
   policy_params:
     scale_self_employment:
       parameter: 1

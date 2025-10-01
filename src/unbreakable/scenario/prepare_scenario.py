@@ -1242,7 +1242,7 @@ def prepare_scenario(scenario_params, outpath=None):
     hazard_params['extrapolate_return_periods'] = bool(hazard_params.get('extrapolate_to_rp', False))
     hazard_params['new_min_rp'] = hazard_params.get('extrapolate_to_rp', None)
 
-    data_params['transfers_regression_spec'] = data_params.get('transfers_regression_spec', None)
+    data_params['transfers_regression_params'] = data_params.get('transfers_regression_params', None)
 
     timestamp = time()
     # read WB data
@@ -1250,7 +1250,7 @@ def prepare_scenario(scenario_params, outpath=None):
         root_dir=root_dir,
         include_remittances=True,
         impute_missing_data=True,
-        regression_spec_=data_params['transfers_regression_spec'],
+        regression_params_=data_params['transfers_regression_params'],
         tables_outpath=os.path.join(outpath, 'tables') if outpath is not None else None,
         match_years=False,
         drop_incomplete=True,
