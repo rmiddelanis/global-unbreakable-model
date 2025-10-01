@@ -32,16 +32,16 @@ import tqdm
 import xarray as xr
 
 
-def process_flopros_data(flopros_path, population_path, gadm_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
+def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
     """
-    Processes FLOPROS data to compute national-level flood protection levels for riverine and coastal areas.
+    Processes FLOPROS datay to compute national-level flood protection levels for riverine and coastal areas.
 
     Args:
         flopros_path (str): Path to the FLOPROS shapefile containing protection data.
         flopros_update_path (str): Path to the Excel file with updated modeled coastal protection data.
         flopros_update_shapes_path (str): Path to the shapefile containing geometries for the updated modeled data.
         population_path (str): Path to the population raster file for the year 2020.
-        gadm_path (str): Path to the GADM geopackage file containing country boundaries.
+        shapefiles_path (str): Path to the GADM geopackage file containing country boundaries.
         outpath (str, optional): Directory to save the processed protection levels as shapefile and CSV. Defaults to None.
 
     Returns:
@@ -74,8 +74,14 @@ def process_flopros_data(flopros_path, population_path, gadm_path, outpath=None)
     pop = rxr.open_rasterio(population_path, masked=True).sel(raster=5)
     pop.rio.set_crs(pop.attrs['proj4'], inplace=True)
 
-    world_shapes = gpd.read_file(gadm_path, layer='ADM_0').rename(columns={'GID_0': 'iso3', 'COUNTRY': 'country'})
-    world_shapes = world_shapes.set_index(['iso3', 'country']).geometry
+    world_shapes = gpd.read_file(shapefiles_path, layer=0)
+    world_shapes = world_shapes.rename(columns={'GID_0': 'iso3', 'ISO_A3': 'iso3'}, errors='ignore')
+    world_shapes = world_shapes[['iso3', 'geometry']]
+
+    if world_shapes.iso3.duplicated().any():
+        world_shapes = world_shapes.dissolve(by='iso3', as_index=True)
+    else:
+        world_shapes.set_index('iso3', inplace=True)
 
     prot_ntl_aggregated = gpd.GeoDataFrame(index=world_shapes.index, columns=['MerL_Riv', 'MerL_Co'])
 
@@ -103,18 +109,15 @@ def process_flopros_data(flopros_path, population_path, gadm_path, outpath=None)
     protection_weighted = protection_gridded * pop
 
     # Aggregate gridded protection to country level
-    for iso3, country in tqdm.tqdm(prot_ntl_aggregated.index, desc='aggregating to country level',
-                                   total=len(prot_ntl_aggregated)):
-        mask = ~pop.rio.clip([world_shapes.loc[(iso3, country)]], world_shapes.crs, drop=False).isnull()
+    for iso3 in tqdm.tqdm(prot_ntl_aggregated.index, desc='aggregating to country level',
+                          total=len(prot_ntl_aggregated)):
+        mask = ~pop.rio.clip([world_shapes.loc[iso3, 'geometry']], world_shapes.crs, drop=False).isnull()
         country_protection = protection_weighted.where(mask).sum() / pop.where(mask).sum()
-        prot_ntl_aggregated.loc[(iso3, country), 'MerL_Riv'] = country_protection.MerL_Riv.item()
-        prot_ntl_aggregated.loc[(iso3, country), 'MerL_Co'] = country_protection.MerL_Co.item()
-        prot_ntl_aggregated.loc[(iso3, country), 'geometry'] = world_shapes.loc[(iso3, country)]
+        prot_ntl_aggregated.loc[iso3, 'MerL_Riv'] = country_protection.MerL_Riv.item()
+        prot_ntl_aggregated.loc[iso3, 'MerL_Co'] = country_protection.MerL_Co.item()
+        prot_ntl_aggregated.loc[iso3, 'geometry'] = world_shapes.loc[iso3, 'geometry']
 
     if outpath is not None:
-        if '.' in outpath:
-            outpath = ''.join(outpath.split('.')[:-1])
-        print(f'Storing protection levels to {outpath + ".shp"} and {outpath + ".csv"}.')
         prot_ntl_aggregated.drop('geometry', axis=1).to_csv(os.path.join(outpath, "flopros_protection_processed.csv"))
 
     return prot_ntl_aggregated
