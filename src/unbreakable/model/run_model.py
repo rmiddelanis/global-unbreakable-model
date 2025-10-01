@@ -63,11 +63,14 @@ def run_model(settings: dict):
 
     model_params, scenario_params = settings['model_params'], settings['scenario_params']
 
+    outpath_ = model_params['outpath']
+    if not os.path.exists(outpath_):
+        os.makedirs(outpath_)
+
     # Run parameters
     run_params = model_params['run_params']
     pds_params = model_params['pds_params']
 
-    outpath_ = run_params['outpath']
     num_cores = run_params.get('num_cores', None)
 
     # Options and parameters
@@ -76,7 +79,7 @@ def run_model(settings: dict):
     poor_cat = 'q1'
 
     # Generate scenario data
-    macro, cat_info, hazard_ratios, hazard_protection = prepare_scenario(scenario_params=scenario_params)
+    macro, cat_info, hazard_ratios, hazard_protection = prepare_scenario(scenario_params=scenario_params, outpath=outpath_)
 
     # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
     macro_event, cat_info_event = reshape_input(
@@ -126,24 +129,21 @@ def run_model(settings: dict):
         is_local_welfare=True,
     )
 
-    date_time_string = ''
-    if run_params.get('append_date', True):
-        date_time_string = time.strftime("%Y-%m-%d_%H-%M_")
-    folder_name = os.path.join(outpath_, date_time_string)
+    sim_outpath = os.path.join(outpath_, 'simulation_outputs')
 
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
+    if not os.path.exists(sim_outpath):
+        os.makedirs(sim_outpath)
 
     # save macro_event
-    macro_event.to_csv(folder_name + '/macro.csv', encoding="utf-8",
+    macro_event.to_csv(sim_outpath + '/macro.csv', encoding="utf-8",
                        header=True)
 
     # save cat_info_event_iah
-    cat_info_event_iah.to_csv(folder_name + '/iah.csv', encoding="utf-8",
+    cat_info_event_iah.to_csv(sim_outpath + '/iah.csv', encoding="utf-8",
                               header=True)
 
     # Save results
-    results.to_csv(folder_name + '/results.csv', encoding="utf-8",
+    results.to_csv(sim_outpath + '/results.csv', encoding="utf-8",
                    header=True)
 
 

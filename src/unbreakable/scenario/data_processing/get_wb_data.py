@@ -223,8 +223,8 @@ def upscale_income_resolution(income_shares_, num_quantiles=100):
     return res, sigma_values
 
 
-def estimate_missing_transfer_shares(cat_info_df_, root_dir_, country_classification_, any_to_wb, wb_raw_data_path,
-                                     download, verbose=True, reg_data_outpath=None):
+def estimate_missing_transfer_shares(cat_info_df_, regression_spec_, root_dir_, any_to_wb, wb_raw_data_path, verbose=True,
+                                     reg_data_outpath=None, tables_outpath=None, download=False):
     """
     Predicts missing transfer shares using regression models. Regression specification is hard-coded.
 
@@ -238,30 +238,39 @@ def estimate_missing_transfer_shares(cat_info_df_, root_dir_, country_classifica
     Returns:
         pd.DataFrame: Updated category information with predicted transfer shares.
     """
-    regression_spec = {
-        .2: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + FSY',
-        .4: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + ECA',
-        .6: 'transfers ~ exp_SP_GDP + unemployment + HICs + UMICs + EAP + ECA',
-        .8: 'transfers ~ exp_SP_GDP + remittances_GDP + HICs + UMICs + EAP + LAC',
-        1: 'transfers ~ exp_SP_GDP + remittances_GDP + UMICs + EAP',
+
+    if regression_spec_ is None:
+        print("No regression specification provided, skipping transfer share estimation.")
+        return cat_info_df_
+
+    load_indices = {
+        'REM': 'BX.TRF.PWKR.DT.GD.ZS',
+        'UNE': 'SL.UEM.TOTL.ZS',
+        'GDP_{pc}': 'NY.GDP.PCAP.PP.KD',
+        'gini_index': 'SI.POV.GINI',
     }
 
-    remittances = get_wb_mrv('BX.TRF.PWKR.DT.GD.ZS', 'remittances_GDP', wb_raw_data_path, download).dropna().astype(float)
-    remittances = df_to_iso3(remittances.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
-    remittances = remittances.set_index('iso3', drop=True).drop('country', axis=1)
+    wb_countries = get_world_bank_countries(wb_raw_data_path, download)
 
-    unemployment = df_to_iso3(get_wb_mrv('SL.UEM.TOTL.ZS', 'unemployment', wb_raw_data_path, download).reset_index(), 'country', any_to_wb, verbose)
-    unemployment = unemployment.dropna(subset='iso3').set_index('iso3').drop('country', axis=1).squeeze()
-
-    fsy_countries = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/fsy_countries.csv'), header=None)
-    fsy_countries = df_to_iso3(fsy_countries, 0, any_to_wb, verbose).iso3.values
+    wb_datasets = []
+    for key, wb_id in load_indices.items():
+        ds = get_wb_series(wb_id, key, wb_raw_data_path, download)
+        ds = df_to_iso3(ds.reset_index(), 'country', any_to_wb, verbose).dropna(subset='iso3')
+        ds = ds.set_index(list(np.intersect1d(['iso3', 'year'], ds.columns))).drop('country', axis=1)
+        if key == 'gdp_pc_pp':
+            ds /= 1000  # scale to 1000 USD
+        wb_datasets.append(ds)
+    wb_datasets = pd.concat([get_most_recent_value(wb_ds) if 'year' in wb_ds.index.names else wb_ds for wb_ds in wb_datasets], axis=1)
 
     ilo_sp_exp = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/ILO_WSPR_SP_exp.csv'),
-                             index_col='iso3', na_values=['...', '…']).drop('country', axis=1)
-    x = pd.concat([remittances, ilo_sp_exp,
-                   pd.get_dummies(country_classification_['region']), pd.get_dummies(country_classification_['income_group']),
-                   unemployment], axis=1)
+                             index_col='iso3', na_values=['...', '…']).drop('country', axis=1).rename(columns={'exp_SP_GDP': 'SOC'})
+    x = pd.concat([wb_datasets, ilo_sp_exp, pd.get_dummies(wb_countries['region'].apply(lambda x_: "I_{" + f"{x_}" + "}")),
+                   pd.get_dummies(wb_countries['income_group'].apply(lambda x_: "I_{" + f"{x_}" + "}"))], axis=1)
+
     x['FSY'] = False
+    fsy_countries = pd.read_csv(os.path.join(root_dir_, 'data/raw/social_share_regression/fsy_countries.csv'),
+                                header=None)
+    fsy_countries = df_to_iso3(fsy_countries, 0, any_to_wb, verbose).iso3.values
     x.loc[fsy_countries, 'FSY'] = True
     y = cat_info_df_.transfers.unstack('income_cat') * 100
     regression_data = pd.concat([x, y], axis=1).dropna(how='all')
@@ -269,22 +278,120 @@ def estimate_missing_transfer_shares(cat_info_df_, root_dir_, country_classifica
     if reg_data_outpath is not None:
         regression_data.to_csv(reg_data_outpath)
 
+    column_labels = {
+        0.2: r'$\gamma_{q=1}^{sp,pt}$',
+        0.4: r'$\gamma_{q=2}^{sp,pt}$',
+        0.6: r'$\gamma_{q=3}^{sp,pt}$',
+        0.8: r'$\gamma_{q=4}^{sp,pt}$',
+        1.0: r'$\gamma_{q=5}^{sp,pt}$',
+    }
+
+    var_order = ['GDP_{pc}', 'SOC', 'REM', 'UNE', 'I_{FSY}', 'I_{HICs}', 'I_{UMICs}', 'I_{LMICs}', 'I_{LICs}',
+                 'I_{ECA}', 'I_{LAC}', 'I_{NMA}', 'I_{EAP}', 'I_{SAR}', 'I_{SSA}', 'I_{MNA}', 'const']
+
+    model_results = {}
     transfers_predicted = None
-    for income_cat, spec in regression_spec.items():
+
+    for income_cat, spec in regression_spec_.items():
         variables = spec.split('~')[1].strip().split(' + ')
         regression_data_ = regression_data[variables + [income_cat]].dropna().copy()
         model = sm.OLS(
             endog=regression_data_[[income_cat]].astype(float),
             exog=sm.add_constant(regression_data_.drop(columns=income_cat)).astype(float)
         ).fit()
+
+        # Store model results
+        model_results[income_cat] = model
+
+        # Print model summary
         print(f"############ Regression for {income_cat} ############")
         print(model.summary())
+
+        # Predict missing values
         prediction_data_ = regression_data[variables].dropna()
         predicted = model.predict(sm.add_constant(prediction_data_).astype(float)).rename(income_cat)
         if transfers_predicted is None:
             transfers_predicted = predicted
         else:
             transfers_predicted = pd.concat([transfers_predicted, predicted], axis=1)
+
+    # store LaTeX table
+    if tables_outpath is not None:
+        all_vars = set()
+        for model in model_results.values():
+            all_vars.update(model.params.index)
+        # Sort all_vars according to the order in var_labels
+        all_vars = [var for var in var_order if var in all_vars]
+
+        latex_lines = [
+            r'\begin{table}[htb]',
+            r'\centering',
+            r'\small',
+            r'  \caption{\textbf{Regression results for imputed income share from social protection and transfers.} Values are in percent.}',
+            r'  \label[suptable]{suptab:suptable_7_transfers_regression}',
+            r'\smallskip',
+            r'\begin{tabular}{l ' + ' '.join(['c'] * len(regression_spec_)) + '}',
+            r'\toprule',
+        ]
+
+        # Column headers
+        header_cols = ' & '.join([column_labels[k] for k in sorted(regression_spec_.keys())])
+        latex_lines.append(f'& {header_cols} \\\\')
+        latex_lines.append(r'\midrule')
+
+        # Rows
+        for var in all_vars:
+            # First row: coefficients with stars
+            coef_row = [f"${var}$"]
+            se_row = ['']  # row for standard errors
+            for key in sorted(regression_spec_.keys()):
+                model = model_results.get(key)
+                if model is not None and var in model.params.index:
+                    coef = model.params[var]
+                    se = model.bse[var]
+                    p = model.pvalues[var]
+                    # significance stars
+                    if p < 0.001:
+                        stars = r'\textsuperscript{***}'
+                    elif p < 0.01:
+                        stars = r'\textsuperscript{**}'
+                    elif p < 0.05:
+                        stars = r'\textsuperscript{*}'
+                    else:
+                        stars = ''
+                    coef_row.append(f'{coef:.4f}{stars}')
+                    se_row.append(f'({se:.3f})')
+                else:
+                    coef_row.append('')
+                    se_row.append('')
+            latex_lines.append(' & '.join(coef_row) + r'\\')
+            latex_lines.append(' & '.join(se_row) + r'\\ [1ex]')
+
+        # R^2 and N rows
+        r2_row = ['$R^2$']
+        n_row = ['$N$']
+        for key in sorted(regression_spec_.keys()):
+            model = model_results.get(key)
+            if model is not None:
+                r2_row.append(f'{model.rsquared:.3f}')
+                n_row.append(f'{int(model.nobs)}')
+            else:
+                r2_row.append('')
+                n_row.append('')
+        latex_lines += [
+            r'\midrule',
+            ' & '.join(r2_row) + r'\\',
+            ' & '.join(n_row) + r'\\',
+            r'\bottomrule',
+            r'\multicolumn{3}{@{}l@{}}{\footnotesize Note: $^{*}\, p<0.05$; $^{**}\, p<0.01$; $^{***}\, p<0.001$}',
+            r'\end{tabular}',
+            r'\end{table}',
+        ]
+        if not os.path.exists(tables_outpath):
+            os.makedirs(tables_outpath)
+        with open(os.path.join(tables_outpath, 'transfers_regression.tex'), 'w') as f:
+            f.write('\n'.join(latex_lines))
+
     transfers_predicted.columns.name = 'income_cat'
     transfers_predicted = transfers_predicted.stack().dropna().sort_index().rename('transfers_predicted')
     transfers_predicted = transfers_predicted.clip(0, 100) / 100
@@ -353,9 +460,9 @@ def load_pip_data(wb_raw_data_path_, download_, poverty_line_, pip_reference_yea
     return pip_data
 
 
-def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, match_years=False,
-                drop_incomplete=True, recompute=True, verbose=True, include_poverty_data=False, resolution=.2,
-                download=False, poverty_line=3.0, pip_reference_year=2021):
+def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, regression_spec_=None,
+                tables_outpath=None, match_years=False, drop_incomplete=True, recompute=True, verbose=True,
+                include_poverty_data=False, resolution=.2, download=False, poverty_line=3.0, pip_reference_year=2021):
     """
     Downloads and processes World Bank socio-economic data, including macroeconomic and income-level data.
 
@@ -431,6 +538,7 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, m
         'gdp_pc_pp': 'NY.GDP.PCAP.PP.KD',  # Gdp per capita ppp (source: International Comparison Program)
         'gni_pc_pp': 'NY.GNP.PCAP.PP.KD',  # Gni per capita ppp (source: World Development Indicators)
         'pop': 'SP.POP.TOTL',  # population (source: World Development Indicators)
+        'gini_index': 'SI.POV.GINI',  # Gini index (source: World Development Indicators)
     }
 
     wb_datasets = []
@@ -522,7 +630,17 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, m
     update_data_coverage(root_dir, 'transfers', transfers.unstack('income_cat').dropna().index.unique(), None)
 
     if impute_missing_data:
-        transfers = estimate_missing_transfer_shares(transfers.to_frame(), root_dir, country_classification, any_to_wb, wb_raw_data_path, download, verbose, transfers_regr_data_path).squeeze()
+        transfers = estimate_missing_transfer_shares(
+            cat_info_df_=transfers.to_frame(),
+            regression_spec_=regression_spec_,
+            root_dir_=root_dir,
+            any_to_wb=any_to_wb,
+            wb_raw_data_path=wb_raw_data_path,
+            verbose=verbose,
+            reg_data_outpath=transfers_regr_data_path,
+            download=download,
+            tables_outpath=tables_outpath,
+        ).squeeze()
 
     transfers = broadcast_to_population_resolution(transfers, resolution)
 

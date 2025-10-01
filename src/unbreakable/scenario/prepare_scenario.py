@@ -1183,7 +1183,7 @@ def social_to_tx_and_gsp(cat_info):
     return tx_tax, gsp
 
 
-def prepare_scenario(scenario_params):
+def prepare_scenario(scenario_params, outpath=None):
     """
     Prepares data for a disaster risk scenario based on specified parameters.
 
@@ -1217,9 +1217,9 @@ def prepare_scenario(scenario_params):
     macro_params = scenario_params.get('macro_params', {})
     hazard_params = scenario_params.get('hazard_params', {})
     policy_params = scenario_params.get('policy_params', {})
+    data_params = scenario_params.get('data_params', {})
 
     # Set defaults
-    run_params['outpath'] = run_params.get('outpath', None)
     run_params['recompute'] = run_params.get('recompute', False)
     run_params['recompute_hazard_protection'] = run_params.get('recompute_hazard_protection', False)
     run_params['download'] = run_params.get('download', False)
@@ -1242,13 +1242,17 @@ def prepare_scenario(scenario_params):
     hazard_params['extrapolate_return_periods'] = bool(hazard_params.get('extrapolate_to_rp', False))
     hazard_params['new_min_rp'] = hazard_params.get('extrapolate_to_rp', None)
 
+    data_params['transfers_regression_spec'] = data_params.get('transfers_regression_spec', None)
+
     timestamp = time()
     # read WB data
     wb_data_macro, wb_data_cat_info = get_wb_data(
         root_dir=root_dir,
-        pip_reference_year=run_params['pip_reference_year'],
         include_remittances=True,
         impute_missing_data=True,
+        regression_spec_=data_params['transfers_regression_spec'],
+        tables_outpath=os.path.join(outpath, 'tables') if outpath is not None else None,
+        match_years=False,
         drop_incomplete=True,
         recompute=run_params['recompute'],
         download=run_params['download'],
@@ -1256,7 +1260,7 @@ def prepare_scenario(scenario_params):
         include_poverty_data=run_params['include_poverty_data'],
         resolution=run_params['resolution'],
         poverty_line=run_params['poverty_line'],
-        match_years=False,
+        pip_reference_year=run_params['pip_reference_year'],
     )
 
     # print duration
@@ -1419,36 +1423,37 @@ def prepare_scenario(scenario_params):
 
     # Save all data
     print(macro.shape[0], 'countries in analysis')
-    if run_params['outpath'] is not None:
-        if not os.path.exists(run_params['outpath']):
-            os.makedirs(run_params['outpath'])
+    if outpath is not None:
+        model_input_path = os.path.join(outpath, 'model_inputs')
+        if not os.path.exists(model_input_path):
+            os.makedirs(model_input_path)
 
-        data_coverage.to_csv(os.path.join(run_params['outpath'], "data_coverage.csv"))
+        data_coverage.to_csv(os.path.join(model_input_path, "data_coverage.csv"))
 
         # save protection by country and hazard
         hazard_protection.to_csv(
-            os.path.join(run_params['outpath'], "scenario__hazard_protection.csv"),
+            os.path.join(model_input_path, "scenario__hazard_protection.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save macro-economic country economic data
         macro.to_csv(
-            os.path.join(run_params['outpath'], "scenario__macro.csv"),
+            os.path.join(model_input_path, "scenario__macro.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save consumption, access to finance, gamma, capital, exposure, early warning access by country and income category
         cat_info.to_csv(
-            os.path.join(run_params['outpath'], "scenario__cat_info.csv"),
+            os.path.join(model_input_path, "scenario__cat_info.csv"),
             encoding="utf-8",
             header=True
         )
 
         # save exposure, vulnerability, and access to early warning by country, hazard, return period, income category
         hazard_ratios.to_csv(
-            os.path.join(run_params['outpath'], "scenario__hazard_ratios.csv"),
+            os.path.join(model_input_path, "scenario__hazard_ratios.csv"),
             encoding="utf-8",
             header=True
         )

@@ -1,7 +1,7 @@
 model_params:
+  outpath: './output/test'
   run_params:
     append_date: False
-    outpath: './results/test'
     verbose: False
   pds_params:
     pds_variant: 'no'
@@ -12,7 +12,6 @@ model_params:
     covered_loss_share: 0.4
 scenario_params:
   run_params:
-    outpath: './results/test'
     recompute: True
     recompute_hazard_protection: False
     download: False
@@ -33,6 +32,13 @@ scenario_params:
     hazard_protection: 'FLOPROS'
     no_exposure_bias: False
     fa_threshold: .99
+  data_params:
+    transfers_regression_spec:
+      .2: 'transfers ~ GDP_{pc} + REM + SOC + UNE + I_{ECA}'
+      .4: 'transfers ~ GDP_{pc} + REM + SOC + UNE'
+      .6: 'transfers ~ GDP_{pc} + REM + SOC + UNE'
+      .8: 'transfers ~ GDP_{pc} + REM + SOC + I_{EAP}'
+      1.: 'transfers ~ GDP_{pc} + REM + SOC + I_{EAP}'
   policy_params:
     scale_self_employment:
       parameter: 1
