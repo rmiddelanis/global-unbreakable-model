@@ -143,7 +143,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     if protection_data in ['FLOPROS', 'country_income']:
         if protection_data == 'FLOPROS':
             prot_data = pd.read_csv(protection_path, index_col=0)
-            prot_data = prot_data.drop('country', axis=1)
+            prot_data = prot_data.drop('country', axis=1, errors='ignore')
             prot_data.rename({'MerL_Riv': 'Flood', 'MerL_Co': 'Storm surge'}, axis=1, inplace=True)
             update_data_coverage(root_dir_, 'flopros', prot_data.index, None)
         elif protection_data == 'country_income':  # assumed a function of the country's income group
@@ -1183,6 +1183,71 @@ def social_to_tx_and_gsp(cat_info):
     return tx_tax, gsp
 
 
+def unpack_scenario_params(scenario_params):
+    if scenario_params is None or len(scenario_params) == 0:
+        raise ValueError("No scenario parameters provided.")
+
+    missing_param_sets = np.setdiff1d(
+        ['run_params', 'macro_params', 'hazard_params', 'policy_params', 'data_params'],
+        list(scenario_params.keys())
+    )
+    if len(missing_param_sets) > 0:
+        raise ValueError(f"Missing parameter sets in scenario_params: {', '.join(missing_param_sets)}")
+
+    # Parameter dicts
+    run_params = scenario_params.get('run_params', {})
+    macro_params = scenario_params.get('macro_params', {})
+    hazard_params = scenario_params.get('hazard_params', {})
+    policy_params = scenario_params.get('policy_params', {})
+    data_params = scenario_params.get('data_params', {})
+
+    # TODO: some parameters are required only if certain other parameters are set to specific values,
+    #  e.g., transfers_regression_params must only be provided if recompute is True. Need to implement this logic.
+    required_parameters = {
+        'run_params': ['recompute', 'recompute_hazard_protection', 'download', 'verbose', 'countries', 'hazards',
+                       'pip_reference_year', 'include_poverty_data'],
+        'macro_params': ['income_elasticity_eta', 'discount_rate_rho', 'axfin_impact', 'reconstruction_capital',
+                         'reduction_vul', 'early_warning_file'],
+        'hazard_params': ['hazard_protection', 'no_exposure_bias', 'fa_threshold', 'zero_rp'],
+        'policy_params': [],
+        'data_params': ['transfers_regression_params']
+    }
+
+    for param_set, required_keys in required_parameters.items():
+        param_dict = scenario_params.get(param_set, {})
+        missing_keys = np.setdiff1d(required_keys, list(param_dict.keys()))
+        missing_any = False
+        if len(missing_keys) > 0:
+            missing_any = True
+            print(f"Missing keys in scenario_params['{param_set}']: {', '.join(missing_keys)}.")
+        if missing_any:
+            raise ValueError(f"Missing parameters in scenario_params dictionary.")
+
+    optional_paramters_defaults = {
+        'run_params': {},
+        'macro_params': {},
+        'hazard_params': {},
+        'policy_params': {
+            'scale_self_employment': None,
+            'scale_non_diversified_income': None,
+            'min_diversified_share': None,
+            'scale_income': None,
+            'scale_liquidity': None,
+            'scale_exposure': None,
+            'scale_vulnerability': None,
+            'scale_gini_index': None,
+        },
+        'data_params': {}
+    }
+    for param_set, default_items in optional_paramters_defaults.items():
+        param_dict = scenario_params.get(param_set, {})
+        for key, default_value in default_items.items():
+            if key not in param_dict:
+                param_dict[key] = default_value
+
+    return run_params, macro_params, hazard_params, policy_params, data_params
+
+
 def prepare_scenario(scenario_params, outpath=None):
     """
     Prepares data for a disaster risk scenario based on specified parameters.
@@ -1208,39 +1273,7 @@ def prepare_scenario(scenario_params, outpath=None):
 
     any_to_wb, iso3_to_wb, iso2_iso3 = get_country_name_dicts(root_dir)
 
-    # unpack scenario parameters
-    if scenario_params is None:
-        scenario_params = {}
-
-    # Parameter dicts
-    run_params = scenario_params.get('run_params', {})
-    macro_params = scenario_params.get('macro_params', {})
-    hazard_params = scenario_params.get('hazard_params', {})
-    policy_params = scenario_params.get('policy_params', {})
-    data_params = scenario_params.get('data_params', {})
-
-    # Set defaults
-    run_params['recompute'] = run_params.get('recompute', False)
-    run_params['recompute_hazard_protection'] = run_params.get('recompute_hazard_protection', False)
-    run_params['download'] = run_params.get('download', False)
-    run_params['verbose'] = run_params.get('verbose', True)
-    run_params['countries'] = run_params.get('countries', 'all')
-    run_params['hazards'] = run_params.get('hazards', 'all')
-    run_params['pip_reference_year'] = run_params.get('pip_reference_year', 2021)
-    run_params['include_poverty_data'] = run_params.get('include_poverty_data', False)
-
-    macro_params['income_elasticity_eta'] = macro_params.get('income_elasticity_eta', 1.5)
-    macro_params['discount_rate_rho'] = macro_params.get('discount_rate_rho', .06)
-    macro_params['axfin_impact'] = macro_params.get('axfin_impact', .1)
-    macro_params['reconstruction_capital'] = macro_params.get('reconstruction_capital', 'self_hous')
-    macro_params['reduction_vul'] = macro_params.get('reduction_vul', .2)
-    macro_params['early_warning_file'] = macro_params.get('early_warning_file', None)
-
-    hazard_params['hazard_protection'] = hazard_params.get('hazard_protection', 'FLOPROS')
-    hazard_params['no_exposure_bias'] = hazard_params.get('no_exposure_bias', False)
-    hazard_params['fa_threshold'] = hazard_params.get('fa_threshold', .9)
-    hazard_params['extrapolate_return_periods'] = bool(hazard_params.get('extrapolate_to_rp', False))
-    hazard_params['new_min_rp'] = hazard_params.get('extrapolate_to_rp', None)
+    run_params, macro_params, hazard_params, policy_params, data_params = unpack_scenario_params(scenario_params)
 
     data_params['transfers_regression_params'] = data_params.get('transfers_regression_params', None)
 
@@ -1276,7 +1309,7 @@ def prepare_scenario(scenario_params, outpath=None):
         resolution=run_params['resolution'],
         recompute_=run_params['recompute'],
         verbose_=run_params['verbose'],
-        scale_liquidity_=policy_params.pop('scale_liquidity', None),
+        scale_liquidity_=policy_params['scale_liquidity'],
     )
     if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")
@@ -1324,7 +1357,7 @@ def prepare_scenario(scenario_params, outpath=None):
     capital_shares = calc_asset_shares(
         root_dir_=root_dir,
         any_to_wb_=any_to_wb,
-        scale_self_employment=policy_params.pop('scale_self_employment', None),
+        scale_self_employment=policy_params['scale_self_employment'],
         verbose=run_params['verbose'],
         recompute=run_params['recompute'],
         download=run_params['download'],
@@ -1343,8 +1376,8 @@ def prepare_scenario(scenario_params, outpath=None):
         fa_threshold_=hazard_params['fa_threshold'],
         apply_exposure_bias=not hazard_params['no_exposure_bias'],
         population_data=wb_data_macro['pop'],
-        scale_exposure=policy_params.pop('scale_exposure', None),
-        scale_vulnerability=policy_params.pop('scale_vulnerability', None),
+        scale_exposure=policy_params['scale_exposure'],
+        scale_vulnerability=policy_params['scale_vulnerability'],
         early_warning_data=early_warning,
         no_ew_hazards="Earthquake+Tsunami",
         reduction_vul=macro_params['reduction_vul'],
@@ -1360,10 +1393,10 @@ def prepare_scenario(scenario_params, outpath=None):
         avg_prod_k_=avg_prod_k,
         resolution=run_params['resolution'],
         axfin_impact_=macro_params['axfin_impact'],
-        scale_non_diversified_income_=policy_params.pop('scale_non_diversified_income', None),
-        min_diversified_share_=policy_params.pop('min_diversified_share', None),
-        scale_income_=policy_params.pop('scale_income', None),
-        scale_gini_index_=policy_params.pop('scale_gini_index', None),
+        scale_non_diversified_income_=policy_params['scale_non_diversified_income'],
+        min_diversified_share_=policy_params['min_diversified_share'],
+        scale_income_=policy_params['scale_income'],
+        scale_gini_index_=policy_params['scale_gini_index'],
     )
     if run_params['recompute']:
         print(f"Duration: {time() - timestamp:.2f} seconds.\n")

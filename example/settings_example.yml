@@ -28,10 +28,13 @@ scenario_params:
     discount_rate_rho: .06
     axfin_impact: .1
     reduction_vul: .2
+    reconstruction_capital: 'self_hous'
+    early_warning_file: null
   hazard_params:
     hazard_protection: 'FLOPROS'
     no_exposure_bias: False
     fa_threshold: .99
+    zero_rp: 2
   data_params:
     transfers_regression_params:
 #      type: 'OLS'
