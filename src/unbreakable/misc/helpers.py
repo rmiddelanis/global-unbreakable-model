@@ -25,6 +25,8 @@
 """
 
 import os
+from itertools import product
+
 import requests
 import xarray as xr
 import numpy as np
@@ -142,7 +144,7 @@ def concat_categories(p, np, index):
     return y.squeeze()
 
 
-def average_over_rp(d_in, protection_=None, zero_rp=1):
+def average_over_rp(d_in, protection_=None, zero_rp=2):
     """
     Aggregate outputs over return periods, weighted by probabilities.
 
@@ -162,25 +164,23 @@ def average_over_rp(d_in, protection_=None, zero_rp=1):
     if 'rp' not in df_in.index.names:
         raise ValueError("Need index level 'rp' to average over return periods.")
 
+    # adds zero return period to input dataframe if not present
     if zero_rp is not None:
         if zero_rp <= 0:
             raise ValueError("zero_rp should be > 0")
         elif zero_rp not in df_in.index.get_level_values('rp'):
-            pairs = df_in.index.droplevel("rp").unique()
+            new_index = df_in.index.droplevel("rp").unique()
             new_index = pd.MultiIndex.from_arrays(
-                [pairs.get_level_values(0), pairs.get_level_values(1), [zero_rp] * len(pairs)],
-                names=df_in.index.names
+                [new_index.get_level_values(l) for l in range(new_index.nlevels)] + [[zero_rp] * len(new_index)],
+                names=list(new_index.names) + ['rp']
             )
-            new_rows = pd.DataFrame(0, index=new_index, columns=df_in.columns)
-            df = pd.concat([df_in, new_rows]).sort_index().copy()
+            new_rows = pd.DataFrame(0, index=new_index, columns=df_in.columns).reorder_levels(df_in.index.names)
+            df_in = pd.concat([df_in, new_rows]).sort_index().copy()
         else:
             print(f"Warning: zero_rp={zero_rp} was provided for return period averaging, but return period is "
                   f"already in df_in. Ignoring zero_rp.")
-            df = df_in.copy()
-    else:
-        df = df_in.copy()
 
-    group_cols = [c for c in df.reset_index().columns if c not in df.columns and c != "rp"]
+    group_levels = [idxn for idxn in df_in.index.names if idxn != 'rp']
 
     # removes events below the protection level
     if protection_ is not None:
@@ -188,17 +188,34 @@ def average_over_rp(d_in, protection_=None, zero_rp=1):
             protection = protection_.protection.copy().round(3)
         else:
             protection = protection_.copy().round(3)
-        protection = protection[protection > min(df.index.get_level_values('rp').unique())]
+        protection = protection[protection > zero_rp]
+
+        # drop protection levels not in df_in
+        common_index = protection.index.intersection(df_in.droplevel(list(np.setdiff1d(df_in.index.names, protection.index.names))).index.unique())
+        protection = protection.loc[common_index]
+
         protected_index = protection.rename('rp').to_frame().set_index('rp', append=True).index
-        protected_levels = pd.DataFrame(np.nan, index=protected_index.difference(df.index), columns=df.columns)
-        df = pd.concat([df, protected_levels]).sort_index()
+        missing_levels = list(set(df_in.index.names) - set(protected_index.names))
+        for missing_level in missing_levels:
+            protected_index = pd.MultiIndex.from_tuples(
+                [(*t, m) for t, m in product(list(protected_index.to_flat_index()), list(df_in.index.get_level_values(missing_level).unique()))],
+                names=list(protected_index.names) + [missing_level]
+            )
+        protected_index.reorder_levels(df_in.index.names)
+        protected_levels = pd.DataFrame(np.nan, index=protected_index.difference(df_in.index), columns=df_in.columns)
 
-        if group_cols:
-            df = df.reset_index().set_index(group_cols).groupby(group_cols).apply(lambda g: g.reset_index().drop(columns=group_cols).set_index('rp').interpolate(method='index'))
+        # interpolate to get values at protection levels
+        df_in = pd.concat([df_in, protected_levels]).sort_index()
+        if group_levels:
+            idx_order = df_in.index.names
+            df_in = df_in.reset_index('rp').groupby(group_levels).apply(
+                lambda g: g.reset_index().drop(columns=group_levels).set_index('rp').interpolate(method='index')
+            ).reorder_levels(idx_order).sort_index()
         else:
-            df = df.sort_index().interpolate(method='index')
+            df_in = df_in.sort_index().interpolate(method='index')
 
-        df = df[((df.reset_index('rp').rp - protection).fillna(0) >= 0).values]
+        # remove rows where return period is below protection level
+        df_in = df_in[((df_in.reset_index('rp').rp - protection).fillna(0) >= 0).values]
 
     def calculate_rp_average(g):
         g_ = g.sort_index().copy()
@@ -206,7 +223,7 @@ def average_over_rp(d_in, protection_=None, zero_rp=1):
         rp_weights = pd.Series(1 / g_.index, index=g_.index).diff(-1).loc[g.sort_index().index]
         return pd.DataFrame((g_.values[:-1] + g_.values[1:]) / 2, index=g.sort_index().index, columns=g_.columns).mul(rp_weights, axis=0).sum()
 
-    res = df.groupby(group_cols, group_keys=False).apply(lambda g: calculate_rp_average(g.droplevel(group_cols)))
+    res = df_in.groupby(group_levels, group_keys=False).apply(lambda g: calculate_rp_average(g.droplevel(group_levels)))
     res.loc[d_in.droplevel('rp').index.unique().difference(res.index)] = 0
 
     if isinstance(d_in, pd.Series):
