@@ -130,7 +130,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
         process_flopros_data(
             flopros_path=os.path.join(root_dir_, "data/raw/FLOPROS"),
             population_path=os.path.join(root_dir_, "data/raw/GPW/gpw_v4_population_density_adjusted_rev11_2pt5_min.nc"),
-            shapefiles_path=os.path.join(root_dir_, "data/raw/WB_shapes/World Bank Official Boundaries - Admin 0_all_layers.gpkg"),
+            shapefiles_path=os.path.join(root_dir_, "data/raw/WB_shapes/WB_GAD_ADMIN0_Shapefiles-JUNE2025/WB_GAD_ADM0_polygons.shp"),
             outpath=os.path.join(root_dir_, "data/processed/")
         )
     else:

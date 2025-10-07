@@ -77,6 +77,7 @@ def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath
     world_shapes = gpd.read_file(shapefiles_path, layer=0)
     world_shapes = world_shapes.rename(columns={'GID_0': 'iso3', 'ISO_A3': 'iso3'}, errors='ignore')
     world_shapes = world_shapes[['iso3', 'geometry']]
+    world_shapes['iso3'] = world_shapes['iso3'].fillna('N/A')
 
     if world_shapes.iso3.duplicated().any():
         world_shapes = world_shapes.dissolve(by='iso3', as_index=True)
