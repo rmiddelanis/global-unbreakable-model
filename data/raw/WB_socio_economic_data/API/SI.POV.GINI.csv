@@ -3639,7 +3639,7 @@ Antigua and Barbuda,1963,
 Antigua and Barbuda,1962,
 Antigua and Barbuda,1961,
 Antigua and Barbuda,1960,
-Argentina,2024,
+Argentina,2024,42.4
 Argentina,2023,42.4
 Argentina,2022,40.7
 Argentina,2021,42.4
@@ -3838,7 +3838,7 @@ Australia,2024,
 Australia,2023,
 Australia,2022,
 Australia,2021,
-Australia,2020,
+Australia,2020,33.8
 Australia,2019,
 Australia,2018,34.3
 Australia,2017,
@@ -3900,7 +3900,7 @@ Australia,1962,
 Australia,1961,
 Australia,1960,
 Austria,2024,
-Austria,2023,
+Austria,2023,31.2
 Austria,2022,30.9
 Austria,2021,30.7
 Austria,2020,29.8
@@ -4161,7 +4161,7 @@ Bahrain,1961,
 Bahrain,1960,
 Bangladesh,2024,
 Bangladesh,2023,
-Bangladesh,2022,33.4
+Bangladesh,2022,30.9
 Bangladesh,2021,
 Bangladesh,2020,
 Bangladesh,2019,
@@ -4355,7 +4355,7 @@ Belarus,1962,
 Belarus,1961,
 Belarus,1960,
 Belgium,2024,
-Belgium,2023,
+Belgium,2023,26.8
 Belgium,2022,26.4
 Belgium,2021,26.6
 Belgium,2020,26.0
@@ -5070,7 +5070,7 @@ Brunei Darussalam,1962,
 Brunei Darussalam,1961,
 Brunei Darussalam,1960,
 Bulgaria,2024,
-Bulgaria,2023,
+Bulgaria,2023,39.5
 Bulgaria,2022,38.2
 Bulgaria,2021,39.0
 Bulgaria,2020,40.5
@@ -5462,7 +5462,7 @@ Cameroon,1960,
 Canada,2024,
 Canada,2023,
 Canada,2022,
-Canada,2021,
+Canada,2021,31.1
 Canada,2020,29.9
 Canada,2019,31.7
 Canada,2018,32.5
@@ -5851,7 +5851,7 @@ Chile,1961,
 Chile,1960,
 China,2024,
 China,2023,
-China,2022,
+China,2022,36.0
 China,2021,35.7
 China,2020,37.1
 China,2019,38.2
@@ -6305,7 +6305,7 @@ Cote d'Ivoire,1962,
 Cote d'Ivoire,1961,
 Cote d'Ivoire,1960,
 Croatia,2024,
-Croatia,2023,
+Croatia,2023,30.1
 Croatia,2022,30.0
 Croatia,2021,28.9
 Croatia,2020,29.5
@@ -6500,7 +6500,7 @@ Curacao,1962,
 Curacao,1961,
 Curacao,1960,
 Cyprus,2024,
-Cyprus,2023,
+Cyprus,2023,31.8
 Cyprus,2022,31.5
 Cyprus,2021,31.3
 Cyprus,2020,31.7
@@ -6565,7 +6565,7 @@ Cyprus,1962,
 Cyprus,1961,
 Cyprus,1960,
 Czechia,2024,
-Czechia,2023,
+Czechia,2023,25.7
 Czechia,2022,25.9
 Czechia,2021,26.2
 Czechia,2020,26.2
@@ -6630,7 +6630,7 @@ Czechia,1962,
 Czechia,1961,
 Czechia,1960,
 Denmark,2024,
-Denmark,2023,
+Denmark,2023,29.9
 Denmark,2022,29.3
 Denmark,2021,28.3
 Denmark,2020,27.5
@@ -6824,7 +6824,7 @@ Dominica,1963,
 Dominica,1962,
 Dominica,1961,
 Dominica,1960,
-Dominican Republic,2024,
+Dominican Republic,2024,39.0
 Dominican Republic,2023,38.4
 Dominican Republic,2022,37.0
 Dominican Republic,2021,38.5
@@ -6889,7 +6889,7 @@ Dominican Republic,1963,
 Dominican Republic,1962,
 Dominican Republic,1961,
 Dominican Republic,1960,
-Ecuador,2024,
+Ecuador,2024,45.2
 Ecuador,2023,44.6
 Ecuador,2022,45.5
 Ecuador,2021,45.8
@@ -6907,7 +6907,7 @@ Ecuador,2010,48.8
 Ecuador,2009,48.5
 Ecuador,2008,49.8
 Ecuador,2007,53.4
-Ecuador,2006,52.2
+Ecuador,2006,52.3
 Ecuador,2005,53.1
 Ecuador,2004,53.9
 Ecuador,2003,53.5
@@ -7215,7 +7215,7 @@ Eritrea,1962,
 Eritrea,1961,
 Eritrea,1960,
 Estonia,2024,
-Estonia,2023,
+Estonia,2023,30.7
 Estonia,2022,32.3
 Estonia,2021,31.8
 Estonia,2020,30.7
@@ -7540,7 +7540,7 @@ Fiji,1962,
 Fiji,1961,
 Fiji,1960,
 Finland,2024,
-Finland,2023,
+Finland,2023,27.4
 Finland,2022,27.9
 Finland,2021,27.7
 Finland,2020,27.1
@@ -7605,7 +7605,7 @@ Finland,1962,
 Finland,1961,
 Finland,1960,
 France,2024,
-France,2023,
+France,2023,31.8
 France,2022,31.2
 France,2021,31.5
 France,2020,30.7
@@ -7864,7 +7864,7 @@ Gabon,1960,
 "Gambia, The",1962,
 "Gambia, The",1961,
 "Gambia, The",1960,
-Georgia,2024,
+Georgia,2024,33.9
 Georgia,2023,34.8
 Georgia,2022,33.5
 Georgia,2021,34.2
@@ -8125,7 +8125,7 @@ Gibraltar,1962,
 Gibraltar,1961,
 Gibraltar,1960,
 Greece,2024,
-Greece,2023,
+Greece,2023,33.4
 Greece,2022,33.4
 Greece,2021,32.9
 Greece,2020,33.6
@@ -8146,9 +8146,9 @@ Greece,2006,35.1
 Greece,2005,34.6
 Greece,2004,33.6
 Greece,2003,32.8
-Greece,2002,
+Greece,2002,35.5
 Greece,2001,
-Greece,2000,34.2
+Greece,2000,34.4
 Greece,1999,
 Greece,1998,
 Greece,1997,
@@ -8709,7 +8709,7 @@ Haiti,1963,
 Haiti,1962,
 Haiti,1961,
 Haiti,1960,
-Honduras,2024,
+Honduras,2024,45.7
 Honduras,2023,46.8
 Honduras,2022,
 Honduras,2021,
@@ -8841,11 +8841,11 @@ Honduras,1960,
 "Hong Kong SAR, China",1960,
 Hungary,2024,
 Hungary,2023,
-Hungary,2022,30.2
-Hungary,2021,29.2
-Hungary,2020,29.7
-Hungary,2019,30.0
-Hungary,2018,29.6
+Hungary,2022,
+Hungary,2021,
+Hungary,2020,
+Hungary,2019,
+Hungary,2018,
 Hungary,2017,30.6
 Hungary,2016,30.3
 Hungary,2015,30.4
@@ -8909,7 +8909,7 @@ Iceland,2023,
 Iceland,2022,
 Iceland,2021,
 Iceland,2020,
-Iceland,2019,
+Iceland,2019,26.8
 Iceland,2018,26.6
 Iceland,2017,26.1
 Iceland,2016,27.2
@@ -9230,7 +9230,7 @@ Iraq,1962,
 Iraq,1961,
 Iraq,1960,
 Ireland,2024,
-Ireland,2023,
+Ireland,2023,29.0
 Ireland,2022,29.9
 Ireland,2021,29.4
 Ireland,2020,29.2
@@ -9425,7 +9425,7 @@ Israel,1962,
 Israel,1961,
 Israel,1960,
 Italy,2024,
-Italy,2023,
+Italy,2023,34.3
 Italy,2022,33.7
 Italy,2021,34.8
 Italy,2020,35.2
@@ -9751,7 +9751,7 @@ Kazakhstan,1961,
 Kazakhstan,1960,
 Kenya,2024,
 Kenya,2023,
-Kenya,2022,
+Kenya,2022,37.7
 Kenya,2021,38.7
 Kenya,2020,36.2
 Kenya,2019,
@@ -10011,7 +10011,7 @@ Kiribati,1960,
 "Korea, Rep.",1960,
 Kosovo,2024,
 Kosovo,2023,
-Kosovo,2022,
+Kosovo,2022,38.3
 Kosovo,2021,49.4
 Kosovo,2020,57.4
 Kosovo,2019,40.2
@@ -10140,7 +10140,7 @@ Kuwait,1962,
 Kuwait,1961,
 Kuwait,1960,
 Kyrgyz Republic,2024,
-Kyrgyz Republic,2023,
+Kyrgyz Republic,2023,27.2
 Kyrgyz Republic,2022,26.4
 Kyrgyz Republic,2021,28.8
 Kyrgyz Republic,2020,29.0
@@ -10270,7 +10270,7 @@ Lao PDR,1962,
 Lao PDR,1961,
 Lao PDR,1960,
 Latvia,2024,
-Latvia,2023,
+Latvia,2023,34.0
 Latvia,2022,33.7
 Latvia,2021,34.3
 Latvia,2020,35.7
@@ -10336,7 +10336,7 @@ Latvia,1961,
 Latvia,1960,
 Lebanon,2024,
 Lebanon,2023,
-Lebanon,2022,
+Lebanon,2022,35.3
 Lebanon,2021,
 Lebanon,2020,
 Lebanon,2019,
@@ -10660,7 +10660,7 @@ Liechtenstein,1962,
 Liechtenstein,1961,
 Liechtenstein,1960,
 Lithuania,2024,
-Lithuania,2023,
+Lithuania,2023,36.0
 Lithuania,2022,36.6
 Lithuania,2021,36.7
 Lithuania,2020,36.0
@@ -10725,7 +10725,7 @@ Lithuania,1962,
 Lithuania,1961,
 Lithuania,1960,
 Luxembourg,2024,
-Luxembourg,2023,
+Luxembourg,2023,33.6
 Luxembourg,2022,34.1
 Luxembourg,2021,32.7
 Luxembourg,2020,33.4
@@ -10857,7 +10857,7 @@ Luxembourg,1960,
 Madagascar,2024,
 Madagascar,2023,
 Madagascar,2022,
-Madagascar,2021,
+Madagascar,2021,36.8
 Madagascar,2020,
 Madagascar,2019,
 Madagascar,2018,
@@ -10866,7 +10866,7 @@ Madagascar,2016,
 Madagascar,2015,
 Madagascar,2014,
 Madagascar,2013,
-Madagascar,2012,42.5
+Madagascar,2012,42.6
 Madagascar,2011,
 Madagascar,2010,42.4
 Madagascar,2009,
@@ -11570,10 +11570,10 @@ Mexico,1960,
 "Micronesia, Fed. Sts.",1961,
 "Micronesia, Fed. Sts.",1960,
 Moldova,2024,
-Moldova,2023,
+Moldova,2023,26.8
 Moldova,2022,25.9
 Moldova,2021,25.7
-Moldova,2020,
+Moldova,2020,25.0
 Moldova,2019,26.0
 Moldova,2018,25.7
 Moldova,2017,25.9
@@ -11896,10 +11896,10 @@ Morocco,1961,
 Morocco,1960,
 Mozambique,2024,
 Mozambique,2023,
-Mozambique,2022,
+Mozambique,2022,49.6
 Mozambique,2021,
 Mozambique,2020,
-Mozambique,2019,50.3
+Mozambique,2019,50.7
 Mozambique,2018,
 Mozambique,2017,
 Mozambique,2016,
@@ -12546,7 +12546,7 @@ Niger,1961,
 Niger,1960,
 Nigeria,2024,
 Nigeria,2023,
-Nigeria,2022,
+Nigeria,2022,33.9
 Nigeria,2021,
 Nigeria,2020,
 Nigeria,2019,
@@ -12740,7 +12740,7 @@ Northern Mariana Islands,1962,
 Northern Mariana Islands,1961,
 Northern Mariana Islands,1960,
 Norway,2024,
-Norway,2023,
+Norway,2023,26.5
 Norway,2022,26.9
 Norway,2021,29.1
 Norway,2020,28.4
@@ -12999,7 +12999,7 @@ Palau,1963,
 Palau,1962,
 Palau,1961,
 Palau,1960,
-Panama,2024,
+Panama,2024,49.7
 Panama,2023,48.9
 Panama,2022,
 Panama,2021,50.9
@@ -13129,9 +13129,9 @@ Papua New Guinea,1963,
 Papua New Guinea,1962,
 Papua New Guinea,1961,
 Papua New Guinea,1960,
-Paraguay,2024,
-Paraguay,2023,44.4
-Paraguay,2022,44.8
+Paraguay,2024,44.2
+Paraguay,2023,44.2
+Paraguay,2022,44.6
 Paraguay,2021,42.9
 Paraguay,2020,43.5
 Paraguay,2019,45.7
@@ -13194,7 +13194,7 @@ Paraguay,1963,
 Paraguay,1962,
 Paraguay,1961,
 Paraguay,1960,
-Peru,2024,
+Peru,2024,40.1
 Peru,2023,40.7
 Peru,2022,40.3
 Peru,2021,40.1
@@ -13325,7 +13325,7 @@ Philippines,1962,
 Philippines,1961,
 Philippines,1960,
 Poland,2024,
-Poland,2023,
+Poland,2023,28.5
 Poland,2022,28.9
 Poland,2021,28.5
 Poland,2020,28.5
@@ -13390,7 +13390,7 @@ Poland,1962,
 Poland,1961,
 Poland,1960,
 Portugal,2024,
-Portugal,2023,
+Portugal,2023,33.9
 Portugal,2022,36.3
 Portugal,2021,34.6
 Portugal,2020,34.7
@@ -13585,7 +13585,7 @@ Qatar,1962,
 Qatar,1961,
 Qatar,1960,
 Romania,2024,
-Romania,2023,
+Romania,2023,29.8
 Romania,2022,32.3
 Romania,2021,33.9
 Romania,2020,34.6
@@ -13650,8 +13650,8 @@ Romania,1962,
 Romania,1961,
 Romania,1960,
 Russian Federation,2024,
-Russian Federation,2023,
-Russian Federation,2022,
+Russian Federation,2023,33.0
+Russian Federation,2022,33.9
 Russian Federation,2021,35.1
 Russian Federation,2020,33.7
 Russian Federation,2019,35.7
@@ -13715,7 +13715,7 @@ Russian Federation,1962,
 Russian Federation,1961,
 Russian Federation,1960,
 Rwanda,2024,
-Rwanda,2023,
+Rwanda,2023,39.4
 Rwanda,2022,
 Rwanda,2021,
 Rwanda,2020,
@@ -14430,7 +14430,7 @@ Sint Maarten (Dutch part),1962,
 Sint Maarten (Dutch part),1961,
 Sint Maarten (Dutch part),1960,
 Slovak Republic,2024,
-Slovak Republic,2023,
+Slovak Republic,2023,23.8
 Slovak Republic,2022,24.1
 Slovak Republic,2021,24.1
 Slovak Republic,2020,24.2
@@ -14495,7 +14495,7 @@ Slovak Republic,1962,
 Slovak Republic,1961,
 Slovak Republic,1960,
 Slovenia,2024,
-Slovenia,2023,
+Slovenia,2023,24.7
 Slovenia,2022,24.3
 Slovenia,2021,24.3
 Slovenia,2020,24.0
@@ -14624,71 +14624,71 @@ Solomon Islands,1963,
 Solomon Islands,1962,
 Solomon Islands,1961,
 Solomon Islands,1960,
-Somalia,2024,
-Somalia,2023,
-Somalia,2022,
-Somalia,2021,
-Somalia,2020,
-Somalia,2019,
-Somalia,2018,
-Somalia,2017,
-Somalia,2016,
-Somalia,2015,
-Somalia,2014,
-Somalia,2013,
-Somalia,2012,
-Somalia,2011,
-Somalia,2010,
-Somalia,2009,
-Somalia,2008,
-Somalia,2007,
-Somalia,2006,
-Somalia,2005,
-Somalia,2004,
-Somalia,2003,
-Somalia,2002,
-Somalia,2001,
-Somalia,2000,
-Somalia,1999,
-Somalia,1998,
-Somalia,1997,
-Somalia,1996,
-Somalia,1995,
-Somalia,1994,
-Somalia,1993,
-Somalia,1992,
-Somalia,1991,
-Somalia,1990,
-Somalia,1989,
-Somalia,1988,
-Somalia,1987,
-Somalia,1986,
-Somalia,1985,
-Somalia,1984,
-Somalia,1983,
-Somalia,1982,
-Somalia,1981,
-Somalia,1980,
-Somalia,1979,
-Somalia,1978,
-Somalia,1977,
-Somalia,1976,
-Somalia,1975,
-Somalia,1974,
-Somalia,1973,
-Somalia,1972,
-Somalia,1971,
-Somalia,1970,
-Somalia,1969,
-Somalia,1968,
-Somalia,1967,
-Somalia,1966,
-Somalia,1965,
-Somalia,1964,
-Somalia,1963,
-Somalia,1962,
-Somalia,1961,
-Somalia,1960,
+"Somalia, Fed. Rep.",2024,
+"Somalia, Fed. Rep.",2023,
+"Somalia, Fed. Rep.",2022,
+"Somalia, Fed. Rep.",2021,
+"Somalia, Fed. Rep.",2020,
+"Somalia, Fed. Rep.",2019,
+"Somalia, Fed. Rep.",2018,
+"Somalia, Fed. Rep.",2017,
+"Somalia, Fed. Rep.",2016,
+"Somalia, Fed. Rep.",2015,
+"Somalia, Fed. Rep.",2014,
+"Somalia, Fed. Rep.",2013,
+"Somalia, Fed. Rep.",2012,
+"Somalia, Fed. Rep.",2011,
+"Somalia, Fed. Rep.",2010,
+"Somalia, Fed. Rep.",2009,
+"Somalia, Fed. Rep.",2008,
+"Somalia, Fed. Rep.",2007,
+"Somalia, Fed. Rep.",2006,
+"Somalia, Fed. Rep.",2005,
+"Somalia, Fed. Rep.",2004,
+"Somalia, Fed. Rep.",2003,
+"Somalia, Fed. Rep.",2002,
+"Somalia, Fed. Rep.",2001,
+"Somalia, Fed. Rep.",2000,
+"Somalia, Fed. Rep.",1999,
+"Somalia, Fed. Rep.",1998,
+"Somalia, Fed. Rep.",1997,
+"Somalia, Fed. Rep.",1996,
+"Somalia, Fed. Rep.",1995,
+"Somalia, Fed. Rep.",1994,
+"Somalia, Fed. Rep.",1993,
+"Somalia, Fed. Rep.",1992,
+"Somalia, Fed. Rep.",1991,
+"Somalia, Fed. Rep.",1990,
+"Somalia, Fed. Rep.",1989,
+"Somalia, Fed. Rep.",1988,
+"Somalia, Fed. Rep.",1987,
+"Somalia, Fed. Rep.",1986,
+"Somalia, Fed. Rep.",1985,
+"Somalia, Fed. Rep.",1984,
+"Somalia, Fed. Rep.",1983,
+"Somalia, Fed. Rep.",1982,
+"Somalia, Fed. Rep.",1981,
+"Somalia, Fed. Rep.",1980,
+"Somalia, Fed. Rep.",1979,
+"Somalia, Fed. Rep.",1978,
+"Somalia, Fed. Rep.",1977,
+"Somalia, Fed. Rep.",1976,
+"Somalia, Fed. Rep.",1975,
+"Somalia, Fed. Rep.",1974,
+"Somalia, Fed. Rep.",1973,
+"Somalia, Fed. Rep.",1972,
+"Somalia, Fed. Rep.",1971,
+"Somalia, Fed. Rep.",1970,
+"Somalia, Fed. Rep.",1969,
+"Somalia, Fed. Rep.",1968,
+"Somalia, Fed. Rep.",1967,
+"Somalia, Fed. Rep.",1966,
+"Somalia, Fed. Rep.",1965,
+"Somalia, Fed. Rep.",1964,
+"Somalia, Fed. Rep.",1963,
+"Somalia, Fed. Rep.",1962,
+"Somalia, Fed. Rep.",1961,
+"Somalia, Fed. Rep.",1960,
 South Africa,2024,
 South Africa,2023,
 South Africa,2022,
@@ -14820,7 +14820,7 @@ South Sudan,1962,
 South Sudan,1961,
 South Sudan,1960,
 Spain,2024,
-Spain,2023,
+Spain,2023,33.4
 Spain,2022,33.6
 Spain,2021,33.9
 Spain,2020,34.9
@@ -15340,7 +15340,7 @@ Suriname,1962,
 Suriname,1961,
 Suriname,1960,
 Sweden,2024,
-Sweden,2023,
+Sweden,2023,29.3
 Sweden,2022,31.6
 Sweden,2021,29.8
 Sweden,2020,28.9
@@ -15406,7 +15406,7 @@ Sweden,1961,
 Sweden,1960,
 Switzerland,2024,
 Switzerland,2023,
-Switzerland,2022,
+Switzerland,2022,33.8
 Switzerland,2021,33.8
 Switzerland,2020,33.7
 Switzerland,2019,34.0
@@ -15534,10 +15534,10 @@ Syrian Arab Republic,1963,
 Syrian Arab Republic,1962,
 Syrian Arab Republic,1961,
 Syrian Arab Republic,1960,
-Tajikistan,2024,
-Tajikistan,2023,
-Tajikistan,2022,
-Tajikistan,2021,
+Tajikistan,2024,36.1
+Tajikistan,2023,38.0
+Tajikistan,2022,39.5
+Tajikistan,2021,32.4
 Tajikistan,2020,
 Tajikistan,2019,
 Tajikistan,2018,
@@ -16639,7 +16639,7 @@ United States,1963,36.7
 United States,1962,
 United States,1961,
 United States,1960,
-Uruguay,2024,
+Uruguay,2024,40.0
 Uruguay,2023,40.9
 Uruguay,2022,40.6
 Uruguay,2021,40.8
@@ -16663,7 +16663,7 @@ Uruguay,2004,45.9
 Uruguay,2003,45.0
 Uruguay,2002,45.5
 Uruguay,2001,45.0
-Uruguay,2000,42.9
+Uruguay,2000,43.4
 Uruguay,1999,
 Uruguay,1998,42.5
 Uruguay,1997,41.5
@@ -16704,7 +16704,7 @@ Uruguay,1963,
 Uruguay,1962,
 Uruguay,1961,
 Uruguay,1960,
-Uzbekistan,2024,
+Uzbekistan,2024,34.6
 Uzbekistan,2023,34.5
 Uzbekistan,2022,31.2
 Uzbekistan,2021,32.9

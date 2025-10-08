@@ -129,10 +129,18 @@ def get_wb_df(wb_name, colname, wb_raw_data_path, download, start=2000):
         pd.DataFrame: DataFrame containing the World Bank dataset.
     """
     wb_raw_path = os.path.join(wb_raw_data_path, f"{wb_name}.csv")
+    metadata_path = os.path.join(wb_raw_data_path, "__metadata.csv")
     if download or not os.path.exists(wb_raw_path):
         # return all values
         wb_raw = wb.download(indicator=wb_name, start=1900, end=YEAR_TODAY, country="all")
         wb_raw.to_csv(wb_raw_path)
+        if os.path.exists(metadata_path):
+            metadata = pd.read_csv(metadata_path, index_col=0)
+            metadata.loc[wb_name, 'last_updated'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            metadata = pd.DataFrame(index=[wb_name], columns=['last_updated'])
+            metadata.loc[wb_name, 'last_updated'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+        metadata.to_csv(metadata_path)
     else:
         wb_raw = pd.read_csv(wb_raw_path)
         wb_raw = wb_raw.set_index(list(np.intersect1d(wb_raw.columns, ['country', 'year'])))
