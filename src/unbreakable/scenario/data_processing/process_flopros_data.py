@@ -65,6 +65,7 @@ def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath
     # Load flopros modeled layer data for coastal protection
     flopros_mod_co = pd.read_excel(os.path.join(flopros_path, "Tiggeloven_et_al_2020_data/Results_adaptation_objectives/Protection_constant_Adaptation_objective_RCP4P5_SSP1.xlsx"), index_col=0)
     flopros_update_shapes = gpd.read_file(os.path.join(flopros_path, "Tiggeloven_et_al_2020_data/Results_adaptation_objectives/Countries_States_simplified.shp"))
+    flopros_update_shapes.set_crs(flopros.crs, inplace=True)
     flopros_mod_co = pd.merge(flopros_update_shapes[['FID_Aque', 'geometry']], flopros_mod_co, on='FID_Aque')
     flopros_mod_co = flopros_mod_co[['Protection standards', 'geometry']]
     flopros_mod_co.rename({'Protection standards': 'ModL_Co'}, axis=1, inplace=True)
@@ -83,8 +84,6 @@ def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath
         world_shapes = world_shapes.dissolve(by='iso3', as_index=True)
     else:
         world_shapes.set_index('iso3', inplace=True)
-
-    prot_ntl_aggregated = gpd.GeoDataFrame(index=world_shapes.index, columns=['MerL_Riv', 'MerL_Co'])
 
     protection_gridded = xr.Dataset(
         data_vars={'MerL_Riv': (('x', 'y'), np.full((len(pop.x), len(pop.y)), np.nan)),
@@ -109,6 +108,7 @@ def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath
     # Calculate population weighted protection levels
     protection_weighted = protection_gridded * pop
 
+    prot_ntl_aggregated = gpd.GeoDataFrame(index=world_shapes.index, columns=['MerL_Riv', 'MerL_Co'])
     # Aggregate gridded protection to country level
     for iso3 in tqdm.tqdm(prot_ntl_aggregated.index, desc='aggregating to country level',
                           total=len(prot_ntl_aggregated)):

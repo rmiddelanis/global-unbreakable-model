@@ -188,6 +188,5 @@ def process_peb_data(root_dir="./", exposure_data_path="data/raw/PEB/exposure bi
     # store exposure bias per quintile
     if outpath is not None:
         exp_bias_q.to_csv(os.path.join(outpath, 'exposure_bias_per_quintile.csv'))
-        print(f"Exposure bias per quintile stored in {outpath}")
 
     return exp_bias_q
