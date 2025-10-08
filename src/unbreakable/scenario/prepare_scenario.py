@@ -130,7 +130,7 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
         process_flopros_data(
             flopros_path=os.path.join(root_dir_, "data/raw/FLOPROS"),
             population_path=os.path.join(root_dir_, "data/raw/GPW/gpw_v4_population_density_adjusted_rev11_2pt5_min.nc"),
-            shapefiles_path=os.path.join(root_dir_, "data/raw/WB_shapes/WB_GAD_ADMIN0_Shapefiles-JUNE2025/WB_GAD_ADM0_polygons.shp"),
+            shapefiles_path=os.path.join(root_dir_, "data/raw/WB_shapes/high_resolution/WB_GAD_ADM0_complete.zip"),
             outpath=os.path.join(root_dir_, "data/processed/")
         )
     else:
@@ -142,8 +142,8 @@ def load_protection(index_, root_dir_, protection_data="FLOPROS", min_rp=1, haza
     prot = pd.Series(index=index_, name="protection", data=0.)
     if protection_data in ['FLOPROS', 'country_income']:
         if protection_data == 'FLOPROS':
-            prot_data = pd.read_csv(protection_path, index_col=0)
-            prot_data = prot_data.drop('country', axis=1, errors='ignore')
+            prot_data = pd.read_csv(protection_path).dropna(subset='iso3').set_index('iso3')
+            prot_data = prot_data.drop(columns='country', axis=1, errors='ignore')
             prot_data.rename({'MerL_Riv': 'Flood', 'MerL_Co': 'Storm surge'}, axis=1, inplace=True)
             update_data_coverage(root_dir_, 'flopros', prot_data.index, None)
         elif protection_data == 'country_income':  # assumed a function of the country's income group
