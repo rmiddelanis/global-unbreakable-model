@@ -30,6 +30,8 @@ import pandas as pd
 import rioxarray as rxr
 import tqdm
 import xarray as xr
+import zipfile
+from io import BytesIO
 
 
 def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
@@ -72,7 +74,12 @@ def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath
     flopros_mod_co.dropna(inplace=True)
 
     # Load population data for the year 2020 (raster = 5)
-    pop = rxr.open_rasterio(population_path, masked=True).sel(raster=5)
+    if population_path.endswith('.zip'):
+        with zipfile.ZipFile(population_path, 'r') as z:
+            with z.open(z.namelist()[0]) as f:
+                pop = rxr.open_rasterio(BytesIO(f.read()), masked=True).sel(raster=5)
+    else:
+        pop = rxr.open_rasterio(population_path, masked=True).sel(raster=5)
     pop.rio.set_crs(pop.attrs['proj4'], inplace=True)
 
     world_shapes = gpd.read_file(shapefiles_path, layer=0)
