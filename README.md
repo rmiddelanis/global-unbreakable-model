@@ -1,17 +1,23 @@
-# Reproducibility package for: "Global Socio-economic Resilience to Natural Disasters"
+# Global Model for Socio-economic Resilience to Natural Disasters
 
 ## Contents
 
 1. [Overview](#overview)
-2. [Instructions for Replicators](#instructions-for-replicators)
+2. [Usage](#usage)
+   - [Prerequisites](#prerequisites)
+   - [Model settings](#model-settings)
+   - [Run the model](#run-the-model)
 3. [Data Availability](#data-availability)
-4. [List of Exhibits](#list-of-exhibits)
 
 
 
 ## Overview
 
-This package contains the code and data to reproduce the output of the _Policy Research Working Paper_ "Global Socio-economic Resilience to Natural Disasters" by Robin Middelanis, Bramka Arga Jafino, Ruth Hill, Minh Cong Nguyen, and Stéphane Hallegatte.
+This package contains the code and data to calculate global estimates of socio-economic resilience. 
+
+If you use this code or the data it produces as, please cite the following paper:
+
+Robin Middelanis, Bramka Arga Jafino, Ruth Hill, Minh Cong Nguyen, and Stéphane Hallegatte (2025). "Global Socio-economic Resilience to Natural Disasters". _Policy Research Working Paper_.
 
 As not all raw datasets are publicly available, this package contains pre-processed data files to reproduce the results presented in the paper. Raw data files are not included in this package, but the sources are indicated in the [data availability section](#data-availability). 
 
@@ -21,22 +27,21 @@ This package is structured as follows:
 │   ├── raw/                   # directory for raw data (data files not included)
 │   └── processed/             # pre-processed data to run the model
 │
-├── code/                      # source code
-│   ├── model/                 # core model logic and components
-│   ├── scenario/              # prepares data for individual simulations
-│   ├── misc/                  # utility functions and miscellaneous scripts
-│   └── reproduce_results.py   # script to reproduce manuscript results in headless mode
+├── example/                   
+│   └── settings_example.yml   # example settings file to run the model
 │
-├── results/                   # output directory 
-│   ├── simulation_output/     # raw simulation output
-│   └── figures/               # manuscript figures and underlying data
+├── src/unbreakable/           # source code
+│       ├── misc/              # utility functions and miscellaneous scripts
+│       ├── model/             # core model implementation
+│       ├── post_processing/   # post-processing of model output
+│       └── scenario/          # prepares simulation data
 │
 ├── environment.yml            # dependencies
 └── README.md                  # this README file
 ```
 
 
-## Instructions for Replicators
+## Usage
 
 ### Prerequisites
 The model and data processing run on Python. To install the required dependencies, create a conda environment from the `environment.yml` file and activate it:
@@ -45,51 +50,75 @@ conda env create -n disaster_resilience -f environment.yml
 conda activate disaster_resilience
 ```
 
-### General
+### Model settings
+The model is configured via a settings file in YAML format. An example settings file is provided in `./example/settings_example.yml`.
+The following table provides an overview of the settings options.
+
+| **Parameter**                                          | **Description**                                                  | **Example / Default**                                      |
+|--------------------------------------------------------|------------------------------------------------------------------|------------------------------------------------------------|
+| **model_params**                                       |                                                                  |                                                            |
+| `outpath`                                              | Directory for model output files.                                | `./results`                                                |
+| `run_params.verbose`                                   | Print detailed output during model run.                          | `false`                                                    |
+| `pds_params.covered_loss_share`                        | Fraction of losses covered by post-disaster support.             | `0.2` for 20%                                              |
+| `pds_params.pds_borrowing_ability`                     | Country borrowing ability.                                       | Scale 0-1                                                  |
+| `pds_params.pds_lending_rate`                          | Fraction of GDP that can be borrowed for PDF.                    | [`0.05` for 5% of GDP, `unlimited`]                        |
+| `pds_params.pds_scope`                                 | Population share intervals for targeting or policy scaling.      | e.g. `[[0, 0.2], [0.2, 0.4]` for bottom two quintiles      |
+| `pds_params.pds_targeting`                             | Targeting quality of post-disaster support.                      | [`perfect`, `data`]                                        |
+| `pds_params.pds_variant`                               | Type of post-disaster support.                                   | [`no`, `proportional`, ...]                                |
+| **scenario_params**                                    |                                                                  |                                                            |
+| `run_params.countries`                                 | Countries to include.                                            | `all`                                                      |
+| `run_params.download`                                  | Whether to (re)download input data from the WB API.              | `false`                                                    |
+| `run_params.exclude_countries`                         | List of countries to exclude.                                    | `[THA, LUX]`                                               |
+| `run_params.hazards`                                   | Hazards to include.                                              | `all`                                                      |
+| `run_params.include_poverty_data`                      | Include poverty-related data in output.                          | `false`                                                    |
+| `run_params.num_cores`                                 | Number of CPU cores to use.                                      | `1`                                                        |
+| `run_params.pip_reference_year`                        | Reference year for poverty data.                                 | `2021`                                                     |
+| `run_params.poverty_line`                              | Poverty line in USD (PPP).                                       | `3.0`                                                      |
+| `run_params.recompute`                                 | Whether to recompute model input data.                           | `false`                                                    |
+| `run_params.recompute_hazard_protection`               | Whether to recompute hazard protection data.                     | `false`                                                    |
+| `run_params.resolution`                                | Population resolution.                                           | e.g. `0.2` for quintiles                                   |
+| `run_params.verbose`                                   | Print detailed output during input processing.                   | `false`                                                    |
+| `data_params.transfers_regression_params.type`         | Regression type for transfer shares estimation.                  | `LassoCV` for cross-validated Lasso Regression             |
+| `data_params.transfers_regression_params.features`     | Features used in regression model.                               | `[GDP_{pc}, REM, SOC, UNE, income_group, region, FSY]`     |
+| `hazard_params.fa_threshold`                           | Maximum allowed national exposure.                               | `0.99`                                                     |
+| `hazard_params.hazard_protection`                      | Hazard protection dataset.                                       | `FLOPROS`                                                  |
+| `hazard_params.no_exposure_bias`                       | Disable exposure bias adjustment.                                | `false`                                                    |
+| `hazard_params.zero_rp`                                | Assumed natural protection level.                                | `2`                                                        |
+| `macro_params.axfin_impact`                            | Effect of financial access on diversified income.                | `0.1`                                                      |
+| `macro_params.discount_rate_rho`                       | Discount rate for welfare aggregation.                           | `0.06`                                                     |
+| `macro_params.early_warning_file`                      | Optional file path for external early warning benefit estimates. | `null`                                                     |
+| `macro_params.income_elasticity_eta`                   | Elasticity of income with respect to consumption.                | `1.5`                                                      |
+| `macro_params.reconstruction_capital`                  | Capital fraction reconstructed by households.                    | `self_hous`                                                |
+| `macro_params.reduction_vul`                           | Reduction in vulnerability due to early warning.                 | `0.2`                                                      |
+| `policy_params.min_diversified_share.parameter`        | Minimum diversified income policy parameter.                     | `0` (= policy not applied)                                 |
+| `policy_params.min_diversified_share.scope`            | Population scope for minimum diversified share policy.           | `[[0, 0.2], [0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1]]` |
+| `policy_params.scale_exposure.parameter`               | Scaling factor for exposure.                                     | `0.95` (= policy not applied)                              |
+| `policy_params.scale_exposure.scale_total`             | Whether scaling applies to total exposure.                       | `true`                                                     |
+| `policy_params.scale_exposure.scope`                   | Population scope for scaling exposure.                           | `[[0, 0.2]]`                                               |
+| `policy_params.scale_income.parameter`                 | Scaling factor for national income.                              | `1` (= policy not applied)                                 |
+| `policy_params.scale_income.scope`                     | Population scope for scaling income.                             | `[[0,0.2],[0.2,0.4],[0.4,0.6],[0.6,0.8],[0.8,1]]`          |
+| `policy_params.scale_liquidity.parameter`              | Scaling factor for liquidity.                                    | `1` (= policy not applied)                                 |
+| `policy_params.scale_liquidity.scope`                  | Population scope for scaling liquidity.                          | `[[0,0.2],[0.2,0.4],[0.4,0.6],[0.6,0.8],[0.8,1]]`          |
+| `policy_params.scale_non_diversified_income.parameter` | Scaling factor for non-diversified income share.                 | `1` (= policy not applied)                                 |
+| `policy_params.scale_non_diversified_income.scope`     | Population scope for scaling non-diversified income.             | `[[0,0.2],[0.2,0.4],[0.4,0.6],[0.6,0.8],[0.8,1]]`          |
+| `policy_params.scale_self_employment.parameter`        | Scaling factor for self-employment share.                        | `1` (= policy not applied)                                 |
+| `policy_params.scale_self_employment.scope`            | Population scope for scaling self-employment.                    | `[[0,0.2],[0.2,0.4],[0.4,0.6],[0.6,0.8],[0.8,1]]`          |
+| `policy_params.scale_vulnerability.parameter`          | Scaling factor for vulnerability.                                | `1` (= policy not applied)                                 |
+| `policy_params.scale_vulnerability.scale_total`        | Whether scaling applies to total vulnerability.                  | `false`                                                    |
+| `policy_params.scale_vulnerability.scope`              | Population scope for scaling vulnerability.                      | `[[0,0.2],[0.2,0.4],[0.4,0.6],[0.6,0.8],[0.8,1]]`          |
+
+### Run the model
 
 To run the model, execute 
 ```bash
 python ./src/model/run_model.py <path_to_settings_file>
 ```
-where `<path_to_settings_file>` is the path to a settings file that specifies the model's parameters for simulation, including the parameterization of policy scenarios analyzed in the manuscript. An example settings file is provided in `./code/model/settings_example.yml`. 
+where `<path_to_settings_file>` is the path to a settings file that specifies the model's parameters for simulation, including the parameterization of policy scenarios. An example settings file is provided in `./code/model/settings_example.yml`. 
 
-The model will automatically create scenario model inputs using the script `./code/scenario/prepare_scenario.py`. These model inputs are derived from preprocessed input data in `./data/processed`. Optionally, the preprocessed data can be re-generated by setting the `force_recompute` flag in the settings file. The model will then dynamically download the most recent data available from the World Bank's API, and recompute preprocessed data at runtime from the locally stored raw data in `./data/raw`. Note that raw data files are not included in this package.
+The model will automatically create scenario model inputs using the script `./code/scenario/prepare_scenario.py`. These model inputs are derived from preprocessed input data in `./data/processed`. Optionally, the preprocessed data can be re-generated by setting the `recompute` and `recompute_hazard_protection` flags in the settings file. 
+To also download the most recent data available from the World Bank's API, set the `download` flag. When executed, the model will recompute preprocessed data at runtime from the locally stored raw data in `./data/raw`. Note that not all raw data files are included in this package.
 
 After preparing the simulation inputs, the model will run the simulation and generate output files in the directory specified by the settings file.
-
-
-### Reproducing Manuscript Results
-Users have the following options to reproduce the manuscript results:
-* Run all necessary model simulations using the pre-processed data (recommended). In this case, skip step 1 and proceed directly to step 2. 
-* Re-generate all pre-processed data files from raw data (step 1) before running the model (step 2). This requires manual collection of all raw data files. Some data will be dynamically downloaded, which can yield different results than those presented in the manuscript, as data is frequently updated. 
-
-#### Step 1: Re-generate pre-processed data
-
-Obtain the raw data files that are not included in this reproducibility package from the sources indicated in the [data availability section](#data-availability) section. 
-
-The `force_recompute` flag needs to be set for the first simulation run. In the script `./code/reproduce_results.py` change line
-```python
-force_recompute_on_first_simulation = False
-```
-to
-```python
-force_recompute_on_first_simulation = True
-```
-Note that existing pre-processed data files in `./data/processed/` will be overwritten upon model execution.
-
-#### Step 2: Reproduce results
-To run all model simulations and generate figures in headless mode, execute the script:
-```bash
-python ./src/reproduce_results.py
-```
-
-This script will do the following:
-1. (only if step 1 was executed) Pre-processed raw data from `./data/raw/` and online sources, and store the results in `./data/processed/`. 
-2. Run all model simulations using the pre-processed data files. The scenario settings, input data, and results of each simulation will be stored in a separate subdirectory of `./results/simulation_output/`.
-3. Generate figures based on the simulation output and save them as `./results/figures/<figure_name>.pdf`. Note that maps for publication were produced by the World Bank's cartography team. However, map outputs can be produced if GADM data is provided (see [data availability section](#data-availability) for details). The underlying data of each figure is stored as `./results/figures/<figure_name>.csv`.
-4. Print data reported in the manuscript to the command line.
-
-The runtime to reproduce the results without the `force_recompute` flat set is less than 15 minutes, tested on a MacBook Air M2 with 16 GB RAM. If the flag is set to false, the compute time is up to one hour. The total storage required (including output and raw data) is up to 10 GB, of which about 8.5GB are the raw datasets. 
 
 ## Data Availability
 
@@ -156,17 +185,17 @@ Dividend - A Biennial Report from the Coalition for Disaster Resilient Infrastru
   - Accessed on: 2024-01-19
   - License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
-[7] GADM global map shapes data
-  - Reference: GADM. (2022). _GADM Admin 0 shapefiles (version 4.1)_.
-  - filename: `gadm_410-levels.gpkg`
-  - location: `./data/raw/GADM/`
-  - URL: https://gadm.org/
-  - Accessed on: 2022-07-20
-  - License: CC BY-4.0 (https://creativecommons.org/licenses/by/4.0/) for all shapefiles except for Austria, which is licensed under CC BY-SA 2.0 (https://creativecommons.org/licenses/by-sa/2.0/)
+[7] World Bank Official Boundaries
+  - Reference: World Bank. (2025). _World Bank Official Boundaries_.
+  - filename: `WB_GAD_ocean_mask.zip`, `WB_GAD_Lines.zip`, `WB_GAD_ADM0_complete.zip` 
+  - location: `./data/raw/WB_shapes/`
+  - URL: https://datacatalog.worldbank.org/infrastructure-data/search/dataset/0038272/World-Bank-Official-Administrative-Boundaries
+  - Accessed on: 2025-10-08
+  - License: CC BY-4.0
 
 [8] Gridded population density data
   - Reference: CIESIN. (2018). _Gridded Population of the World, Version 4 (GPWv4): Population Density Adjusted to Match 2015 Revision UN WPP Country Totals, Revision 11 (Version 4.11)_. Palisades, NY: NASA Socioeconomic Data and Applications Center (SEDAC).
-  - filename: `gpw_v4_population_density_adjusted_rev11_2pt5_min.nc`
+  - filename: `gpw_v4_population_density_adjusted_rev11_2pt5_min.nc.zip`
   - location: `./data/raw/GPW/`
   - URL: https://doi.org/10.7927/H4F47M65
   - Accessed on: 2024-01-15
@@ -254,11 +283,11 @@ Data from Eurostat:
   - License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
 [22] World Bank Country and Lending Groups
-  - Reference: World Bank. (2024). _World Bank Country and Lending Groups_. Washington, D.C.: World Bank.
+  - Reference: World Bank. (2025). _World Bank Country and Lending Groups_. Washington, D.C.: World Bank.
   - URL: https://datacatalogfiles.worldbank.org/ddh-published/0037712/DR0090755/CLASS.xlsx
-  - filename: `CLASS.xlsx`
-  - location: `./data/raw/WB_country_classification/`
-  - Accessed: 2024-01-12
+  - filename: `world_bank_countries.csv`
+  - location: `./data/raw/WB_socio_economic_data/API/`
+  - Accessed: 2025-10-08
   - License: [Terms and Conditions](https://www.worldbank.org/en/about/legal/terms-and-conditions)
 
 [23] Population headcount at various poverty lines
@@ -280,7 +309,7 @@ Data from Eurostat:
 
 ### Dynamically downloaded raw data 
 
-The following data sets are downloaded from the World Bank DataBamk by the model when the `force_recompute` flag is set to `True` in the settings file. 
+The following data sets are downloaded from the World Bank DataBamk by the model when the `recompute` flag is set to `True` in the settings file. 
 
   - Datasets used:
     - [25] "Income share held by lowest / second / third / fourth / highest 20%" (identifiers SI.DST.FRST.20, SI.DST.02nd.20, SI.DST.03rd.20, SI.DST.04th.20, SI.DST.05th.20)
@@ -298,8 +327,8 @@ The following data sets are downloaded from the World Bank DataBamk by the model
     per_pr_allpr.cov_q1_tot, per_pr_allpr.cov_q2_tot, per_pr_allpr.cov_q3_tot, per_pr_allpr.cov_q4_tot, per_pr_allpr.cov_q5_tot)
     - [35] "Adequacy of benefits in 1st / 2nd / 3rd / 4th / 5th quintile (%) - All Private Transfers"
       (identifiers per_pr_allpr.adq_q1_tot, per_pr_allpr.adq_q2_tot, per_pr_allpr.adq_q3_tot, per_pr_allpr.adq_q4_tot, per_pr_allpr.adq_q5_tot)
-  - Accessed on: 2025-04-01
-  - URL: databank.worldbank.org/ 
+  - Accessed on: 2025-10-08
+  - URL: https://databank.worldbank.org
   - License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
 ### Pre-processed data
@@ -339,45 +368,3 @@ A set of pre-processed data is provided in this package, allowing to reproduce t
 | wb_data_macro.csv / region                               | Region.                                                                                                                                     |                                          | [22]               |
 | wb_data_macro.csv / income_group                         | Income group.                                                                                                                               |                                          | [22]               |
 
-
-## List of Exhibits
-The provided code reproduces:
-
-- [ ] All numbers provided in text in the paper
-- [ ] All tables and figures in the paper
-- [x] Selected tables and figures in the paper, as explained and justified below
-
-The table below provides a list of all exhibits in the manuscript. Checkmarks indicate those exhibits that are reproduced by this reproducibility package. Figure outputs are stored in `./results/figures/`. Table data reproduced by the code are shown as command-line output in the terminal. All outputs are generated with script `./data/misc/plotting.py`, which is called by the script `./code/reproduce_results.py`.
-
-|     | Exhibit name            | Output        | Footnotes |
-|-----|-------------------------|---------------|-----------|
-| [x] | Figure 1, panels a-h    | fig_1_1.pdf   |           |
-| [x] | Figure 1, panels i, j   | fig_1_1.pdf   |           |
-| [x] | Figure 2                | fig_2.pdf     | [^1]      |
-| [x] | Figure 3                | fig_3.pdf     |           |
-| [x] | Figure 4                | fig_4.pdf     | [^1]      |
-| [x] | Figure 5                | fig_5.pdf     |           |
-| [ ] | Supplementary Figure 1  | n/a           | [^2]      |
-| [x] | Supplementary Figure 2  | supfig_2.pdf  |           |
-| [x] | Supplementary Figure 3  | supfig_3.pdf  | [^1]      |
-| [x] | Supplementary Figure 4  | supfig_4.pdf  |           |
-| [x] | Supplementary Figure 5  | supfig_5.pdf  |           |
-| [x] | Supplementary Figure 6  | supfig_6.pdf  |           |
-| [x] | Supplementary Figure 7  | supfig_7.pdf  |           |
-| [x] | Supplementary Figure 8  | supfig_8.pdf  |           |
-| [x] | Supplementary Figure 9  | supfig_9.pdf  |           |
-| [x] | Supplementary Figure 10 | supfig_10.pdf |           |
-| [ ] | Supplementary Table 1   | n/a           | [^2]      |
-| [ ] | Supplementary Table 2   | n/a           | [^2]      |
-| [ ] | Supplementary Table 3   | n/a           | [^2]      |
-| [ ] | Supplementary Table 4   | n/a           | [^2]      |
-| [x] | Supplementary Table 5   | command line  |           |
-| [x] | Supplementary Table 6   | command line  |           |
-| [x] | Supplementary Table 7   | command line  | [^3]      |
-| [ ] | Supplementary Table 8   | n/a           | [^2]      |
-
-[^1]: Maps for publication were recreated by the World Bank's cartography unit.
-
-[^2]: Compiled manually.
-
-[^3]: Only when `force_recompute` flag is set.
