@@ -1,7 +1,6 @@
 model_params:
   outpath: './example_output'
   run_params:
-    append_date: False
     verbose: False
   pds_params:
     pds_variant: 'no'

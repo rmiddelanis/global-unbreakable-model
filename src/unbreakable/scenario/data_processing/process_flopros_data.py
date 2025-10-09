@@ -34,7 +34,7 @@ import zipfile
 from io import BytesIO
 
 
-def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath=None):#, wb_shapes_path, chn_shape_path, twn_shape_path):
+def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath=None):
     """
     Processes FLOPROS datay to compute national-level flood protection levels for riverine and coastal areas.
 
