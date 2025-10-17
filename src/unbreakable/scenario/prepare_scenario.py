@@ -834,6 +834,8 @@ def load_hfa_data(root_dir_):
     hfa_data.fillna(0, inplace=True)
     hfa_data.index.name = 'iso3'
 
+    update_data_coverage(root_dir_, "HFA", hfa_data.dropna().index, None)
+
     return hfa_data
 
 
@@ -916,6 +918,9 @@ def load_wrp_data(any_to_wb_, wrp_data_path_, root_dir_, outfile=None, verbose=T
 
     indicators = df_to_iso3(indicators.reset_index(), 'Country', any_to_wb_, verbose_=verbose)
     indicators = indicators.set_index('iso3').drop('Country', axis=1)
+
+    for indicator in indicators.columns:
+        update_data_coverage(root_dir_, f"WRP_{indicator}", indicators[indicator].dropna().index, None)
 
     if outfile is not None:
         indicators.to_csv(outfile)
@@ -1041,13 +1046,9 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
             # read HFA data
             hfa_data = load_hfa_data(root_dir_=root_dir_)
             # merge HFA and WRP data: mean of the two data sets where both are available
-            disaster_preparedness_['ew'] = pd.concat((hfa_data['ew'], disaster_preparedness_['ew']), axis=1).mean(axis=1)
-            disaster_preparedness_['prepare_scaleup'] = pd.concat(
-                (hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1).mean(axis=1)
-            disaster_preparedness_ = pd.merge(disaster_preparedness_, hfa_data.finance_pre, left_index=True, right_index=True, how='outer')
-
-        for v in ['ew', 'prepare_scaleup', 'finance_pre']:
-            update_data_coverage(root_dir_, v, disaster_preparedness_.dropna(subset=v).index, None)
+            early_warning_ = pd.concat((hfa_data['ew'], disaster_preparedness_['ew']), axis=1).mean(axis=1).rename('ew')
+            prepare_scaleup_ = pd.concat((hfa_data['prepare_scaleup'], disaster_preparedness_['prepare_scaleup']), axis=1).mean(axis=1).rename('prepare_scaleup')
+            disaster_preparedness_ = pd.concat([early_warning_, prepare_scaleup_, hfa_data.finance_pre], axis=1)
 
         if guess_missing_countries:
             income_groups = load_income_groups(root_dir_)
