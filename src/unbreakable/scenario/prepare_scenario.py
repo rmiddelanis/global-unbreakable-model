@@ -383,6 +383,7 @@ def estimate_real_est_k_to_va_shares_ratio(root_dir, any_to_wb, verbose):
         real_estate_share_theta_h = estat_data.loc[idx, 'real_estate_share_of_value_added']
         return m_ * real_estate_share_theta_h
     m_fit_data = estat_data.dropna(subset=['real_estate_share_of_value_added', 'k_real_estate_share'])
+    print(f"Estimating real estate capital to value-added shares ratio based on data for {len(m_fit_data.index.get_level_values('iso3').unique())} countries...")
     m_opt_result = curve_fit(kappa_hous_m, m_fit_data.index, m_fit_data['k_real_estate_share'], p0=1)
     m_opt = m_opt_result[0][0]
     return m_opt
@@ -1063,8 +1064,8 @@ def load_disaster_preparedness_data(root_dir_, any_to_wb_, include_hfa_data=True
                 imputed_countries = merged[merged[v].isna()].index.get_level_values('iso3').unique()
                 update_data_coverage(root_dir_, v, available_countries, imputed_countries)
 
-            fill_values = merged.groupby(['Region', 'Country income group']).mean()
-            fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Country income group').mean())
+            fill_values = merged.groupby(['Region', 'Country income group']).median()
+            fill_values = fill_values.fillna(merged.drop('Region', axis=1).groupby('Country income group').median())
             merged = merged.fillna(merged.apply(lambda x: fill_values.loc[(x['Region'], x['Country income group'])], axis=1))
             disaster_preparedness_ = merged[disaster_preparedness_.columns]
         disaster_preparedness_ = disaster_preparedness_.dropna()
