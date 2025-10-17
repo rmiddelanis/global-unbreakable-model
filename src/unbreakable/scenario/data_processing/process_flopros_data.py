@@ -115,7 +115,7 @@ def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath
     # Calculate population weighted protection levels
     protection_weighted = protection_gridded * pop
 
-    prot_ntl_aggregated = gpd.GeoDataFrame(index=world_shapes.index, columns=['MerL_Riv', 'MerL_Co'])
+    prot_ntl_aggregated = pd.DataFrame(index=world_shapes.index, columns=['MerL_Riv', 'MerL_Co'])
     # Aggregate gridded protection to country level
     for iso3 in tqdm.tqdm(prot_ntl_aggregated.index, desc='aggregating to country level',
                           total=len(prot_ntl_aggregated)):
@@ -123,9 +123,8 @@ def process_flopros_data(flopros_path, population_path, shapefiles_path, outpath
         country_protection = protection_weighted.where(mask).sum() / pop.where(mask).sum()
         prot_ntl_aggregated.loc[iso3, 'MerL_Riv'] = country_protection.MerL_Riv.item()
         prot_ntl_aggregated.loc[iso3, 'MerL_Co'] = country_protection.MerL_Co.item()
-        prot_ntl_aggregated.loc[iso3, 'geometry'] = world_shapes.loc[iso3, 'geometry']
 
     if outpath is not None:
-        prot_ntl_aggregated.drop('geometry', axis=1).to_csv(os.path.join(outpath, "flopros_protection_processed.csv"))
+        prot_ntl_aggregated.to_csv(os.path.join(outpath, "flopros_protection_processed.csv"))
 
     return prot_ntl_aggregated
