@@ -1,8 +1,9 @@
-name: global-unbreakable-model
+name: global-socioeconomic-resilience
 channels:
   - defaults
   - conda-forge
 dependencies:
+  - python==3.11
   - statsmodels==0.14.0
   - cartopy==0.22.0
   - numpy==1.26.2
@@ -17,7 +18,7 @@ dependencies:
   - requests==2.31.0
   - pandas==2.1.4
   - openpyxl==3.1.5
-  - pycountry==22.3.5
+  - pycountry==24.6.1
   - xarray==2023.6.0
   - ipython
   - jupyter
