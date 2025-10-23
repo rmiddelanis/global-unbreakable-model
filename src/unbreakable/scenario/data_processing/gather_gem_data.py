@@ -22,12 +22,13 @@
   SOFTWARE.
 """
 
-
 import json
 import os
 import tqdm
 import pandas as pd
 import numpy as np
+import os
+script_dir = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 
 HAZUS_COUNTRIES = ['VIR', 'PRI', 'CAN', 'USA']
 
@@ -293,10 +294,10 @@ def gather_gem_data(gem_repo_root_dir_, hazus_gem_mapping_path_, gem_fields_path
 
 
 if __name__ == '__main__':
-    gem_repo_root_dir = './data/raw/GEM_vulnerability/global_exposure_model/'
-    vulnarebility_class_mapping = "./data/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx"
-    hazus_gem_mapping_path = './data/raw/GEM_vulnerability/hazus-gem_mapping.csv'
-    gem_fields_path = "./data/raw/GEM_vulnerability/gem_taxonomy_fields.json"
+    gem_repo_root_dir = os.path.join(script_dir, '../../../../data/raw/GEM_vulnerability/global_exposure_model/')
+    vulnarebility_class_mapping = os.path.join(script_dir, "../../../../data/raw/GEM_vulnerability/gem-to-vulnerability_mapping_per_hazard.xlsx")
+    hazus_gem_mapping_path = os.path.join(script_dir, '../../../../data/raw/GEM_vulnerability/hazus-gem_mapping.csv')
+    gem_fields_path = os.path.join(script_dir, "../../../../data/raw/GEM_vulnerability/gem_taxonomy_fields.json")
     gem_data, vuln_class_shares = gather_gem_data(
         gem_repo_root_dir_=gem_repo_root_dir,
         hazus_gem_mapping_path_=hazus_gem_mapping_path,
@@ -304,7 +305,7 @@ if __name__ == '__main__':
         vuln_class_mapping_=vulnarebility_class_mapping,
         vulnerability_class_output_=None,
         weight_by='total_replacement_cost',
-        verbose=True,
+        verbose=False,
     )
     print(gem_data)
     print(vuln_class_shares)
