@@ -56,7 +56,7 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
             pass
         if exclude_scenarios and scenario in exclude_scenarios:
             continue
-        if os.path.exists(os.path.join(dir_path, "results.csv")):
+        if os.path.exists(os.path.join(dir_path, "simulation_outputs")):
             simulation_paths[(scenario, 0, 0, 0)] = dir_path
         else:
             for hs_dir in sorted(os.listdir(dir_path)):
@@ -79,17 +79,16 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
                     simulation_paths[(scenario, hs, vs, vs_sign)] = os.path.join(hs_path, vs_dir)
 
     dataset_specs = {
-        "res_cat_info": ("iah.csv", [0, 1, 2, 3, 4, 5]),
-        "res_event": ("macro.csv", [0, 1, 2]),
-        "res_macro": ("results.csv", 0),
-        "sc_hazard_prot": ("scenario__hazard_protection.csv", [0, 1]),
-        "sc_cat_info": ("scenario__cat_info.csv", [0, 1]),
-        "sc_macro": ("scenario__macro.csv", [0]),
-        "sc_hazard_ratios": ("scenario__hazard_ratios.csv", [0, 1, 2, 3])
+        "res_cat_info": ("simulation_outputs/iah.csv", [0, 1, 2, 3, 4, 5]),
+        "res_event": ("simulation_outputs/macro.csv", [0, 1, 2]),
+        "res_macro": ("simulation_outputs/results.csv", 0),
+        "sc_hazard_prot": ("model_inputs/scenario__hazard_protection.csv", [0, 1]),
+        "sc_cat_info": ("model_inputs/scenario__cat_info.csv", [0, 1]),
+        "sc_macro": ("model_inputs/scenario__macro.csv", [0]),
+        "sc_hazard_ratios": ("model_inputs/scenario__hazard_ratios.csv", [0, 1, 2, 3])
     }
 
     results_lists = {key: [] for key in dataset_specs.keys()}
-    results_lists["res_poverty"] = []
 
     for (scenario, hs, vs, vs_sign), path in tqdm.tqdm(simulation_paths.items(), desc="Loading simulation data"):
         loaded_datasets = {}
@@ -109,9 +108,11 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
         sim_poverty_increase = compute_poverty_increase(
             loaded_datasets["res_cat_info"], loaded_datasets["res_macro"], loaded_datasets["sc_hazard_prot"]
         )
-        sim_poverty_increase_agg = (sim_poverty_increase.sum('hazard') / loaded_datasets["res_macro"]['pop']).rename({v: v.replace('_incr', '_risk') for v in list(sim_poverty_increase.data_vars)})
-        loaded_datasets["res_macro"] = xr.merge([loaded_datasets["res_macro"], sim_poverty_increase_agg])
-        loaded_datasets["res_poverty"] = sim_poverty_increase
+        if sim_poverty_increase:
+            sim_poverty_increase_agg = (sim_poverty_increase.sum('hazard') / loaded_datasets["res_macro"]['pop']).rename({v: v.replace('_incr', '_risk') for v in list(sim_poverty_increase.data_vars)})
+            loaded_datasets["res_macro"] = xr.merge([loaded_datasets["res_macro"], sim_poverty_increase_agg])
+            loaded_datasets["res_poverty"] = sim_poverty_increase
+            results_lists["res_poverty"] = []
 
         if concat_policy_parameters:
             coords_dict = {'policy': [f"{scenario}/{hs}/{'-' if vs_sign == -1 else '+'}{vs}"]}
@@ -145,5 +146,5 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
         for key, ds in results_lists.items():
             ds.to_netcdf(os.path.join(outpath, f"{key}.nc"))
 
-    return tuple(results_lists[key] for key in ['res_cat_info', 'res_event', 'res_macro', 'res_poverty',
+    return tuple(results_lists.get(key, None) for key in ['res_cat_info', 'res_event', 'res_macro', 'res_poverty',
                                                 'sc_hazard_prot', 'sc_cat_info', 'sc_macro', 'sc_hazard_ratios'])
