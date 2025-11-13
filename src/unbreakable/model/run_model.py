@@ -79,7 +79,17 @@ def run_model(settings: dict):
     poor_cat = 'q1'
 
     # Generate scenario data
-    macro, cat_info, hazard_ratios, hazard_protection = prepare_scenario(scenario_params=scenario_params, outpath=outpath_)
+    if 'scenario_data_path' in scenario_params:
+        scenario_data_path = scenario_params['scenario_data_path']
+        macro = pd.read_csv(os.path.join(scenario_data_path, 'scenario__macro.csv'), index_col='iso3')
+        cat_info = pd.read_csv(os.path.join(scenario_data_path, 'scenario__cat_info.csv'), index_col=['iso3', 'income_cat'])
+        hazard_ratios = pd.read_csv(os.path.join(scenario_data_path, 'scenario__hazard_ratios.csv'), index_col=['iso3', 'hazard', 'rp', 'income_cat'])
+        if os.path.exists(os.path.join(scenario_data_path, 'scenario__hazard_protection.csv')):
+            hazard_protection = pd.read_csv(os.path.join(scenario_data_path, 'scenario__hazard_protection.csv'), index_col=['iso3', 'hazard'])
+        else:
+            hazard_protection = None
+    else:
+        macro, cat_info, hazard_ratios, hazard_protection = prepare_scenario(scenario_params=scenario_params, outpath=outpath_)
 
     # reshape macro and cat_info to event level, move hazard_ratios data to cat_info_event
     macro_event, cat_info_event = reshape_input(
