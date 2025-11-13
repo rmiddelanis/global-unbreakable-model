@@ -86,7 +86,10 @@ def compute_dk(macro_event, cat_info_event, event_level, affected_cats):
     cat_info_event_ia.loc[pd.IndexSlice[:, :, :, :, 'na'], "dk"] = 0
 
     # compute reconstruction capital share
-    cat_info_event_ia["dk_reco"] = cat_info_event_ia["dk"] * macro_event["k_household_share"]
+    if 'k_household_share' in macro_event_.columns:
+        cat_info_event_ia["dk_reco"] = cat_info_event_ia["dk"] * macro_event["k_household_share"]
+    elif 'k_household_share' in cat_info_event_ia.columns:
+        cat_info_event_ia["dk_reco"] = cat_info_event_ia[["dk", "k_household_share"]].prod(axis=1)
 
     # "national" losses
     macro_event_["dk_ctry"] = agg_to_event_level(cat_info_event_ia, "dk", event_level)
@@ -220,20 +223,27 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, num_cores=N
                                     'tau_tax': 'delta_tax_sp', 'income_elasticity_eta': 'eta',
                                     'k_household_share': 'sigma_h'}),
         cat_info_event_iah.rename(columns={'k': 'k_h_eff', 'dk': 'delta_k_h_eff', 'liquidity': 'savings_s_h',
-                                           'help_received': 'delta_i_h_pds'}),
+                                           'help_received': 'delta_i_h_pds', 'avg_prod_k': 'productivity_pi',
+                                           'k_household_share': 'sigma_h'}),
         left_index=True, right_index=True
     )[['productivity_pi', 'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff', 'savings_s_h',
        'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'diversified_share']]
     opt_data['capital_t'] = capital_t
-    opt_data = opt_data[opt_data.delta_k_h_eff > 0].round(10)
+    opt_data_filtered = opt_data[(opt_data.delta_k_h_eff > 0) & (opt_data.sigma_h > 0)].round(10)
     recovery_rates_lambda = optimize_data(
-        df_in=opt_data,
+        df_in=opt_data_filtered,
         tolerance=1e-2,
-        min_lambda=.05,
+        min_lambda=0.,
         max_lambda=1e2,
         num_cores=num_cores
     )
-    return pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
+    res = pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
+    if (opt_data.sigma_h <= 0).any():
+        fill_values = res.xs('a', level='affected_cat', drop_level=False).sort_values(by='c')
+        fill_index = fill_values.index
+        fill_values = fill_values.reset_index().lambda_h.interpolate(method='nearest').values
+        res.loc[fill_index, 'lambda_h'] = fill_values
+    return res
 
 
 def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_level_, capital_t=50,
@@ -307,7 +317,10 @@ def compute_dw_long_term(cat_info_event_iah, macro_event, event_level):#, long_t
         - Includes the impact of savings and social protection on long-term consumption losses.
         - Computes long-term well-being losses based on income elasticity and consumption changes.
     """
-    cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - macro_event['k_household_share'])
+    if 'k_household_share' in macro_event.columns:
+        cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - macro_event['k_household_share'])
+    else:
+        cat_info_event_iah['dk_pub'] = cat_info_event_iah['dk'] * (1 - cat_info_event_iah['k_household_share'])
     hh_fee_share = cat_info_event_iah["c"] / agg_to_event_level(cat_info_event_iah, "c", event_level)
     cat_info_event_iah['help_fee'] = hh_fee_share * agg_to_event_level(cat_info_event_iah, 'help_received', event_level)
     cat_info_event_iah['reco_fee'] = hh_fee_share * agg_to_event_level(cat_info_event_iah, 'dk_pub', event_level)
@@ -399,7 +412,10 @@ def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_p
 
     # aggregate losses
     # Averages over return periods to get dk_{hazard} and dW_{hazard}
-    out = average_over_rp(out, hazard_protection_)
+    if out.index.get_level_values('rp').nunique() > 1:
+        out = average_over_rp(out, hazard_protection_)
+    else:
+        out = out.reset_index('rp', drop=True)
 
     # Sums over hazard dk, dW (gets one line per economy)
     out = out.groupby(level="iso3").sum()

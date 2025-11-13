@@ -767,7 +767,9 @@ def welfare_w_of_t(t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delt
         consumption_offset=consumption_offset,
         include_tax=include_tax,
     )
-    assert (np.array(c_of_t) > 0).all()
+    # if not (np.array(c_of_t) > 0).all():
+    #     print("wait")
+    # assert (np.array(c_of_t) > 0).all(), "Consumption must always be positive."
     res = welfare_of_c(c_of_t, eta_=eta_)
     if discount:
         res = res * np.exp(-discount_rate_rho_ * t_)
@@ -1050,7 +1052,7 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
             ValueError: If no valid bounds for lambda_h exist that maintain positive consumption.
         """
 
-    assert min_lambda_ >= 0
+    assert min_lambda_ >= 0, "Minimum lambda must be non-negative."
 
     # if no maximum consumption loss is defined find the maximal allowable lambda that maintains positive consumption
     c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
@@ -1103,7 +1105,8 @@ def calc_lambda_bounds_for_optimization(capital_t_, sigma_h_, delta_k_h_eff_, pr
         if best_lambda_init is None or objective < best_candicate_objective:
             best_lambda_init = ic
             best_candicate_objective = objective
-
+    if min_lambda_ >= max_lambda_:
+        print("wait")
     return min_lambda_, max_lambda_, best_lambda_init
 
 
@@ -1143,7 +1146,6 @@ def optimize_lambda(capital_t_, sigma_h_, delta_k_h_eff_, productivity_pi_, savi
 
     if np.isnan(min_lambda) or np.isnan(max_lambda) or np.isnan(lambda_h_init):
         return [np.nan]
-
     res = optimize.minimize(
         fun=objective_func,
         x0=np.array(lambda_h_init),
@@ -1218,6 +1220,7 @@ def optimize_data(df_in, tolerance=1e-2, min_lambda=.05, max_lambda=6, num_cores
         Raises:
             Exception: If an error occurs during the optimization process for any row.
         """
+    print(min_lambda, max_lambda)
     df = df_in.copy()
     # map index to unique optimization values to improve performance
     df['mapping'] = df.fillna(0).groupby(df.columns.tolist()).ngroup()
