@@ -239,10 +239,16 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, num_cores=N
     )
     res = pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
     if (opt_data.sigma_h <= 0).any():
-        fill_values = res.xs('a', level='affected_cat', drop_level=False).sort_values(by='c')
+        fill_values = res.xs('a', level='affected_cat', drop_level=False).sort_values(by=['iso3', 'c'])
+        missing_index = fill_values[fill_values.lambda_h.isna()].index
         fill_index = fill_values.index
-        fill_values = fill_values.reset_index().lambda_h.interpolate(method='nearest').values
-        res.loc[fill_index, 'lambda_h'] = fill_values
+        fill_values = (
+            fill_values.reset_index()
+            .groupby('iso3', group_keys=False)
+            .apply(lambda g: g.interpolate(method='nearest').ffill().bfill())
+        ).set_index(fill_index.names).loc[fill_index]
+        fill_values = fill_values.loc[missing_index].lambda_h.values
+        res.loc[missing_index, 'lambda_h'] = fill_values
     return res
 
 
