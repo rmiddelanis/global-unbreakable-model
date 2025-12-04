@@ -140,24 +140,39 @@ def compute_response(macro_event, cat_info_event_ia, event_level, scope, lending
     cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, scope, 'a', 'not_helped'], 'n'] *= (macro_event_["error_excl"])
     cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, scope, 'na', 'helped'], 'n'] *= (macro_event_["error_incl"])
     cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, scope, 'na', 'not_helped'], 'n'] *= (1 - macro_event_["error_incl"])
+    # now, n adds to 1 again
 
     # income categories outside the scope of the policy are not helped
     not_helped_quintiles = np.setdiff1d(cat_info_event_iah_.index.get_level_values('income_cat').unique(), scope)
     cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, not_helped_quintiles, :, 'helped'], 'n'] = 0
-    # now, n adds to 1 again
 
     # calculate help_needed depending on the PDS variant and scope of the policy
-    helped_slice = pd.IndexSlice[:, :, :, scope, :, 'helped']
     if variant == "no":
         reference_loss = 0
-    elif variant == "unif_poor":
-        poor_cat = cat_info_event_iah_.index.get_level_values('income_cat').min()
-        reference_loss = cat_info_event_iah_.xs((poor_cat, "a", "helped"), level=['income_cat', 'affected_cat', 'helped_cat'])[loss_measure]
+    elif "uniform" in variant:
+        try:
+            threshold = float(variant.split(':')[1])
+        except ValueError:
+            raise ValueError(f"Could not parse threshold value from variant {variant}. For uniform PDS, please provide"
+                             f"pds_variant parameter of the form 'uniform:<threshold>' with threshold in [0, 1].")
+        min_income_cat = cat_info_event_iah_.index.get_level_values('income_cat').min()
+        if threshold < min_income_cat:
+            print(f"Warning. pds_variant={variant} was selected, but minimum income category is {min_income_cat}. "
+                  f"Setting threshold to {min_income_cat} instead.")
+            threshold = min_income_cat
+        if threshold > max(scope):
+            print(f"Warning. pds_variant={variant} was selected, but maximum covered income category is {max(scope)}. "
+                  f"Setting threshold to {max(scope)} instead.")
+            threshold = max(scope)
+        poor_cat_slice = [ic for ic in cat_info_event_iah_.index.get_level_values('income_cat').unique() if ic <= threshold]
+        poor_cat_slice = pd.IndexSlice[:, :, :, poor_cat_slice, "a", :]
+        reference_loss = cat_info_event_iah_.loc[poor_cat_slice, [loss_measure, 'n']]
+        reference_loss = reference_loss.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum() / reference_loss['n'].groupby(['iso3', 'hazard', 'rp']).sum()
     elif variant == "proportional":
-        reference_loss = cat_info_event_iah_.loc[helped_slice, loss_measure]
+        reference_loss = cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, scope, 'a', :], loss_measure]
     else:
         raise ValueError(f"Unknown PDS variant {variant}")
-    cat_info_event_iah_.loc[helped_slice, "help_needed"] = covered_loss_share * reference_loss
+    cat_info_event_iah_.loc[pd.IndexSlice[:, :, :, scope, :, 'helped'], "help_needed"] = covered_loss_share * reference_loss
 
     # total need (cost) for all helped hh = sum over help_needed for helped hh
     macro_event_["need"] = agg_to_event_level(cat_info_event_iah_, "help_needed", event_level)
