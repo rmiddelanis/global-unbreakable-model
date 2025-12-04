@@ -625,7 +625,8 @@ def download_quintile_data(name, id_q1, id_q2, id_q3, id_q4, id_q5, wb_raw_data_
 
 
 def load_pip_data(wb_raw_data_path_, download_, poverty_line_, pip_reference_year_):
-    pip_data_path = os.path.join(wb_raw_data_path_, f"pip_data_ppp{pip_reference_year_}_povline{poverty_line_}.csv")
+    pip_data_name =  f"pip_data_ppp{pip_reference_year_}_povline{poverty_line_}"
+    pip_data_path = os.path.join(wb_raw_data_path_, f"{pip_data_name}.csv")
     if download_ or not os.path.exists(pip_data_path):
         pip_url = f"https://api.worldbank.org/pip/v1/pip?country=all&year=all&povline={poverty_line_}&fill_gaps=false&welfare_type=+++welfare_type+++&reporting_level=national&additional_ind=false&ppp_version={pip_reference_year_}&identity=PROD&format=csv"
         pip_data = pd.concat(
@@ -634,6 +635,14 @@ def load_pip_data(wb_raw_data_path_, download_, poverty_line_, pip_reference_yea
             ignore_index=True
         )
         pip_data.to_csv(pip_data_path, index=False)
+
+        metadata_path = os.path.join(wb_raw_data_path_, "__metadata.csv")
+        if os.path.exists(metadata_path):
+            metadata = pd.read_csv(metadata_path, index_col=0)
+        else:
+            metadata = pd.DataFrame(index=[pip_data_name], columns=['last_updated'])
+        metadata.loc[pip_data_name, 'last_updated'] = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+        metadata.to_csv(metadata_path)
     else:
         pip_data = pd.read_csv(pip_data_path)
     pip_data = pip_data.rename(columns={'country_code': 'iso3', 'reporting_year': 'year'})
