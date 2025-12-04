@@ -347,7 +347,7 @@ def compute_dw(cat_info_event_iah, macro_event, event_level_, capital_t=50, num_
     )
     if cat_info_event_iah_.xs('a', level='affected_cat').lambda_h.isna().any():
         failed_optimizations = cat_info_event_iah_[cat_info_event_iah_['lambda_h'].isna()].xs('a', level='affected_cat').index.droplevel(['rp', 'helped_cat', 'income_cat']).unique()
-        print(f"Failed to optimize recovery rates for {failed_optimizations}. Dropping entries.")
+        print(f"Failed to optimize recovery rates for {failed_optimizations}. Dropping {len(failed_optimizations)} entries.")
         cat_info_event_iah_ = cat_info_event_iah_.drop(failed_optimizations)
 
     # compute the welfare losses from destroyed assets, decreased transfers, and reconstruction
