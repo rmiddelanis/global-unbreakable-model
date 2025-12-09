@@ -153,12 +153,10 @@ def run_model(settings: dict):
                        header=True)
 
     # save cat_info_event_iah
-    cat_info_event_iah.to_csv(sim_outpath + '/iah.csv', encoding="utf-8",
-                              header=True)
+    cat_info_event_iah.drop(columns='recovery_params').to_csv(sim_outpath + '/iah.csv', encoding="utf-8", header=True)
 
     # Save results
-    results.to_csv(sim_outpath + '/results.csv', encoding="utf-8",
-                   header=True)
+    results.to_csv(sim_outpath + '/results.csv', encoding="utf-8", header=True)
 
 
 if __name__ == '__main__':
