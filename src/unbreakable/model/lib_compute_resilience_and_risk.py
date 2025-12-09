@@ -239,8 +239,9 @@ def optimize_recovery(macro_event, cat_info_event_iah, capital_t=50, num_cores=N
     )
     res = pd.merge(cat_info_event_iah, recovery_rates_lambda, left_index=True, right_index=True, how='left')
     if (opt_data.sigma_h <= 0).any():
-        fill_values = res.xs('a', level='affected_cat', drop_level=False).sort_values(by=['iso3', 'c'])
+        fill_values = res.xs('a', level='affected_cat', drop_level=False).sort_values(by=['iso3', 'region', 'c'] if 'region' in res.columns else ['iso3', 'c'])
         missing_index = fill_values[fill_values.lambda_h.isna()].index
+        print(f"Filling missing lambda_h values with linear interpolation for {len(missing_index)} households.")
         fill_index = fill_values.index
         fill_values = (
             fill_values.reset_index()
@@ -405,7 +406,7 @@ def prepare_output(macro, macro_event, cat_info_event_iah, event_level, hazard_p
     out = pd.DataFrame(index=macro_event.index)
 
     # pull 'aid' and 'dk' from macro_event
-    out["average_aid_cost_pc"] = macro_event["aid"]
+    out["average_aid_cost_pc"] = macro_event["aid"] if 'aid' in macro_event else 0
     out["dk"] = macro_event["dk_ctry"]
 
     # aggregate delta_W at event-level

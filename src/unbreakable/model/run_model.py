@@ -108,18 +108,22 @@ def run_model(settings: dict):
     )
 
     # calculate the post-disaster response
-    macro_event, cat_info_event_iah = compute_response(
-        macro_event=macro_event,
-        cat_info_event_ia=cat_info_event_ia,
-        event_level=event_level,
-        scope=get_population_scope_indices(pds_params['pds_scope'], cat_info_event_ia),
-        targeting=pds_params['pds_targeting'],
-        lending_rate=pds_params['pds_lending_rate'],
-        variant=pds_params['pds_variant'],
-        borrowing_ability=pds_params['pds_borrowing_ability'],
-        loss_measure="dk_reco",
-        covered_loss_share=pds_params['covered_loss_share'],
-    )
+    if pds_params['pds_variant'] != 'no':
+        macro_event, cat_info_event_iah = compute_response(
+            macro_event=macro_event,
+            cat_info_event_ia=cat_info_event_ia,
+            event_level=event_level,
+            scope=get_population_scope_indices(pds_params['pds_scope'], cat_info_event_ia),
+            targeting=pds_params['pds_targeting'],
+            lending_rate=pds_params['pds_lending_rate'],
+            variant=pds_params['pds_variant'],
+            borrowing_ability=pds_params['pds_borrowing_ability'],
+            loss_measure="dk_reco",
+            covered_loss_share=pds_params['covered_loss_share'],
+        )
+    else:
+        macro_event, cat_info_event_iah = macro_event, cat_info_event_ia
+        cat_info_event_iah['help_received'] = 0
 
     cat_info_event_iah, macro_event = compute_dw(
         cat_info_event_iah=cat_info_event_iah,
