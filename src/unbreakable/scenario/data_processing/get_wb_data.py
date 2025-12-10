@@ -707,8 +707,8 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, r
         income_shares_unscaled = income_shares_unscaled.stack().rename('income_share')
         income_shares_unscaled.index.names = ['iso3', 'year', 'welfare_type', 'income_cat']
         income_shares_unscaled = pd.merge(
-            income_shares_unscaled.xs('income', level='welfare_type'),
             income_shares_unscaled.xs('consumption', level='welfare_type'),
+            income_shares_unscaled.xs('income', level='welfare_type'),
             left_index=True, right_index=True, how='outer'
         )
         income_shares_unscaled = income_shares_unscaled.income_share_x.fillna(income_shares_unscaled.income_share_y).rename(
