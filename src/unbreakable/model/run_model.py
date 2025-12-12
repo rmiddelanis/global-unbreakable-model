@@ -134,17 +134,17 @@ def run_model(settings: dict):
     if not os.path.exists(sim_outpath):
         os.makedirs(sim_outpath)
 
-    # save macro_event
-    macro_event.to_csv(sim_outpath + '/macro.csv', encoding="utf-8",
-                       header=True)
+    observables = model_params.get('observables', {})
 
-    # save cat_info_event_iah
-    cat_info_event_iah.to_csv(sim_outpath + '/iah.csv', encoding="utf-8",
-                              header=True)
+    for key, df in zip(['macro', 'iah', 'results'], [macro_event, cat_info_event_iah, results]):
+        if key in observables:
+            common_cols = np.intersect1d(observables[key], df.columns)
+            if common_cols.size > 0:
+                df = df.loc[:, np.intersect1d(observables[key], common_cols)]
+            if common_cols.size < len(observables[key]):
+                print(f"Warning: Observables {', '.join([str(o) for o in np.setdiff1d(observables[key], common_cols)])} not found in {key} output.")
 
-    # Save results
-    results.to_csv(sim_outpath + '/results.csv', encoding="utf-8",
-                   header=True)
+        df.to_csv(sim_outpath + f'/{key}.csv', encoding="utf-8", header=True)
 
 
 if __name__ == '__main__':
