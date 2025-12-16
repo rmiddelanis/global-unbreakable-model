@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from unbreakable.misc.helpers import average_over_rp, calculate_average_recovery_duration
 
 
-def compute_poverty_increase(cat_info_res_, macro_res_, hazard_prot_sc_):
+def compute_poverty_increase(cat_info_res_, macro_res_, cat_info_sc_, hazard_prot_sc_):
     num_people = cat_info_res_.n * macro_res_.pop
     res = xr.Dataset()
     if isinstance(hazard_prot_sc_, xr.Dataset):
@@ -20,24 +20,36 @@ def compute_poverty_increase(cat_info_res_, macro_res_, hazard_prot_sc_):
 
         if "extr_pov_line" + adj_string in macro_res_:
             extr_pov_incr = num_people.where(
-                (cat_info_res_.c - cat_info_res_.dC_max - macro_res_["extr_pov_line" + adj_string] * 365 < 0) &                             # fell below extreme pov line
-                (cat_info_res_.c - macro_res_["extr_pov_line" + adj_string] * 365 >= 0)                                                     # was above extreme pov line before disaster
+                (cat_info_sc_.c - cat_info_res_.dC_max - macro_res_["extr_pov_line" + adj_string] * 365 < 0) &                             # fell below extreme pov line
+                (cat_info_sc_.c - macro_res_["extr_pov_line" + adj_string] * 365 >= 0)                                                     # was above extreme pov line before disaster
             ).sum(['income_cat', 'affected_cat', 'helped_cat'])
             res["extr_pov_incr" + adj_string] = xr.DataArray.from_series(
                 average_over_rp(extr_pov_incr.to_series(), hazard_prot_sc_).round(0)
             )
+            extr_pov_time_incr = cat_info_res_[[f'time_below_extr_pov_line'+adj_string, 'n']].to_dataframe().fillna(0).replace(np.inf, 0)
+            extr_pov_time_incr = extr_pov_time_incr.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum() / extr_pov_time_incr.n.groupby(['iso3', 'hazard', 'rp']).sum()
+            res["extr_pov_time_incr" + adj_string] = xr.DataArray.from_series(
+                average_over_rp(extr_pov_time_incr, hazard_prot_sc_) * 365
+            )
             if "soc_pov_line" + adj_string in macro_res_:
                 soc_pov_incr = num_people.where(
-                    (cat_info_res_.c - cat_info_res_.dC_max - macro_res_["soc_pov_line" + adj_string] * 365 < 0) &                          # fell below social pov line
-                    (cat_info_res_.c - macro_res_["soc_pov_line" + adj_string] * 365 >= 0) &                                                # was above social pov line before disaster
-                    (cat_info_res_.c - cat_info_res_.dC_max - macro_res_["extr_pov_line" + adj_string] * 365 > 0) &                         # did not fall below extreme pov line
+                    (cat_info_sc_.c - cat_info_res_.dC_max - macro_res_["soc_pov_line" + adj_string] * 365 < 0) &                          # fell below social pov line
+                    (cat_info_sc_.c - macro_res_["soc_pov_line" + adj_string] * 365 >= 0) &                                                # was above social pov line before disaster
+                    (cat_info_sc_.c - cat_info_res_.dC_max - macro_res_["extr_pov_line" + adj_string] * 365 > 0) &                         # did not fall below extreme pov line
                     ((macro_res_["extr_pov_line" + adj_string] < macro_res_["soc_pov_line" + adj_string]).broadcast_like(cat_info_res_))    # extreme pov line is below social pov line
                 ).sum(['income_cat', 'affected_cat', 'helped_cat'])
                 res["soc_pov_incr" + adj_string] = xr.DataArray.from_series(
                     average_over_rp(soc_pov_incr.to_series(), hazard_prot_sc_).round(0)
                 )
-                total_pov_incr = res["extr_pov_incr" + adj_string] + res["soc_pov_incr" + adj_string]
-                res["total_pov_incr" + adj_string] = total_pov_incr
+                soc_pov_time_incr = cat_info_res_[[f'time_below_soc_pov_line' + adj_string, f'time_below_extr_pov_line' + adj_string, 'n']].to_dataframe()
+                soc_pov_time_incr[f'time_below_soc_pov_line' + adj_string] -= soc_pov_time_incr[f'time_below_extr_pov_line' + adj_string]
+                soc_pov_time_incr = soc_pov_time_incr.fillna(0).replace(np.inf, 0)[[f'time_below_soc_pov_line' + adj_string, 'n']]
+                soc_pov_time_incr = soc_pov_time_incr.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum() / soc_pov_time_incr.n.groupby(['iso3', 'hazard', 'rp']).sum()
+                res["soc_pov_time_incr" + adj_string] = xr.DataArray.from_series(
+                    average_over_rp(soc_pov_time_incr, hazard_prot_sc_) * 365
+                )
+                res["total_pov_incr" + adj_string] = res["extr_pov_incr" + adj_string] + res["soc_pov_incr" + adj_string]
+                res["total_pov_time_incr" + adj_string] = res["extr_pov_time_incr" + adj_string] + res["soc_pov_time_incr" + adj_string]
     if len(res.data_vars) > 0:
         return res
     print(f"Warning: Could not compute poverty increase as extreme poverty lines are missing in macro results.")
@@ -123,7 +135,7 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
 
         # Compute poverty increase
         sim_poverty_increase = compute_poverty_increase(
-            loaded_datasets["res_cat_info"], loaded_datasets["res_macro"], loaded_datasets["sc_hazard_prot"]
+            loaded_datasets["res_cat_info"], loaded_datasets["res_macro"], loaded_datasets["sc_cat_info"], loaded_datasets["sc_hazard_prot"]
         )
         if sim_poverty_increase:
             sim_poverty_increase_agg = (sim_poverty_increase.sum('hazard') / loaded_datasets["res_macro"]['pop']).rename({v: v.replace('_incr', '_risk') for v in list(sim_poverty_increase.data_vars)})

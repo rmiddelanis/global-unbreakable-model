@@ -97,6 +97,10 @@ model_params:
       - 'dk_pub'
       - 'help_fee'
       - 'reco_fee'
+      - 'time_below_extr_pov_line'
+      - 'time_below_soc_pov_line'
+      - 'time_below_extr_pov_line_adj'
+      - 'time_below_soc_pov_line_adj'
       - 'dc_long_term'
       - 'dW_long_term'
       - 'dc'
@@ -112,12 +116,12 @@ model_params:
     covered_loss_share: 0.4
 scenario_params:
   run_params:
-    recompute: True
+    recompute: False
     recompute_hazard_protection: False
     download: False
     verbose: False
     countries: 'all'
-    exclude_countries: ['THA']
+    exclude_countries: ['THA', 'LUX']
     hazards: 'all'
     pip_reference_year: 2021
     include_poverty_data: True
