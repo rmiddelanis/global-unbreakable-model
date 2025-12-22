@@ -768,8 +768,8 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, r
     if include_poverty_data:
         _, sigma_vals = upscale_income_resolution(income_shares_unscaled, num_quantiles=100)
         common_countries = np.intersect1d(macro_df.index.get_level_values('iso3').unique(), sigma_vals.index)
-        macro_df['extr_pov_line_adj'] = (lorenz_derivative(macro_df['extr_pov_rate'].loc[common_countries], sigma_vals.loc[common_countries]) * macro_df.loc[common_countries, 'gdp_pc_pp']).clip(lower=poverty_line) / 365
-        macro_df['soc_pov_line_adj'] = (lorenz_derivative(macro_df['soc_pov_rate'].loc[common_countries], sigma_vals.loc[common_countries]) * macro_df.loc[common_countries, 'gdp_pc_pp']).clip(lower=macro_df['soc_pov_line']) / 365
+        macro_df['extr_pov_line_adj'] = ((lorenz_derivative(macro_df['extr_pov_rate'].loc[common_countries], sigma_vals.loc[common_countries]) * macro_df.loc[common_countries, 'gdp_pc_pp']) / 365).clip(lower=macro_df['extr_pov_line']).fillna(poverty_line)
+        macro_df['soc_pov_line_adj'] = ((lorenz_derivative(macro_df['soc_pov_rate'].loc[common_countries], sigma_vals.loc[common_countries]) * macro_df.loc[common_countries, 'gdp_pc_pp']) / 365).clip(lower=macro_df['soc_pov_line'])
 
     # ASPIRE
     # Adequacies
