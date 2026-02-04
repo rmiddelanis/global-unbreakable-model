@@ -11,7 +11,6 @@ from unbreakable.misc.helpers import average_over_rp, calculate_average_recovery
 
 
 def compute_poverty_increase(cat_info_res_, macro_res_, hazard_prot_sc_):
-    num_people = cat_info_res_.n * macro_res_.pop
     res = xr.Dataset()
     if isinstance(hazard_prot_sc_, xr.Dataset):
         hazard_prot_sc_ = hazard_prot_sc_.protection.to_series()
@@ -19,34 +18,40 @@ def compute_poverty_increase(cat_info_res_, macro_res_, hazard_prot_sc_):
         adj_string = "_adj" if adjusted_poverty_lines else ""
 
         if "extr_pov_line" + adj_string in macro_res_:
-            extr_pov_incr = num_people.where(
+
+            # fraction of the population at risk of being pushed into poverty
+            extr_pov_risk = cat_info_res_.n.where(
                 cat_info_res_['time_below_extr_pov_line' + adj_string].where(cat_info_res_['time_below_extr_pov_line' + adj_string] != np.inf, 0) > 0
             ).sum(['income_cat', 'affected_cat', 'helped_cat'])
-            res["extr_pov_incr" + adj_string] = xr.DataArray.from_series(
-                average_over_rp(extr_pov_incr.to_series(), hazard_prot_sc_).round(0)
+            res["extr_pov_risk" + adj_string] = xr.DataArray.from_series(
+                average_over_rp(extr_pov_risk.to_series(), hazard_prot_sc_)
             )
-            extr_pov_time_incr = cat_info_res_[[f'time_below_extr_pov_line'+adj_string, 'n']].to_dataframe().fillna(0).replace(np.inf, 0)
-            extr_pov_time_incr = extr_pov_time_incr.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum() / extr_pov_time_incr.n.groupby(['iso3', 'hazard', 'rp']).sum()
-            res["extr_pov_time_incr" + adj_string] = xr.DataArray.from_series(
-                average_over_rp(extr_pov_time_incr, hazard_prot_sc_) * 365
+
+            # fraction of the population that is in poverty on average
+            # n * time_below_<extr/soc>_pov_line is the national average per capita time spent in poverty (in years)
+            extr_pov_time_risk = cat_info_res_[[f'time_below_extr_pov_line'+adj_string, 'n']].to_dataframe().fillna(0).replace(np.inf, 0)
+            extr_pov_time_risk = extr_pov_time_risk.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum()
+            res["extr_pov_time_risk" + adj_string] = xr.DataArray.from_series(
+                average_over_rp(extr_pov_time_risk, hazard_prot_sc_)
             )
+
             if "soc_pov_line" + adj_string in macro_res_:
-                soc_pov_incr = num_people.where(
+                soc_pov_risk = cat_info_res_.n.where(
                     (cat_info_res_['time_below_soc_pov_line' + adj_string].where(cat_info_res_['time_below_soc_pov_line' + adj_string] != np.inf, 0) > 0) &
                     (cat_info_res_['time_below_extr_pov_line' + adj_string].where(cat_info_res_['time_below_extr_pov_line' + adj_string] != np.inf, 0) == 0)
                 ).sum(['income_cat', 'affected_cat', 'helped_cat'])
-                res["soc_pov_incr" + adj_string] = xr.DataArray.from_series(
-                    average_over_rp(soc_pov_incr.to_series(), hazard_prot_sc_).round(0)
+                res["soc_pov_risk" + adj_string] = xr.DataArray.from_series(
+                    average_over_rp(soc_pov_risk.to_series(), hazard_prot_sc_)
                 )
-                soc_pov_time_incr = cat_info_res_[[f'time_below_soc_pov_line' + adj_string, f'time_below_extr_pov_line' + adj_string, 'n']].to_dataframe()
-                soc_pov_time_incr[f'time_below_soc_pov_line' + adj_string] -= soc_pov_time_incr[f'time_below_extr_pov_line' + adj_string]
-                soc_pov_time_incr = soc_pov_time_incr.fillna(0).replace(np.inf, 0)[[f'time_below_soc_pov_line' + adj_string, 'n']]
-                soc_pov_time_incr = soc_pov_time_incr.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum() / soc_pov_time_incr.n.groupby(['iso3', 'hazard', 'rp']).sum()
-                res["soc_pov_time_incr" + adj_string] = xr.DataArray.from_series(
-                    average_over_rp(soc_pov_time_incr, hazard_prot_sc_) * 365
+                soc_pov_time_risk = cat_info_res_[[f'time_below_soc_pov_line' + adj_string, f'time_below_extr_pov_line' + adj_string, 'n']].to_dataframe()
+                soc_pov_time_risk[f'time_below_soc_pov_line' + adj_string] -= soc_pov_time_risk[f'time_below_extr_pov_line' + adj_string]
+                soc_pov_time_risk = soc_pov_time_risk.fillna(0).replace(np.inf, 0)[[f'time_below_soc_pov_line' + adj_string, 'n']]
+                soc_pov_time_risk = soc_pov_time_risk.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum()
+                res["soc_pov_time_risk" + adj_string] = xr.DataArray.from_series(
+                    average_over_rp(soc_pov_time_risk, hazard_prot_sc_)
                 )
-                res["total_pov_incr" + adj_string] = res["extr_pov_incr" + adj_string] + res["soc_pov_incr" + adj_string]
-                res["total_pov_time_incr" + adj_string] = res["extr_pov_time_incr" + adj_string] + res["soc_pov_time_incr" + adj_string]
+                res["total_pov_risk" + adj_string] = res["extr_pov_risk" + adj_string] + res["soc_pov_risk" + adj_string]
+                res["total_pov_time_risk" + adj_string] = res["extr_pov_time_risk" + adj_string] + res["soc_pov_time_risk" + adj_string]
     if len(res.data_vars) > 0:
         return res
     print(f"Warning: Could not compute poverty increase as extreme poverty lines are missing in macro results.")
@@ -135,8 +140,7 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
             loaded_datasets["res_cat_info"], loaded_datasets["res_macro"], loaded_datasets["sc_hazard_prot"]
         )
         if sim_poverty_increase:
-            sim_poverty_increase_agg = (sim_poverty_increase.sum('hazard') / loaded_datasets["res_macro"]['pop']).rename({v: v.replace('_incr', '_risk') for v in list(sim_poverty_increase.data_vars)})
-            loaded_datasets["res_macro"] = xr.merge([loaded_datasets["res_macro"], sim_poverty_increase_agg])
+            loaded_datasets["res_macro"] = xr.merge([loaded_datasets["res_macro"], sim_poverty_increase.sum('hazard')])
             loaded_datasets["res_poverty"] = sim_poverty_increase
             if 'res_poverty' not in results:
                 results["res_poverty"] = []
