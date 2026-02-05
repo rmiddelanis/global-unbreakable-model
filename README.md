@@ -320,7 +320,7 @@ Data from Eurostat:
 
 ### Dynamically downloaded raw data 
 
-The following data sets are downloaded from the World Bank DataBamk by the model when the `recompute` flag is set to `True` in the settings file. 
+The following data sets are downloaded from the World Bank DataBamk by the model when the `force_download` flag is set to `True` in the settings file. 
 
   - Datasets used:
     - [25] "Income share held by lowest / second / third / fourth / highest 20%" (identifiers SI.DST.FRST.20, SI.DST.02nd.20, SI.DST.03rd.20, SI.DST.04th.20, SI.DST.05th.20)
