@@ -14,7 +14,7 @@
 
 This package contains the code and data to calculate global estimates of socio-economic resilience. 
 
-If you use this code or the data it produces as, please cite the following paper:
+If you use this code or the data it produces, please cite the following paper:
 
 Robin Middelanis, Bramka Arga Jafino, Ruth Hill, Minh Cong Nguyen, and Stéphane Hallegatte (2025). "Global Socio-economic Resilience to Natural Disasters". _Policy Research Working Paper_.
 
