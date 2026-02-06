@@ -40,13 +40,7 @@ This package is structured as follows:
 ```
 
 ## Setup
-To download this repository, run:
-
-```bash
-git clone git@github.com:rmiddelanis/global-unbreakable-model.git
-```
-
-Make sure to initialize and update submodules:
+Clone the repository. Then, make sure that submodules are initialized:
 
 ```bash
 git submodule update --init --recursive
