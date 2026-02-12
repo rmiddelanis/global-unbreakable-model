@@ -14,7 +14,7 @@
 
 This package contains the code and data to calculate global estimates of socio-economic resilience. 
 
-If you use this code or the data it produces as, please cite the following paper:
+If you use this code or the data it produces, please cite the following paper:
 
 Robin Middelanis, Bramka Arga Jafino, Ruth Hill, Minh Cong Nguyen, and Stéphane Hallegatte (2025). "Global Socio-economic Resilience to Natural Disasters". _Policy Research Working Paper_.
 
@@ -40,13 +40,7 @@ This package is structured as follows:
 ```
 
 ## Setup
-To download this repository, run:
-
-```bash
-git clone git@github.com:rmiddelanis/global-unbreakable-model.git
-```
-
-Make sure to initialize and update submodules:
+Clone the repository. Then, make sure that submodules are initialized:
 
 ```bash
 git submodule update --init --recursive
@@ -320,7 +314,7 @@ Data from Eurostat:
 
 ### Dynamically downloaded raw data 
 
-The following data sets are downloaded from the World Bank DataBamk by the model when the `recompute` flag is set to `True` in the settings file. 
+The following data sets are downloaded from the World Bank DataBamk by the model when the `force_download` flag is set to `True` in the settings file. 
 
   - Datasets used:
     - [25] "Income share held by lowest / second / third / fourth / highest 20%" (identifiers SI.DST.FRST.20, SI.DST.02nd.20, SI.DST.03rd.20, SI.DST.04th.20, SI.DST.05th.20)

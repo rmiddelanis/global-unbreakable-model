@@ -11,38 +11,66 @@ from unbreakable.misc.helpers import average_over_rp, calculate_average_recovery
 
 
 def compute_poverty_increase(cat_info_res_, macro_res_, hazard_prot_sc_):
-    num_people = cat_info_res_.n * macro_res_.pop
     res = xr.Dataset()
+    if isinstance(hazard_prot_sc_, xr.Dataset):
+        hazard_prot_sc_ = hazard_prot_sc_.protection.to_series()
     for adjusted_poverty_lines in [True, False]:
         adj_string = "_adj" if adjusted_poverty_lines else ""
 
         if "extr_pov_line" + adj_string in macro_res_:
-            extr_pov_incr = num_people.where(
-                (cat_info_res_.c - cat_info_res_.dC_max - macro_res_["extr_pov_line" + adj_string] * 365 < 0) &                             # fell below extreme pov line
-                (cat_info_res_.c - macro_res_["extr_pov_line" + adj_string] * 365 >= 0)                                                     # was above extreme pov line before disaster
+
+            # fraction of the population at risk of being pushed into poverty
+            extr_pov_risk = cat_info_res_.n.where(
+                cat_info_res_['time_below_extr_pov_line' + adj_string].where(cat_info_res_['time_below_extr_pov_line' + adj_string] != np.inf, 0) > 0
             ).sum(['income_cat', 'affected_cat', 'helped_cat'])
-            res["extr_pov_incr" + adj_string] = xr.DataArray.from_series(
-                average_over_rp(extr_pov_incr.to_series(), hazard_prot_sc_.protection.to_series()).round(0)
+            res["extr_pov_risk" + adj_string] = xr.DataArray.from_series(
+                average_over_rp(extr_pov_risk.to_series(), hazard_prot_sc_)
             )
+
+            # fraction of the population that is in poverty on average
+            # n * time_below_<extr/soc>_pov_line is the national average per capita time spent in poverty (in years)
+            extr_pov_time_risk = cat_info_res_[[f'time_below_extr_pov_line'+adj_string, 'n']].to_dataframe().fillna(0).replace(np.inf, 0)
+            extr_pov_time_risk = extr_pov_time_risk.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum()
+            res["extr_pov_time_risk" + adj_string] = xr.DataArray.from_series(
+                average_over_rp(extr_pov_time_risk, hazard_prot_sc_)
+            )
+
             if "soc_pov_line" + adj_string in macro_res_:
-                soc_pov_incr = num_people.where(
-                    (cat_info_res_.c - cat_info_res_.dC_max - macro_res_["soc_pov_line" + adj_string] * 365 < 0) &                          # fell below social pov line
-                    (cat_info_res_.c - macro_res_["soc_pov_line" + adj_string] * 365 >= 0) &                                                # was above social pov line before disaster
-                    (cat_info_res_.c - cat_info_res_.dC_max - macro_res_["extr_pov_line" + adj_string] * 365 > 0) &                         # did not fall below extreme pov line
-                    ((macro_res_["extr_pov_line" + adj_string] < macro_res_["soc_pov_line" + adj_string]).broadcast_like(cat_info_res_))    # extreme pov line is below social pov line
+                soc_pov_risk = cat_info_res_.n.where(
+                    (cat_info_res_['time_below_soc_pov_line' + adj_string].where(cat_info_res_['time_below_soc_pov_line' + adj_string] != np.inf, 0) > 0) &
+                    (cat_info_res_['time_below_extr_pov_line' + adj_string].where(cat_info_res_['time_below_extr_pov_line' + adj_string] != np.inf, 0) == 0)
                 ).sum(['income_cat', 'affected_cat', 'helped_cat'])
-                res["soc_pov_incr" + adj_string] = xr.DataArray.from_series(
-                    average_over_rp(soc_pov_incr.to_series(), hazard_prot_sc_.protection.to_series()).round(0)
+                res["soc_pov_risk" + adj_string] = xr.DataArray.from_series(
+                    average_over_rp(soc_pov_risk.to_series(), hazard_prot_sc_)
                 )
-                total_pov_incr = res["extr_pov_incr" + adj_string] + res["soc_pov_incr" + adj_string]
-                res["total_pov_incr" + adj_string] = total_pov_incr
+                soc_pov_time_risk = cat_info_res_[[f'time_below_soc_pov_line' + adj_string, f'time_below_extr_pov_line' + adj_string, 'n']].to_dataframe()
+                soc_pov_time_risk[f'time_below_soc_pov_line' + adj_string] -= soc_pov_time_risk[f'time_below_extr_pov_line' + adj_string]
+                soc_pov_time_risk = soc_pov_time_risk.fillna(0).replace(np.inf, 0)[[f'time_below_soc_pov_line' + adj_string, 'n']]
+                soc_pov_time_risk = soc_pov_time_risk.prod(axis=1).groupby(['iso3', 'hazard', 'rp']).sum()
+                res["soc_pov_time_risk" + adj_string] = xr.DataArray.from_series(
+                    average_over_rp(soc_pov_time_risk, hazard_prot_sc_)
+                )
+                res["total_pov_risk" + adj_string] = res["extr_pov_risk" + adj_string] + res["soc_pov_risk" + adj_string]
+                res["total_pov_time_risk" + adj_string] = res["extr_pov_time_risk" + adj_string] + res["soc_pov_time_risk" + adj_string]
     if len(res.data_vars) > 0:
         return res
     print(f"Warning: Could not compute poverty increase as extreme poverty lines are missing in macro results.")
 
 
 def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=False, exclude_scenarios=None,
-                                concat_policy_parameters=False):
+                                concat_policy_parameters=False, drop_vars_=None):
+    preprocessed_outpath = os.path.join(simulation_outputs_dir_, '_preprocessed_simulation_output')
+    if os.path.exists(preprocessed_outpath):
+        results = {}
+        for ds_name in ['res_cat_info', 'res_event', 'res_macro', 'res_poverty', 'sc_hazard_prot', 'sc_cat_info', 'sc_macro', 'sc_hazard_ratios']:
+            ds_path = os.path.join(preprocessed_outpath, f"{ds_name}.nc")
+            if os.path.exists(ds_path):
+                ds = xr.load_dataset(ds_path)
+                if len(ds.data_vars) == 1:
+                    ds = ds[list(ds.data_vars)[0]]
+                results[ds_name] = ds
+        if len(results) > 0:
+            return results
     simulation_paths = {}
     for dir in os.listdir(simulation_outputs_dir_):
         dir_path = os.path.join(simulation_outputs_dir_, dir)
@@ -88,12 +116,15 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
         "sc_hazard_ratios": ("model_inputs/scenario__hazard_ratios.csv", [0, 1, 2, 3])
     }
 
-    results_lists = {key: [] for key in dataset_specs.keys()}
+    results = {key: [] for key in dataset_specs.keys()}
+
+    if drop_vars_ is None:
+        drop_vars_ = {}
 
     for (scenario, hs, vs, vs_sign), path in tqdm.tqdm(simulation_paths.items(), desc="Loading simulation data"):
         loaded_datasets = {}
-        for key, (fname, idx) in dataset_specs.items():
-            loaded_datasets[key] = pd.read_csv(os.path.join(path, fname), index_col=idx)
+        for ds_name, (fname, idx) in dataset_specs.items():
+            loaded_datasets[ds_name] = pd.read_csv(os.path.join(path, fname), index_col=idx).drop(columns=drop_vars_.get(ds_name,[]))
 
         # Compute additional variables
         loaded_datasets["res_cat_info"]["t_reco_95"] = np.log(1 / .05) / loaded_datasets["res_cat_info"].lambda_h
@@ -101,50 +132,48 @@ def process_simulation_ensemble(simulation_outputs_dir_, store_preprocessed=Fals
             loaded_datasets["res_cat_info"], 'iso3', loaded_datasets["sc_hazard_prot"], None
         )
 
-        for key in loaded_datasets.keys():
-            loaded_datasets[key] = xr.Dataset.from_dataframe(loaded_datasets[key])
+        for ds_name in loaded_datasets.keys():
+            loaded_datasets[ds_name] = xr.Dataset.from_dataframe(loaded_datasets[ds_name])
 
         # Compute poverty increase
         sim_poverty_increase = compute_poverty_increase(
             loaded_datasets["res_cat_info"], loaded_datasets["res_macro"], loaded_datasets["sc_hazard_prot"]
         )
         if sim_poverty_increase:
-            sim_poverty_increase_agg = (sim_poverty_increase.sum('hazard') / loaded_datasets["res_macro"]['pop']).rename({v: v.replace('_incr', '_risk') for v in list(sim_poverty_increase.data_vars)})
-            loaded_datasets["res_macro"] = xr.merge([loaded_datasets["res_macro"], sim_poverty_increase_agg])
+            loaded_datasets["res_macro"] = xr.merge([loaded_datasets["res_macro"], sim_poverty_increase.sum('hazard')])
             loaded_datasets["res_poverty"] = sim_poverty_increase
-            results_lists["res_poverty"] = []
+            if 'res_poverty' not in results:
+                results["res_poverty"] = []
 
         if concat_policy_parameters:
             coords_dict = {'policy': [f"{scenario}/{hs}/{'-' if vs_sign == -1 else '+'}{vs}"]}
         else:
             coords_dict = {'hs': [hs], 'vs': [vs], 'policy': [scenario]}
 
-        for key, ds in loaded_datasets.items():
+        for ds_name, ds in loaded_datasets.items():
             if isinstance(ds, xr.DataArray):
                 ds = ds.expand_dims(list(coords_dict.keys())).assign_coords(coords_dict)
             ds = ds.assign_coords(coords_dict)
             ds = ds.stack(concat_dim=list(coords_dict.keys()))
             ds = ds.assign_coords(vs_sign=vs_sign)
-            results_lists[key].append(ds)
+            results[ds_name].append(ds)
 
-    for key in results_lists:
-        results_lists[key] = xr.concat(results_lists[key], dim='concat_dim').unstack('concat_dim')
+    for ds_name in results:
+        results[ds_name] = xr.concat(results[ds_name], dim='concat_dim').unstack('concat_dim')
 
     drop_vars = []
-    if (np.unique(results_lists["res_cat_info"].hs) == 0).all():
+    if (np.unique(results["res_cat_info"].hs) == 0).all():
         drop_vars.append('hs')
-    if (np.unique(results_lists["sc_cat_info"].vs) == 0).all():
+    if (np.unique(results["sc_cat_info"].vs) == 0).all():
         drop_vars.extend(['vs', 'vs_sign'])
 
-    for key in results_lists:
-        results_lists[key] = results_lists[key].drop_vars(drop_vars)
-        results_lists[key] = results_lists[key].squeeze(drop=True)
+    for ds_name in results:
+        results[ds_name] = results[ds_name].drop_vars(drop_vars)
+        results[ds_name] = results[ds_name].squeeze(drop=True)
 
     if store_preprocessed:
-        outpath = os.path.join(simulation_outputs_dir_, '_preprocessed_simulation_output')
-        os.makedirs(outpath, exist_ok=True)
-        for key, ds in results_lists.items():
-            ds.to_netcdf(os.path.join(outpath, f"{key}.nc"))
+        os.makedirs(preprocessed_outpath, exist_ok=True)
+        for ds_name, ds in results.items():
+            ds.to_netcdf(os.path.join(preprocessed_outpath, f"{ds_name}.nc"))
 
-    return tuple(results_lists.get(key, None) for key in ['res_cat_info', 'res_event', 'res_macro', 'res_poverty',
-                                                'sc_hazard_prot', 'sc_cat_info', 'sc_macro', 'sc_hazard_ratios'])
+    return results

@@ -270,11 +270,13 @@ def compute_dw_reco_and_used_savings(cat_info_event_iah, macro_event, event_leve
                                                     'help_received': 'delta_i_h_pds'})
     recompute_data['capital_t'] = capital_t
     recompute_data['social_protection_share_gamma_h'] = recompute_data['gamma_SP']  # * recompute_data['n']
+    pov_line_cols = [c for c in recompute_data.columns if 'pov_line' in c]
 
     recompute_data = recompute_data[['capital_t', 'social_protection_share_gamma_h', 'productivity_pi',
                                      'discount_rate_rho', 'eta', 'k_h_eff', 'delta_k_h_eff',
                                      'savings_s_h', 'sigma_h', 'delta_i_h_pds', 'delta_tax_sp', 'lambda_h',
-                                     'diversified_share']]
+                                     'diversified_share'] + pov_line_cols]
+    recompute_data[pov_line_cols] *= 365  # convert from daily to annual poverty lines
 
     recompute_data = pd.merge(recompute_data, recovery_parameters, left_index=True, right_index=True, how='left')
 

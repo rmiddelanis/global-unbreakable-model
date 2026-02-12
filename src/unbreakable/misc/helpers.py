@@ -201,7 +201,7 @@ def average_over_rp(d_in, protection_=None, zero_rp=2):
                 [(*t, m) for t, m in product(list(protected_index.to_flat_index()), list(df_in.index.get_level_values(missing_level).unique()))],
                 names=list(protected_index.names) + [missing_level]
             )
-        protected_index.reorder_levels(df_in.index.names)
+        protected_index = protected_index.reorder_levels(df_in.index.names)
         protected_levels = pd.DataFrame(np.nan, index=protected_index.difference(df_in.index), columns=df_in.columns)
 
         # interpolate to get values at protection levels
@@ -215,7 +215,10 @@ def average_over_rp(d_in, protection_=None, zero_rp=2):
             df_in = df_in.sort_index().interpolate(method='index')
 
         # remove rows where return period is below protection level
-        df_in = df_in[((df_in.reset_index('rp').rp - protection).fillna(0) >= 0).values]
+        df_in['rp'] = df_in.reset_index().rp.values
+        diff = (df_in.rp - protection).rename('diff')
+        df_in = pd.merge(df_in, diff, left_index=True, right_index=True, how='outer')
+        df_in = df_in[df_in['diff'].fillna(0) >= 0].drop(columns=['rp', 'diff'])
 
     def calculate_rp_average(g):
         g_ = g.sort_index().copy()
@@ -227,8 +230,8 @@ def average_over_rp(d_in, protection_=None, zero_rp=2):
     res.loc[d_in.droplevel('rp').index.unique().difference(res.index)] = 0
 
     if isinstance(d_in, pd.Series):
-        res.name = d_in.name
         res = res.squeeze()
+        res.name = d_in.name
     return res
 
 

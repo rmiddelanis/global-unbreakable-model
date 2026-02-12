@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 from scipy import integrate, optimize
+from scipy.optimize import root_scalar
 
 
 def delta_capital_k_eff_of_t(t_, recovery_params_):
@@ -813,7 +814,7 @@ def aggregate_welfare_w_of_c_of_capital_t(capital_t_, discount_rate_rho_, produc
 
 def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_tax_sp_, delta_k_h_eff_,
                        lambda_h_, sigma_h_, savings_s_h_, delta_i_h_pds_, eta_, k_h_eff_,
-                       diversified_share_, recovery_params_, social_protection_share_gamma_h_):
+                       diversified_share_, recovery_params_, social_protection_share_gamma_h_, consumption_lines_=None):
     """
         Recompute the final change in welfare, including tax, social protection, and transfers.
 
@@ -882,65 +883,8 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
     t_ = np.array([0] + list(np.geomspace(1e-6, capital_t_, int(np.ceil(5000/np.log(50) * np.log(capital_t_))))))
     used_liquidity = integrate.trapezoid(used_liquidity_func(t_), t_)
 
-    def dc_short_term_func(t_):
-        return delta_c_h_of_t(
-            t_=t_,
-            productivity_pi_=productivity_pi_,
-            delta_tax_sp_=delta_tax_sp_,
-            delta_k_h_eff_=delta_k_h_eff_,
-            lambda_h_=lambda_h_,
-            sigma_h_=sigma_h_,
-            savings_s_h_=savings_s_h_,
-            delta_i_h_pds_=delta_i_h_pds_,
-            recovery_params_=recovery_params_,
-            social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-            return_elements=False,
-            consumption_floor_xi_=consumption_floor_xi_,
-            t_hat=t_hat,
-            consumption_offset=consumption_offset
-        )
-    dc_short_term = integrate.trapezoid(dc_short_term_func(t_), t_)
-
-    delta_c_h_max = delta_c_h_of_t(
-            t_=0,
-            productivity_pi_=productivity_pi_,
-            delta_tax_sp_=delta_tax_sp_,
-            delta_k_h_eff_=delta_k_h_eff_,
-            lambda_h_=lambda_h_,
-            sigma_h_=sigma_h_,
-            savings_s_h_=savings_s_h_,
-            delta_i_h_pds_=delta_i_h_pds_,
-            recovery_params_=recovery_params_,
-            social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-            return_elements=False,
-            consumption_floor_xi_=consumption_floor_xi_,
-            t_hat=t_hat,
-            consumption_offset=consumption_offset,
-        )
-
-    w_baseline = aggregate_welfare_w_of_c_of_capital_t(
-        capital_t_=capital_t_,
-        discount_rate_rho_=discount_rate_rho_,
-        productivity_pi_=productivity_pi_,
-        delta_tax_sp_=delta_tax_sp_,
-        delta_k_h_eff_=0,
-        lambda_h_=lambda_h_,
-        sigma_h_=sigma_h_,
-        savings_s_h_=savings_s_h_,
-        delta_i_h_pds_=delta_i_h_pds_,
-        eta_=eta_,
-        k_h_eff_=k_h_eff_,
-        recovery_params_=[(0, 0)],
-        social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-        diversified_share_=diversified_share_,
-        consumption_floor_xi_=consumption_floor_xi_,
-        t_hat=t_hat,
-        consumption_offset=consumption_offset,
-        include_tax=True
-    )
-    w_disaster = aggregate_welfare_w_of_c_of_capital_t(
-        capital_t_=capital_t_,
-        discount_rate_rho_=discount_rate_rho_,
+    delta_c_h_of_t_partial = partial(
+        delta_c_h_of_t,
         productivity_pi_=productivity_pi_,
         delta_tax_sp_=delta_tax_sp_,
         delta_k_h_eff_=delta_k_h_eff_,
@@ -948,9 +892,44 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         sigma_h_=sigma_h_,
         savings_s_h_=savings_s_h_,
         delta_i_h_pds_=delta_i_h_pds_,
+        recovery_params_=recovery_params_,
+        social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+        return_elements=False,
+        consumption_floor_xi_=consumption_floor_xi_,
+        t_hat=t_hat,
+        consumption_offset=consumption_offset
+    )
+    delta_c_h_over_t = delta_c_h_of_t_partial(t_)
+    dc_short_term = integrate.trapezoid(delta_c_h_over_t, t_)
+    delta_c_h_max = delta_c_h_of_t_partial(0)
+
+    c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
+    def calc_time_below_consumption_level(c_level):
+        if c_baseline < c_level:
+            return np.inf
+        elif c_baseline - delta_c_h_max > c_level:
+            return 0
+        else:
+            def opt_fun(t_):
+                return c_baseline - delta_c_h_of_t_partial(t_) - c_level
+            return root_scalar(opt_fun, bracket=[0, capital_t_], method='brentq').root
+    if consumption_lines_ is not None:
+        c_level_durations = {cl: calc_time_below_consumption_level(c_level) for cl, c_level in consumption_lines_.items()}
+    else:
+        c_level_durations = {}
+
+    aggregate_w_partial = partial(
+        aggregate_welfare_w_of_c_of_capital_t,
+        capital_t_=capital_t_,
+        discount_rate_rho_=discount_rate_rho_,
+        productivity_pi_=productivity_pi_,
+        delta_tax_sp_=delta_tax_sp_,
+        lambda_h_=lambda_h_,
+        sigma_h_=sigma_h_,
+        savings_s_h_=savings_s_h_,
+        delta_i_h_pds_=delta_i_h_pds_,
         eta_=eta_,
         k_h_eff_=k_h_eff_,
-        recovery_params_=recovery_params_,
         social_protection_share_gamma_h_=social_protection_share_gamma_h_,
         diversified_share_=diversified_share_,
         consumption_floor_xi_=consumption_floor_xi_,
@@ -958,8 +937,10 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         consumption_offset=consumption_offset,
         include_tax=True
     )
+    w_baseline = aggregate_w_partial(delta_k_h_eff_ = 0, recovery_params_=[(0, 0)])
+    w_disaster = aggregate_w_partial(delta_k_h_eff_=delta_k_h_eff_, recovery_params_=recovery_params_)
 
-    return w_baseline - w_disaster, used_liquidity, dc_short_term, delta_c_h_max
+    return w_baseline - w_disaster, used_liquidity, dc_short_term, delta_c_h_max, c_level_durations
 
 
 def recompute_with_tax_wrapper(recompute_args):
@@ -984,6 +965,7 @@ def recompute_with_tax_wrapper(recompute_args):
             Exception: If an error occurs during the execution of `recompute_with_tax`.
         """
     index, row = recompute_args
+    consumption_lines = [i for i in row.index if 'pov_line' in i]
     try:
         return recompute_with_tax(
             capital_t_=row['capital_t'],
@@ -1000,6 +982,7 @@ def recompute_with_tax_wrapper(recompute_args):
             diversified_share_=row['diversified_share'],
             recovery_params_=row['recovery_params'],
             social_protection_share_gamma_h_=row['social_protection_share_gamma_h'],
+            consumption_lines_={cl: row[cl] for cl in consumption_lines},
         )
     except Exception as e:
         print(f"Error in row {index}: {e}")
@@ -1026,7 +1009,13 @@ def recompute_data_with_tax(df_in, num_cores=None):
     with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(recompute_with_tax_wrapper, df_in.iterrows()), total=len(df_in),
                              desc='Recomputing actual welfare loss and used liquidity'))
-    res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS', 'dc_short_term', 'dC_max'], index=df_in.index)
+    res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS', 'dc_short_term', 'dC_max', 'consumption_level_times'], index=df_in.index)
+    res = (
+        res
+        .drop(columns=["consumption_level_times"])
+        .join(res["consumption_level_times"].apply(pd.Series).add_prefix("time_below_"))
+    )
+
     return res
 
 
