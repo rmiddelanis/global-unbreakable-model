@@ -863,25 +863,32 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         consumption_offset = np.nan
 
     # determine the used savings
-    def used_liquidity_func(t_):
-        return delta_c_h_of_t(
-            t_=t_,
-            productivity_pi_=productivity_pi_,
-            delta_tax_sp_=delta_tax_sp_,
-            delta_k_h_eff_=delta_k_h_eff_,
-            lambda_h_=lambda_h_,
-            sigma_h_=sigma_h_,
-            savings_s_h_=savings_s_h_,
-            delta_i_h_pds_=delta_i_h_pds_,
-            recovery_params_=recovery_params_,
-            social_protection_share_gamma_h_=social_protection_share_gamma_h_,
-            return_elements=True,
-            consumption_floor_xi_=consumption_floor_xi_,
-            t_hat=t_hat,
-            consumption_offset=consumption_offset,
-        )[3]
-    t_ = np.array([0] + list(np.geomspace(1e-6, capital_t_, int(np.ceil(5000/np.log(50) * np.log(capital_t_))))))
-    used_liquidity = integrate.trapezoid(used_liquidity_func(t_), t_)
+    t_ = np.array([0] + list(np.geomspace(1e-6, capital_t_, int(np.ceil(5000 / np.log(50) * np.log(capital_t_))))))
+    d_i_h_lab_of_t, d_i_h_sp_of_t, delta_c_h_reco, delta_c_h_savings_pds = delta_c_h_of_t(
+        t_=t_,
+        productivity_pi_=productivity_pi_,
+        delta_tax_sp_=delta_tax_sp_,
+        delta_k_h_eff_=delta_k_h_eff_,
+        lambda_h_=lambda_h_,
+        sigma_h_=sigma_h_,
+        savings_s_h_=savings_s_h_,
+        delta_i_h_pds_=delta_i_h_pds_,
+        recovery_params_=recovery_params_,
+        social_protection_share_gamma_h_=social_protection_share_gamma_h_,
+        return_elements=True,
+        consumption_floor_xi_=consumption_floor_xi_,
+        t_hat=t_hat,
+        consumption_offset=consumption_offset,
+    )
+    d_c_of_t = d_i_h_lab_of_t + d_i_h_sp_of_t + delta_c_h_reco - delta_c_h_savings_pds
+
+    di_lab = integrate.trapezoid(d_i_h_lab_of_t, t_)
+    di_sp = integrate.trapezoid(d_i_h_sp_of_t, t_)
+    dc_reco = integrate.trapezoid(delta_c_h_reco, t_)
+    used_liquidity = integrate.trapezoid(delta_c_h_savings_pds, t_)
+    dc_short_term = integrate.trapezoid(d_c_of_t, t_)
+
+    delta_c_h_max = d_c_of_t[0]
 
     delta_c_h_of_t_partial = partial(
         delta_c_h_of_t,
@@ -899,9 +906,6 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
         t_hat=t_hat,
         consumption_offset=consumption_offset
     )
-    delta_c_h_over_t = delta_c_h_of_t_partial(t_)
-    dc_short_term = integrate.trapezoid(delta_c_h_over_t, t_)
-    delta_c_h_max = delta_c_h_of_t_partial(0)
 
     c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
     def calc_time_below_consumption_level(c_level):
@@ -940,7 +944,8 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
     w_baseline = aggregate_w_partial(delta_k_h_eff_ = 0, recovery_params_=[(0, 0)])
     w_disaster = aggregate_w_partial(delta_k_h_eff_=delta_k_h_eff_, recovery_params_=recovery_params_)
 
-    return w_baseline - w_disaster, used_liquidity, dc_short_term, delta_c_h_max, c_level_durations
+    return w_baseline - w_disaster, di_lab, di_sp, dc_reco, used_liquidity, dc_short_term, delta_c_h_max, c_level_durations
+
 
 
 def recompute_with_tax_wrapper(recompute_args):
@@ -1009,7 +1014,7 @@ def recompute_data_with_tax(df_in, num_cores=None):
     with multiprocessing.Pool(processes=num_cores) as pool:
         res = list(tqdm.tqdm(pool.imap(recompute_with_tax_wrapper, df_in.iterrows()), total=len(df_in),
                              desc='Recomputing actual welfare loss and used liquidity'))
-    res = pd.DataFrame(res, columns=['dW_reco', 'dS_reco_PDS', 'dc_short_term', 'dC_max', 'consumption_level_times'], index=df_in.index)
+    res = pd.DataFrame(res, columns=['dW_reco', 'di_lab', 'di_sp', 'dc_reco', 'dS_reco_PDS', 'dc_short_term', 'dC_max', 'consumption_level_times'], index=df_in.index)
     res = (
         res
         .drop(columns=["consumption_level_times"])
