@@ -904,10 +904,16 @@ def recompute_with_tax(capital_t_, discount_rate_rho_, productivity_pi_, delta_t
 
     c_baseline = baseline_consumption_c_h(productivity_pi_, k_h_eff_, delta_tax_sp_, diversified_share_)
     def calc_time_below_consumption_level(c_level):
+        # baseline is below poverty line
         if c_baseline < c_level:
             return np.inf
+        # does not cross poverty line
         elif c_baseline - delta_c_h_max > c_level:
             return 0
+        # no recovery within simulated time horizon
+        elif c_baseline - delta_c_h_of_t_partial(capital_t_) < c_level:
+            return capital_t_
+        # find point between t=0 and t=capital_t_ where consumption crosses poverty line
         else:
             def opt_fun(t_):
                 return c_baseline - delta_c_h_of_t_partial(t_) - c_level
