@@ -1207,7 +1207,7 @@ def unpack_scenario_params(scenario_params):
     #  e.g., transfers_regression_params must only be provided if recompute is True. Need to implement this logic.
     required_parameters = {
         'run_params': ['recompute', 'recompute_hazard_protection', 'download', 'verbose', 'countries', 'hazards',
-                       'pip_reference_year', 'include_poverty_data'],
+                       'pip_reference_year', 'include_poverty_data', 'recompute_wb_data'],
         'macro_params': ['income_elasticity_eta', 'discount_rate_rho', 'axfin_impact', 'reconstruction_capital',
                          'reduction_vul', 'early_warning_file'],
         'hazard_params': ['hazard_protection', 'no_exposure_bias', 'fa_threshold', 'zero_rp'],
@@ -1289,7 +1289,7 @@ def prepare_scenario(scenario_params, outpath=None):
         tables_outpath=os.path.join(outpath, 'tables') if outpath is not None else None,
         match_years=False,
         drop_incomplete=True,
-        recompute=run_params['recompute'],
+        recompute=run_params['recompute_wb_data'],
         download=run_params['download'],
         verbose=run_params['verbose'],
         include_poverty_data=run_params['include_poverty_data'],
