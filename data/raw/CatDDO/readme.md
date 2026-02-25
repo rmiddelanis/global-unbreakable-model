@@ -1,1 +1,0 @@
-This folder provides a list of countries with an active, closed, or pipelined Cat DDO (Catastrophe Deferred Drawdown) in catddo.csv.

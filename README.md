@@ -248,7 +248,7 @@ Dividend - A Biennial Report from the Coalition for Disaster Resilient Infrastru
 [14] General government, private, and public-private partnership capital stock data 
   - Reference: IMF. (2022). _Investment and Capital Stock Dataset (ICSD), 1960-2021_.
   - filename: `IMFInvestmentandCapitalStockDataset2021.xlsx`
-  - location: `./data/raw/IMF/`
+  - location: `./data/raw/IMF_capital/`
   - Accessed on: 2025-02-13
   - URL: https://infrastructuregovern.imf.org/content/dam/PIMA/Knowledge-Hub/dataset/IMFInvestmentandCapitalStockDataset2021.xlsx
 
