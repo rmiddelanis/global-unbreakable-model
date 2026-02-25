@@ -813,7 +813,6 @@ def get_wb_data(root_dir, include_remittances=True, impute_missing_data=False, r
     transfers = get_most_recent_value(transfers.dropna())
 
     # store data coverage
-    update_data_coverage(root_dir, '__purge__', [], None)
     for v in macro_df.columns:
         update_data_coverage(root_dir, v, macro_df.dropna(subset=v).index.unique(), None)
     update_data_coverage(root_dir, 'income_share', income_shares.unstack('income_cat').dropna().index.unique(), None)
